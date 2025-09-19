@@ -15,12 +15,10 @@ use App\Http\Controllers\Api\TestController;
 |
 */
 
-Route::middleware('cors')->group(function () {
-    // Rutas de prueba
-    Route::get('/test', [TestController::class, 'test']);
-    Route::get('/data', [TestController::class, 'getData']);
-    Route::post('/create', [TestController::class, 'create']);
-});
+// Rutas de prueba - CORS configurado globalmente
+Route::get('/test', [TestController::class, 'test']);
+Route::get('/data', [TestController::class, 'getData']);
+Route::post('/create', [TestController::class, 'create']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
