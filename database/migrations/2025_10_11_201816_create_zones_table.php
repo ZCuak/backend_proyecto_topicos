@@ -10,6 +10,7 @@ return new class extends Migration {
         Schema::create('zones', function (Blueprint $table) {
             $table->id();
             $table->string('name')->comment('Nombre de la zona');
+            $table->decimal('area', 10, 2)->nullable()->comment('Área estimada en km2');
             $table->text('description')->nullable()->comment('Descripción general');
             $table->foreignId('district_id')->constrained('districts')->cascadeOnDelete();
             $table->timestamps();
