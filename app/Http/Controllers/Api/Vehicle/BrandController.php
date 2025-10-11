@@ -90,7 +90,7 @@ class BrandController extends Controller
 
         DB::beginTransaction();
         try {
-            $brand = Brand::create($validator->validated());
+            $brand = Brand::create($request->all());
             DB::commit();
 
             return response()->json([
@@ -161,7 +161,7 @@ class BrandController extends Controller
                 ], 422);
             }
 
-            $brand->update($validator->validated());
+            $brand->update($request->all());
 
             return response()->json([
                 'success' => true,
