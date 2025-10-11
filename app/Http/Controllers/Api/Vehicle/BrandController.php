@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
 class BrandController extends Controller
@@ -75,7 +76,7 @@ class BrandController extends Controller
      * Crear un nuevo color
      */
     public function store(Request $request): JsonResponse
-    {
+    {   
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:100|unique:brands,name',
         ]);
@@ -90,7 +91,18 @@ class BrandController extends Controller
 
         DB::beginTransaction();
         try {
+            $logo = "";
+
             $brand = Brand::create($request->all());
+
+            if ($request->logo != "") {
+                $image = $request->file("logo")->store("public/brand_logo");
+                $logo = Storage::url($image);
+            }
+
+            $brand->logo = $logo;
+            $brand->save();
+
             DB::commit();
 
             return response()->json([
@@ -161,7 +173,13 @@ class BrandController extends Controller
                 ], 422);
             }
 
-            $brand->update($request->all());
+            $brand->update($request->except('logo'));
+
+            if ($request->logo != "") {
+                $path = $request->file('logo')->store('brand_logo', 'public');
+                $brand->logo = Storage::url($path);
+                $brand->save();
+            }
 
             return response()->json([
                 'success' => true,

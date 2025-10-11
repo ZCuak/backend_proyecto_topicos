@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\TestController;
 use App\Http\Controllers\Api\Vehicle\VehicleColorController;
 use App\Http\Controllers\Api\Vehicle\BrandModelController;
 use App\Http\Controllers\Api\Vehicle\BrandController;
+use Illuminate\Support\Facades\Artisan;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +28,10 @@ Route::post('/create', [TestController::class, 'create']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::get('/storage', function () {
+    Artisan::call('storage:link');
 });
 
 Route::apiResource('brand-models', BrandModelController::class);
