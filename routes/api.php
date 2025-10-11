@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\TestController;
 use App\Http\Controllers\Api\Vehicle\VehicleColorController;
+use App\Http\Controllers\Api\Vehicle\BrandModelController;
+use App\Http\Controllers\Api\Vehicle\BrandController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +29,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::apiResource('brands', BrandController::class);
 Route::apiResource('vehicle-colors', VehicleColorController::class);
 Route::apiResource('user-types', UserTypeController::class);
 Route::apiResource('persona', UserController::class);
