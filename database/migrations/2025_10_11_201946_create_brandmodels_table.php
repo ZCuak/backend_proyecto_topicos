@@ -10,8 +10,8 @@ return new class extends Migration {
         Schema::create('brandmodels', function (Blueprint $table) {
             $table->id();
             $table->string('name')->comment('Nombre del modelo, ej. Hilux');
-            $table->string('code')->comment('A001');
-            $table->text('description');
+            $table->string('code')->comment('CODIGO del modelo, ej. HILUX2020');
+            $table->text('description')->nullable()->comment('Descripción del modelo');
             $table->foreignId('brand_id')->constrained('brands')->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();

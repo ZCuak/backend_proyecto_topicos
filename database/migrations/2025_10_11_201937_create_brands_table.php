@@ -10,8 +10,8 @@ return new class extends Migration {
         Schema::create('brands', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique()->comment('Nombre de la marca, ej. Toyota');
-            $table->text('description');
-            $table->string('logo',255);
+            $table->text('description')->nullable()->comment('Descripción de la marca');
+            $table->string('logo')->nullable()->comment('Ruta del logo de la marca');
             $table->timestamps();
             $table->softDeletes();
         });

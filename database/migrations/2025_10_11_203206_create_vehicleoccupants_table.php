@@ -7,19 +7,19 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('contracts', function (Blueprint $table) {
+        Schema::create('vehicleoccupants', function (Blueprint $table) {
             $table->id();
+            $table->enum('status', ['ACTIVO', 'INACTIVO'])->default('ACTIVO')->comment('Estado de asignación');
+            $table->foreignId('vehicle_id')->constrained('vehicles')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->enum('type', ['NOMBRADO', 'CONTRATO_PERMANENTE', 'CONTRATO_EVENTUAL'])->comment('Tipo de contrato del personal');
-            $table->date('start_date')->comment('Fecha de inicio de contrato');
-            $table->date('end_date')->nullable()->comment('Fecha de fin de contrato (solo aplica a contratos)');
+            $table->foreignId('usertype_id')->constrained('usertypes')->cascadeOnDelete();
+
             $table->timestamps();
             $table->softDeletes();
         });
     }
-
     public function down(): void
     {
-        Schema::dropIfExists('contracts');
+        Schema::dropIfExists('vehicleoccupants');
     }
 };
