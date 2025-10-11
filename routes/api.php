@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
+Route::apiResource('brand-models', BrandModelController::class);
 Route::apiResource('brands', BrandController::class);
 Route::apiResource('vehicle-colors', VehicleColorController::class);
 Route::apiResource('user-types', UserTypeController::class);
