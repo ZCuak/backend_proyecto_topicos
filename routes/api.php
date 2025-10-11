@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\User\UserController;
+use App\Http\Controllers\Api\User\UserTypeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\TestController;
+use App\Http\Controllers\Api\Vehicle\VehicleColorController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,3 +26,7 @@ Route::post('/create', [TestController::class, 'create']);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::apiResource('vehicle-colors', VehicleColorController::class);
+Route::apiResource('user-types', UserTypeController::class);
+Route::apiResource('persona', UserController::class);

@@ -19,19 +19,29 @@ return new class extends Migration {
         });
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('username')->unique()->comment('Nombre de usuario para login');
             $table->string('dni', 8)->unique()->comment('Documento nacional de identidad');
-            $table->string('name')->comment('Nombres completos');
-            $table->string('lastname')->comment('Apellidos completos');
+            $table->string('firstname')->comment('Nombres del usuario');
+            $table->string('lastname')->comment('Apellidos del usuario');
+            $table->date('birthdate')->nullable()->comment('Fecha de nacimiento');
+            $table->string('license')->nullable()->comment('Licencia de conducir si aplica');
+            $table->string('address')->nullable()->comment('Dirección del usuario');
             $table->string('email')->unique()->comment('Correo electrónico institucional');
-            $table->string('license')->nullable()->comment('Número de licencia de conducir si aplica');
-            $table->string('phone', 15)->nullable()->comment('Teléfono de contacto');
-            $table->string('address')->nullable()->comment('Dirección del empleado');
-            $table->string('photo_path')->nullable()->comment('Ruta de la foto del personal');
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password')->comment('Contraseña cifrada');
+            $table->text('two_factor_secret')->nullable();
+            $table->text('two_factor_recovery_codes')->nullable();
+            $table->timestamp('two_factor_confirmed_at')->nullable();
+            $table->rememberToken();
+            $table->foreignId('current_team_id')->nullable()->comment('Integración con Jetstream o equipo actual');
+            $table->string('profile_photo_path')->nullable()->comment('Ruta de la foto del usuario');
             $table->foreignId('usertype_id')->constrained('usertypes')->cascadeOnDelete();
-            $table->enum('status', ['ACTIVO', 'INACTIVO'])->default('ACTIVO')->comment('Estado actual del personal');
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->nullOnDelete();
+            $table->enum('status', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
             $table->timestamps();
             $table->softDeletes();
         });
+
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
