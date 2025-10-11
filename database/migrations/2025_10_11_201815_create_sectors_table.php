@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->string('name')->comment('Nombre del sector dentro de una zona');
             $table->decimal('area', 10, 2)->nullable()->comment('Área total en km2');
             $table->text('description')->nullable()->comment('Descripción o detalles del sector');
-            $table->foreignId('zone_id')->constrained('zones')->cascadeOnDelete();
+            $table->foreignId('district_id')->constrained('districts')->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });

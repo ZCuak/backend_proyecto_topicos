@@ -13,6 +13,8 @@ return new class extends Migration {
             $table->decimal('area', 10, 2)->nullable()->comment('Área estimada en km2');
             $table->text('description')->nullable()->comment('Descripción general');
             $table->foreignId('district_id')->constrained('districts')->cascadeOnDelete();
+            $table->foreignId('sector_id')->constrained('sectors')->cascadeOnDelete();
+
             $table->timestamps();
             $table->softDeletes();
         });
