@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\Schedule\ScheduleController;
 use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Api\User\UserTypeController;
+use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\TestController;
@@ -24,12 +26,16 @@ use App\Http\Controllers\Api\Vehicle\BrandController;
 Route::get('/test', [TestController::class, 'test']);
 Route::get('/data', [TestController::class, 'getData']);
 Route::post('/create', [TestController::class, 'create']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::middleware('auth:sanctum')->get('/authenticate', [AuthController::class, 'authenticate']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
 });
 
 Route::apiResource('brands', BrandController::class);
 Route::apiResource('vehicle-colors', VehicleColorController::class);
 Route::apiResource('user-types', UserTypeController::class);
 Route::apiResource('persona', UserController::class);
+Route::apiResource('schedules', ScheduleController::class);
