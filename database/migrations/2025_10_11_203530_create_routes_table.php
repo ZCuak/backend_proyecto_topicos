@@ -9,15 +9,20 @@ return new class extends Migration {
     {
         Schema::create('routes', function (Blueprint $table) {
             $table->id();
+
+            // Nombre o identificador de la ruta
             $table->string('name')->comment('Nombre o código de la ruta');
-            $table->text('description')->nullable()->comment('Descripción general de la ruta');
-            $table->foreignId('zone_id')->constrained('zones')->cascadeOnDelete();
-            $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->nullOnDelete()->comment('Vehículo asignado a la ruta');
-            $table->foreignId('conductor_id')->nullable()->constrained('users')->nullOnDelete()->comment('Conductor principal');
-            $table->foreignId('assistant_id')->nullable()->constrained('users')->nullOnDelete()->comment('Ayudante asignado');
-            $table->string('start_point')->comment('Punto de inicio');
-            $table->string('end_point')->comment('Punto de fin');
-            $table->enum('status', ['PLANIFICADA', 'EN_PROCESO', 'FINALIZADA'])->default('PLANIFICADA');
+
+            // Coordenadas geográficas de inicio y fin
+            $table->decimal('latitude_start', 10, 7)->comment('Latitud del punto inicial');
+            $table->decimal('longitude_start', 10, 7)->comment('Longitud del punto inicial');
+            $table->decimal('latitude_end', 10, 7)->comment('Latitud del punto final');
+            $table->decimal('longitude_end', 10, 7)->comment('Longitud del punto final');
+
+            // Estado de la ruta
+            $table->enum('status', ['ACTIVA', 'INACTIVA'])->default('ACTIVA')->comment('Estado actual de la ruta');
+
+            // Auditoría
             $table->timestamps();
             $table->softDeletes();
         });
