@@ -191,6 +191,7 @@ class BrandController extends Controller
             if ($brand->logo) {
                 $oldPath = str_replace('/storage/', '', $brand->logo);
                 Storage::disk('public')->delete($oldPath);
+                $brand->logo = null;
             }
             // 🔹 Subir nuevo logo si se envía
             if ($request->hasFile('logo')) {
