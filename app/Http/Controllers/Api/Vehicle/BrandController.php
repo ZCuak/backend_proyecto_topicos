@@ -95,12 +95,12 @@ class BrandController extends Controller
 
             $brand = Brand::create($request->all());
 
-            if ($request->logo != "") {
-                $image = $request->file("logo")->store("public/brand_logo");
-                $logo = Storage::url($image);
+            if ($request->hasFile('logo')) {
+                
+                // Guardar nuevo logo
+                $path = $request->file('logo')->store('brand_logos', 'public');
+                $brand->logo = Storage::url($path);
             }
-
-            $brand->logo = $logo;
             $brand->save();
 
             DB::commit();
