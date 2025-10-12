@@ -76,7 +76,7 @@ class BrandController extends Controller
      * Crear un nuevo color
      */
     public function store(Request $request): JsonResponse
-    {   
+    {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:100|unique:brands,name',
         ]);
@@ -154,15 +154,23 @@ class BrandController extends Controller
         try {
             $brand = Brand::find($id);
 
+
             if (!$brand) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Marca no encontrado'
+                    'message' => 'Marca no encontrada'
                 ], 404);
             }
+            if ($request->isMethod('put') && empty($request->all())) {
+                $request = Request::createFromBase(\Symfony\Component\HttpFoundation\Request::createFromGlobals());
+            }
 
+
+
+            // 🔹 Validación
             $validator = Validator::make($request->all(), [
-                'name' => 'sometimes|required|string|max:100|unique:brands,name,' . $id,
+                'name' => 'nullable|string|max:100|unique:brands,name,' . $id,
+                'logo' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:2048'
             ]);
 
             if ($validator->fails()) {
@@ -173,19 +181,34 @@ class BrandController extends Controller
                 ], 422);
             }
 
-            $brand->update($request->except('logo'));
+            $data = $validator->validated();
 
-            if ($request->logo != "") {
-                $path = $request->file('logo')->store('brand_logo', 'public');
-                $brand->logo = Storage::url($path);
-                $brand->save();
+            // 🔹 Actualizar nombre si viene en el request
+            if ($request->filled('name')) {
+                $brand->name = $request->input('name');
             }
+
+            // 🔹 Subir nuevo logo si se envía
+            if ($request->hasFile('logo')) {
+                // Eliminar logo anterior si existe
+                if ($brand->logo) {
+                    $oldPath = str_replace('/storage/', '', $brand->logo);
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                // Guardar nuevo logo
+                $path = $request->file('logo')->store('brand_logos', 'public');
+                $brand->logo = Storage::url($path);
+            }
+
+            $brand->save();
 
             return response()->json([
                 'success' => true,
                 'data' => $brand,
-                'message' => 'Marca de vehículo actualizado exitosamente'
+                'message' => 'Marca de vehículo actualizada exitosamente'
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
