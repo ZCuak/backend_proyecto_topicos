@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Schedule\ScheduleController;
 use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Api\User\UserTypeController;
+use App\Http\Controllers\Api\Vehicle\VehicleController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -45,3 +46,4 @@ Route::apiResource('vehicle-colors', VehicleColorController::class);
 Route::apiResource('user-types', UserTypeController::class);
 Route::apiResource('persona', UserController::class);
 Route::apiResource('schedules', ScheduleController::class);
+Route::apiResource('vehicles', VehicleController::class);
