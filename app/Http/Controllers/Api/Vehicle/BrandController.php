@@ -24,7 +24,7 @@ class BrandController extends Controller
             $all = $request->boolean('all', false);
 
             $query = Brand::query();
-            $columns = Schema::getColumnListing('vehiclecolors');
+            $columns = Schema::getColumnListing('brands');
 
             // 🔍 Filtro de búsqueda en todas las columnas
             if ($search) {
