@@ -194,8 +194,6 @@ class BrandController extends Controller
             }
             // 🔹 Subir nuevo logo si se envía
             if ($request->hasFile('logo')) {
-
-
                 // Guardar nuevo logo
                 $path = $request->file('logo')->store('brand_logos', 'public');
                 $brand->logo = Storage::url($path);
