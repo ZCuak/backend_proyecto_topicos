@@ -14,7 +14,12 @@ class UserType extends Model
 
     protected $fillable = [
         'name',
+        'description',
         'is_system',
+    ];
+
+    protected $casts = [
+        'is_system' => 'boolean',
     ];
 
     /**
@@ -23,5 +28,10 @@ class UserType extends Model
     public function users()
     {
         return $this->hasMany(User::class, 'usertype_id');
+    }
+
+    public function vehicleOccupants()
+    {
+        return $this->hasMany(VehicleOccupant::class, 'usertype_id');
     }
 }
