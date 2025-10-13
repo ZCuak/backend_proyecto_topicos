@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\TestController;
 use App\Http\Controllers\Api\Vehicle\VehicleColorController;
 use App\Http\Controllers\Api\Vehicle\BrandModelController;
 use App\Http\Controllers\Api\Vehicle\BrandController;
+use App\Http\Controllers\Api\Vehicle\VehicleTypeController;
 use Illuminate\Support\Facades\Artisan;
 
 /*
@@ -47,3 +48,5 @@ Route::apiResource('user-types', UserTypeController::class);
 Route::apiResource('persona', UserController::class);
 Route::apiResource('schedules', ScheduleController::class);
 Route::apiResource('vehicles', VehicleController::class);
+
+Route::apiResource('vehicle-types', VehicleTypeController::class);
