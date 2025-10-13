@@ -30,7 +30,7 @@ class VehicleTypeController extends Controller
                 $columns = array_diff($columns, $excluir);
                 $query->when(function ($q) use ($columns, $search) {
                     foreach ($columns as $column) {
-                        $q->orWhere($column, 'LIKE', "%{$search}%");
+                        $q->orWhere($column, 'ILIKE', "%{$search}%");
                     }
                 });
             }
