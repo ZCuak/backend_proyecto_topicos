@@ -49,17 +49,28 @@ class VehicleTypeController extends Controller
 
             // 📄 Paginación o todos los registros
             $all = $request->input('all', false);
-            
+            $pagination = [];
             if ($all) {
                 $vehicleTypes = $query->get();
             } else {
-                $vehicleTypes = $query->paginate($perPage);
+                $vehicleTypes = $query->paginate($perPage)->appends([
+                    'search' => $search,
+                    'perPage' => $perPage
+                ]);
+                $pagination = [
+                    'current_page' => $vehicleTypes->currentPage(),
+                    'last_page' => $vehicleTypes->lastPage(),
+                    'per_page' => $vehicleTypes->perPage(),
+                    'total' => $vehicleTypes->total()
+                ];
+                $vehicleTypes = $vehicleTypes->items();
             }
 
             return response()->json([
                 'success' => true,
                 'data' => $vehicleTypes,
-                'message' => 'Tipos de vehículos obtenidos exitosamente'
+                'message' => 'Tipos de vehículos obtenidos exitosamente',
+                'pagination' => $pagination
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
