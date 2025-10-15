@@ -97,6 +97,18 @@ return [
             'search_path' => 'public',
             'sslmode' => 'prefer',
         ],
+'pgsql_local' => [
+    'driver' => 'pgsql',
+    'host' => env('DB_HOST_LOCAL', 'localhost'),
+    'port' => env('DB_PORT_LOCAL', '5432'),
+    'database' => env('DB_DATABASE_LOCAL', 'bdgestiobras'),
+    'username' => env('DB_USERNAME_LOCAL', 'postgres'),
+    'password' => env('DB_PASSWORD_LOCAL', 'frank2003'),
+    'charset' => 'utf8',
+    'prefix' => '',
+    'schema' => 'public',
+    'sslmode' => 'prefer',
+],
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',
