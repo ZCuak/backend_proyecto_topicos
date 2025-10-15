@@ -14,8 +14,10 @@ class Zone extends Model
 
     protected $fillable = [
         'name',
+        'area',
         'description',
-        'district_id'
+        'district_id',
+        'sector_id'
     ];
 
     /**
@@ -29,9 +31,9 @@ class Zone extends Model
     /**
      * 🔹 Relación: una zona puede tener varios sectores.
      */
-    public function sectors()
+    public function sector()
     {
-        return $this->hasMany(Sector::class, 'zone_id');
+        return $this->belongsTo(Sector::class, 'zone_id');
     }
 
     /**
