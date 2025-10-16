@@ -70,11 +70,13 @@ class VacationController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'date_start' => 'required|date',
-                'date_end' => 'nullable|date|after_or_equal:date_start',
-                'description' => 'nullable|string',
-                'is_active' => 'boolean',
                 'user_id' => 'required|exists:users,id',
+                'year' => 'required|integer|min:1900',
+                'start_date' => 'required|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'days_programmed' => 'required|integer|min:0',
+                'days_pending' => 'required|integer|min:0',
+                'reason' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -85,7 +87,17 @@ class VacationController extends Controller
                 ], 422);
             }
 
-            $vacation = Vacation::create($request->all());
+            $data = $request->only([
+                'user_id',
+                'year',
+                'start_date',
+                'end_date',
+                'days_programmed',
+                'days_pending',
+                'reason',
+            ]);
+
+            $vacation = Vacation::create($data);
 
             return response()->json([
                 'success' => true,
@@ -146,11 +158,13 @@ class VacationController extends Controller
             }
 
             $validator = Validator::make($request->all(), [
-                'date_start' => 'sometimes|required|date',
-                'date_end' => 'nullable|date|after_or_equal:date_start',
-                'description' => 'nullable|string',
-                'is_active' => 'boolean',
                 'user_id' => 'sometimes|required|exists:users,id',
+                'year' => 'sometimes|required|integer|min:1900',
+                'start_date' => 'sometimes|required|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'days_programmed' => 'sometimes|required|integer|min:0',
+                'days_pending' => 'sometimes|required|integer|min:0',
+                'reason' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -161,7 +175,17 @@ class VacationController extends Controller
                 ], 422);
             }
 
-            $vacation->update($request->all());
+            $data = $request->only([
+                'user_id',
+                'year',
+                'start_date',
+                'end_date',
+                'days_programmed',
+                'days_pending',
+                'reason',
+            ]);
+
+            $vacation->update($data);
 
             return response()->json([
                 'success' => true,
