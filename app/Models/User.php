@@ -50,4 +50,15 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Zone::class, 'zone_id');
     }
+
+    public function contracts()
+    {
+        return $this->hasMany(Contract::class, 'user_id');
+    }
+
+    
+    public function vacations()
+    {
+        return $this->hasMany(Vacation::class, 'user_id');
+    }
 }

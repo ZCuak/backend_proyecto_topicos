@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\SectorController;
 use App\Http\Controllers\Api\DistrictController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\ProvinceController;
+use App\Http\Controllers\Api\Schedule\ContractController;
+use App\Http\Controllers\Api\Schedule\VacationController;
 use App\Http\Controllers\Api\ZoneCoordController;
 use Illuminate\Support\Facades\Artisan;
 
@@ -60,5 +62,6 @@ Route::apiResource('districts', DistrictController::class);
 Route::apiResource('departments', DepartmentController::class);
 Route::apiResource('provinces', ProvinceController::class);
 Route::apiResource('zone-coords', ZoneCoordController::class);
-
+Route::apiResource('contracts', ContractController::class);
+Route::apiResource('vacations', VacationController::class);
 Route::apiResource('vehicle-types', VehicleTypeController::class);
