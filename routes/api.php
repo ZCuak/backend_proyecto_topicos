@@ -33,35 +33,39 @@ use Illuminate\Support\Facades\Artisan;
 |
 */
 
-// Rutas de prueba - CORS configurado globalmente
+// Rutas públicas (sin autenticación)
 Route::get('/test', [TestController::class, 'test']);
 Route::get('/data', [TestController::class, 'getData']);
 Route::post('/create', [TestController::class, 'create']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::middleware('auth:sanctum')->get('/authenticate', [AuthController::class, 'authenticate']);
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-
-});
+Route::post('/register', [UserController::class, 'store']);
 
 Route::get('/storage', function () {
     Artisan::call('storage:link');
 });
 
-Route::apiResource('brand-models', BrandModelController::class);
-Route::apiResource('brands', BrandController::class);
-Route::apiResource('vehicle-colors', VehicleColorController::class);
-Route::apiResource('user-types', UserTypeController::class);
-Route::apiResource('persona', UserController::class);
-Route::apiResource('schedules', ScheduleController::class);
-Route::apiResource('vehicles', VehicleController::class);
-Route::apiResource('zones', ZoneController::class);
-Route::apiResource('sectors', SectorController::class);
-Route::apiResource('districts', DistrictController::class);
-Route::apiResource('departments', DepartmentController::class);
-Route::apiResource('provinces', ProvinceController::class);
-Route::apiResource('zone-coords', ZoneCoordController::class);
-Route::apiResource('contracts', ContractController::class);
-Route::apiResource('vacations', VacationController::class);
-Route::apiResource('vehicle-types', VehicleTypeController::class);
+// Rutas protegidas (requieren token de autenticación)
+Route::middleware('auth:sanctum')->group(function () {
+    // Autenticación
+    Route::get('/authenticate', [AuthController::class, 'authenticate']);
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Recursos protegidos
+    Route::apiResource('brand-models', BrandModelController::class);
+    Route::apiResource('brands', BrandController::class);
+    Route::apiResource('vehicle-colors', VehicleColorController::class);
+    Route::apiResource('user-types', UserTypeController::class);
+    Route::apiResource('persona', UserController::class);
+    Route::apiResource('schedules', ScheduleController::class);
+    Route::apiResource('vehicles', VehicleController::class);
+    Route::apiResource('zones', ZoneController::class);
+    Route::apiResource('sectors', SectorController::class);
+    Route::apiResource('districts', DistrictController::class);
+    Route::apiResource('departments', DepartmentController::class);
+    Route::apiResource('provinces', ProvinceController::class);
+    Route::apiResource('zone-coords', ZoneCoordController::class);
+    Route::apiResource('contracts', ContractController::class);
+    Route::apiResource('vacations', VacationController::class);
+    Route::apiResource('vehicle-types', VehicleTypeController::class);
+});
