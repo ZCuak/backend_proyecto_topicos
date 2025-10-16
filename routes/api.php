@@ -13,6 +13,11 @@ use App\Http\Controllers\Api\Vehicle\BrandModelController;
 use App\Http\Controllers\Api\Vehicle\BrandController;
 use App\Http\Controllers\Api\Vehicle\VehicleTypeController;
 use App\Http\Controllers\Api\Zones\ZoneController;
+use App\Http\Controllers\Api\SectorController;
+use App\Http\Controllers\Api\DistrictController;
+use App\Http\Controllers\Api\DepartmentController;
+use App\Http\Controllers\Api\ProvinceController;
+use App\Http\Controllers\Api\ZoneCoordController;
 use Illuminate\Support\Facades\Artisan;
 
 /*
@@ -50,5 +55,10 @@ Route::apiResource('persona', UserController::class);
 Route::apiResource('schedules', ScheduleController::class);
 Route::apiResource('vehicles', VehicleController::class);
 Route::apiResource('zones', ZoneController::class);
+Route::apiResource('sectors', SectorController::class);
+Route::apiResource('districts', DistrictController::class);
+Route::apiResource('departments', DepartmentController::class);
+Route::apiResource('provinces', ProvinceController::class);
+Route::apiResource('zone-coords', ZoneCoordController::class);
 
 Route::apiResource('vehicle-types', VehicleTypeController::class);

@@ -29,11 +29,11 @@ class Zone extends Model
     }
 
     /**
-     * 🔹 Relación: una zona puede tener varios sectores.
+     * 🔹 Relación: una zona pertenece a un sector.
      */
     public function sector()
     {
-        return $this->belongsTo(Sector::class, 'zone_id');
+        return $this->belongsTo(Sector::class, 'sector_id');
     }
 
     /**
