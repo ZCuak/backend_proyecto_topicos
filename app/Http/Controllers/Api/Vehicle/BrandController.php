@@ -230,6 +230,26 @@ class BrandController extends Controller
                 ], 404);
             }
 
+            // Contar relaciones para evitar borrar si existen dependencias
+            $vehiclesCount = $brand->vehicles()->count();
+            $modelsCount = $brand->models()->count();
+
+            if ($modelsCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la marca: tiene modelos asociados',
+                    'details' => ['models_count' => $modelsCount]
+                ], 409);
+            }
+
+            if ($vehiclesCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la marca: tiene vehículos asociados',
+                    'details' => ['vehicles_count' => $vehiclesCount]
+                ], 409);
+            }
+
             $brand->delete();
 
             return response()->json([

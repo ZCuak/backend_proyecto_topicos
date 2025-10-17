@@ -12,5 +12,20 @@ class Brand extends Model
 
     protected $guarded = [
     ];
+    /**
+     * Relación: una marca puede tener muchos modelos (BrandModel)
+     */
+    public function models()
+    {
+        return $this->hasMany(BrandModel::class, 'brand_id');
+    }
+
+    /**
+     * Relación: una marca puede tener muchos vehículos
+     */
+    public function vehicles()
+    {
+        return $this->hasMany(Vehicle::class, 'brand_id');
+    }
 
 }
