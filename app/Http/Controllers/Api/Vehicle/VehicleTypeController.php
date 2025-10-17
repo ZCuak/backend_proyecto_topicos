@@ -248,13 +248,23 @@ class VehicleTypeController extends Controller
     {
         try {
             $vehicleType = VehicleType::find($id);
-
+            
             if (!$vehicleType) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Tipo de vehículo no encontrado'
                 ], 404);
             }
+            
+            $vehiculo = $vehicleType->vehicles()->count();
+            if ($vehiculo > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar el tipo: tiene vehículos asociados',
+                    'details' => ['vehiculo_count' => $vehiculo]
+                ], 409);
+            }
+
 
             $vehicleType->delete(); // Soft delete
 
