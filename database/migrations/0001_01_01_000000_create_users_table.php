@@ -36,7 +36,7 @@ return new class extends Migration {
             $table->foreignId('current_team_id')->nullable()->comment('Integración con Jetstream o equipo actual');
             $table->string('profile_photo_path')->nullable()->comment('Ruta de la foto del usuario');
             $table->foreignId('usertype_id')->constrained('usertypes')->cascadeOnDelete();
-            $table->foreignId('zone_id')->nullable()->constrained('zones')->nullOnDelete();
+            // $table->foreignId('zone_id')->nullable()->constrained('zones')->nullOnDelete();
             $table->enum('status', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
             $table->timestamps();
             $table->softDeletes();
