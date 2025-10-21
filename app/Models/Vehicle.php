@@ -19,6 +19,8 @@ class Vehicle extends Model
         'year',
         'occupant_capacity',
         'load_capacity',
+        'compaction_capacity',
+        'fuel_capacity',
         'description',
         'status',
         'brand_id',
@@ -31,6 +33,8 @@ class Vehicle extends Model
         'year' => 'integer',
         'occupant_capacity' => 'integer',
         'load_capacity' => 'integer',
+        'compaction_capacity' => 'integer',
+        'fuel_capacity' => 'integer',
     ];
 
     /**
