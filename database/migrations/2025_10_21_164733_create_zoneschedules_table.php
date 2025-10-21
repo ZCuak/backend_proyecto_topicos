@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('zoneschedules', function (Blueprint $table) {
             $table->id();
             $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null');
-            $table->foreignId('schedules_id')->constrained('schedules')->onDelete('cascade');
+            $table->foreignId('schedule_id')->constrained('schedules')->onDelete('cascade');
             $table->timestamps();
             $table->softDeletes();
         });

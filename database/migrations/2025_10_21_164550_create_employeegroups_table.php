@@ -18,7 +18,7 @@ return new class extends Migration
 
             // Relaciones obligatorias
             $table->foreignId('zone_id')->constrained('zones')->onDelete('cascade');
-            $table->foreignId('schedules_id')->constrained('schedules')->onDelete('cascade');
+            $table->foreignId('schedule_id')->constrained('schedules')->onDelete('cascade');
             $table->foreignId('vehicle_id')->constrained('vehicles')->onDelete('cascade');
 
             $table->string('days', 255);
