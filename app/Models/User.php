@@ -25,7 +25,7 @@ class User extends Authenticatable
         'password',
         'profile_photo_path',
         'usertype_id',
-        'zone_id',
+        'phone',
         'status',
     ];
 
@@ -46,10 +46,7 @@ class User extends Authenticatable
         return $this->belongsTo(UserType::class, 'usertype_id');
     }
 
-    public function zone()
-    {
-        return $this->belongsTo(Zone::class, 'zone_id');
-    }
+
 
     public function contracts()
     {

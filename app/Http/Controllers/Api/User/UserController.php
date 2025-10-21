@@ -23,7 +23,8 @@ class UserController extends Controller
             $perPage = $request->input('perPage', 10);
             $all = $request->boolean('all', false);
 
-            $query = User::with(['usertype', 'zone']);
+            // Eliminamos 'zone' porque ya no existe la relación
+            $query = User::with(['usertype']);
             $columns = Schema::getColumnListing('users');
 
             if ($search) {
@@ -78,11 +79,11 @@ class UserController extends Controller
             'birthdate' => 'nullable|date',
             'license' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'profile_photo_path' => 'nullable|string|max:255',
             'usertype_id' => 'required|exists:usertypes,id',
-            'zone_id' => 'nullable|exists:zones,id',
             'status' => 'in:ACTIVO,INACTIVO'
         ]);
 
@@ -104,7 +105,7 @@ class UserController extends Controller
             DB::commit();
             return response()->json([
                 'success' => true,
-                'data' => $user->load(['usertype', 'zone']),
+                'data' => $user->load(['usertype']),
                 'message' => 'Usuario creado exitosamente'
             ], 201);
         } catch (\Exception $e) {
@@ -123,7 +124,7 @@ class UserController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $user = User::with(['usertype', 'zone'])->find($id);
+            $user = User::with(['usertype'])->find($id);
             if (!$user) {
                 return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
             }
@@ -134,7 +135,11 @@ class UserController extends Controller
                 'message' => 'Usuario obtenido exitosamente'
             ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al obtener usuario', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener usuario',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -157,16 +162,20 @@ class UserController extends Controller
                 'birthdate' => 'nullable|date',
                 'license' => 'nullable|string|max:20',
                 'address' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:20',
                 'email' => 'sometimes|required|email|unique:users,email,' . $id,
                 'password' => 'nullable|string|min:8',
                 'profile_photo_path' => 'nullable|string|max:255',
                 'usertype_id' => 'exists:usertypes,id',
-                'zone_id' => 'nullable|exists:zones,id',
                 'status' => 'in:ACTIVO,INACTIVO'
             ]);
 
             if ($validator->fails()) {
-                return response()->json(['success' => false, 'message' => 'Error de validación', 'errors' => $validator->errors()], 422);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de validación',
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
             $data = $validator->validated();
@@ -178,11 +187,15 @@ class UserController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $user->load(['usertype', 'zone']),
+                'data' => $user->load(['usertype']),
                 'message' => 'Usuario actualizado correctamente'
             ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al actualizar usuario', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar usuario',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -199,9 +212,16 @@ class UserController extends Controller
 
             $user->delete();
 
-            return response()->json(['success' => true, 'message' => 'Usuario eliminado correctamente']);
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario eliminado correctamente'
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al eliminar usuario', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar usuario',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }

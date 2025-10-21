@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
 
             // Relaciones obligatorias
-            $table->foreignId('group_id')->constrained('groups')->onDelete('cascade');
-            $table->foreignId('schedule_id')->constrained('schedule')->onDelete('cascade');
+            $table->foreignId('group_id')->constrained('employeegroups')->onDelete('cascade');
+            $table->foreignId('schedule_id')->constrained('schedules')->onDelete('cascade');
 
             // Relaciones opcionales
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->onDelete('set null');

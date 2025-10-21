@@ -39,10 +39,7 @@ class Zone extends Model
     /**
      * 🔹 Relación: una zona puede tener varios usuarios asignados (personal).
      */
-    public function users()
-    {
-        return $this->hasMany(User::class, 'zone_id');
-    }
+
 
     /**
      * 🔹 Relación: una zona puede tener varias coordenadas de perímetro.
