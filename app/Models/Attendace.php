@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Attendace extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'attendances';
+
+    protected $fillable = [
+        'user_id',
+        'date',
+        'check_in',
+        'check_out',
+        'dni_key',
+        'status',
+    ];
+
+    const STATUS_PRESENTE = 'PRESENTE';
+    const STATUS_AUSENTE = 'AUSENTE';
+    const STATUS_TARDANZA = 'TARDANZA';
+
+    /**
+     * Scope para filtrar asistencias por rango de fechas
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string $startDate
+     * @param string $endDate
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    /**
+     * Relación: Una asistencia pertenece a un usuario
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Scope para filtrar asistencias por rango de fechas
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string $startDate
+     * @param string $endDate
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeDateRange($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('date', [$startDate, $endDate]);
+    }
+
+    /**
+     * Scope para filtrar por usuario
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param int $userId
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeByUser($query, $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    /**
+     * Scope para filtrar por estado
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string $status
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+}
