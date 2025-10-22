@@ -1,6 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\Schedule\ScheduleController;
+use App\Http\Controllers\Api\Schedule\SchedulingController; //programaciones
+use App\Http\Controllers\Api\Schedule\ScheduleController; //turnos o shifts
 use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Api\User\UserTypeController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
@@ -58,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('vehicle-colors', VehicleColorController::class);
     Route::apiResource('user-types', UserTypeController::class);
     Route::apiResource('persona', UserController::class);
+    Route::apiResource('schedulings', SchedulingController::class);
     Route::apiResource('schedules', ScheduleController::class);
     Route::apiResource('vehicles', VehicleController::class);
     Route::apiResource('zones', ZoneController::class);
