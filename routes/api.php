@@ -39,6 +39,7 @@ use Illuminate\Support\Facades\Artisan;
 Route::get('/test', [TestController::class, 'test']);
 Route::get('/data', [TestController::class, 'getData']);
 Route::post('/create', [TestController::class, 'create']);
+Route::post('attendances/mark', [AttendaceController::class, 'markAttendance']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [UserController::class, 'store']);
 
@@ -71,5 +72,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('contracts', ContractController::class);
     Route::apiResource('vacations', VacationController::class);
     Route::apiResource('vehicle-types', VehicleTypeController::class);
-    Route::apiResource('attendance', AttendaceController::class);
+    Route::apiResource('attendances', AttendaceController::class);
 });
