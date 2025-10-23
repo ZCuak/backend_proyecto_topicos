@@ -27,7 +27,7 @@ return new class extends Migration {
             $table->string('license')->nullable()->comment('Licencia de conducir si aplica');
             $table->string('address')->nullable()->comment('Dirección del usuario');
             $table->string('email')->unique()->comment('Correo electrónico institucional');
-            $table->timestamp(' ')->nullable();
+            $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->comment('Contraseña cifrada');
             $table->text('two_factor_secret')->nullable();
             $table->text('two_factor_recovery_codes')->nullable();
@@ -36,7 +36,7 @@ return new class extends Migration {
             $table->foreignId('current_team_id')->nullable()->comment('Integración con Jetstream o equipo actual');
             $table->string('profile_photo_path')->nullable()->comment('Ruta de la foto del usuario');
             $table->foreignId('usertype_id')->constrained('usertypes')->cascadeOnDelete();
-            $table->foreignId('zone_id')->nullable()->constrained('zones')->nullOnDelete();
+            // $table->foreignId('zone_id')->nullable()->constrained('zones')->nullOnDelete();
             $table->enum('status', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
             $table->timestamps();
             $table->softDeletes();

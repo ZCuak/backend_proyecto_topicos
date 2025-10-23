@@ -48,7 +48,6 @@ class UserSeeder extends Seeder
                 'address' => 'Av. Salaverry 1234',
                 'email' => 'jperez@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '987654321',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -58,6 +57,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 1, // Conductor
                 'status' => 'ACTIVO',
+                'phone' => '987654321',
             ],
 
             // Conductor 3
@@ -71,7 +71,6 @@ class UserSeeder extends Seeder
                 'address' => 'Jr. Los Pinos 456',
                 'email' => 'rlopez@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '965432187',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -81,6 +80,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 1, // Conductor
                 'status' => 'ACTIVO',
+                'phone' => '965432187',
             ],
 
             // Ayudante 1
@@ -94,7 +94,6 @@ class UserSeeder extends Seeder
                 'address' => 'Calle Las Flores 789',
                 'email' => 'mramirez@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '945678123',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -104,6 +103,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 2, // Ayudante
                 'status' => 'ACTIVO',
+                'phone' => '945678123',
             ],
 
             // Ayudante 2
@@ -117,7 +117,6 @@ class UserSeeder extends Seeder
                 'address' => 'Av. Industrial 234',
                 'email' => 'cgarcia@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '923456789',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -127,6 +126,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 2, // Ayudante
                 'status' => 'ACTIVO',
+                'phone' => '923456789',
             ],
 
             // Ayudante 3
@@ -140,7 +140,6 @@ class UserSeeder extends Seeder
                 'address' => 'Psje. Los Jardines 567',
                 'email' => 'lmartinez@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '912345678',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -150,6 +149,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 2, // Ayudante
                 'status' => 'ACTIVO',
+                'phone' => '912345678',
             ],
 
             // Supervisor
@@ -163,7 +163,6 @@ class UserSeeder extends Seeder
                 'address' => 'Urb. Los Sauces 890',
                 'email' => 'adiaz@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '998765432',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -173,6 +172,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 3, // Supervisor
                 'status' => 'ACTIVO',
+                'phone' => '998765432',
             ],
 
             // Coordinador de Zona
@@ -186,7 +186,6 @@ class UserSeeder extends Seeder
                 'address' => 'Av. Prolongación 123',
                 'email' => 'pmorales@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '976543210',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -196,6 +195,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 4, // Coordinador de Zona
                 'status' => 'ACTIVO',
+                'phone' => '976543210',
             ],
 
             // Mecánico
@@ -209,7 +209,6 @@ class UserSeeder extends Seeder
                 'address' => 'Calle Comercio 345',
                 'email' => 'fvega@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '954321098',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -219,6 +218,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 6, // Mecánico
                 'status' => 'ACTIVO',
+                'phone' => '954321098',
             ],
 
             // Usuario inactivo (ejemplo)
@@ -232,7 +232,6 @@ class UserSeeder extends Seeder
                 'address' => 'Jr. Progreso 678',
                 'email' => 'jcastro@usatexp.pe',
                 'email_verified_at' => null,
-                'phone' => '932109876',
                 'password' => Hash::make('password123'),
                 'two_factor_secret' => NULL,
                 'two_factor_recovery_codes' => NULL,
@@ -242,6 +241,7 @@ class UserSeeder extends Seeder
                 'profile_photo_path' => NULL,
                 'usertype_id' => 2, // Ayudante
                 'status' => 'INACTIVO', // Usuario inactivo
+                'phone' => '932109876',
             ],
         ];
 
