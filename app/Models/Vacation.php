@@ -20,7 +20,13 @@ class Vacation extends Model
         'end_date',
         'days_programmed',
         'days_pending',
+        'max_days',
         'reason',
+        'status',
+    ];
+
+    protected $attributes = [
+        'status' => 'pendiente',
     ];
 
     protected $casts = [
