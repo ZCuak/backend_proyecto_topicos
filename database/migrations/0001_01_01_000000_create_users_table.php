@@ -27,7 +27,7 @@ return new class extends Migration {
             $table->string('license')->nullable()->comment('Licencia de conducir si aplica');
             $table->string('address')->nullable()->comment('Dirección del usuario');
             $table->string('email')->unique()->comment('Correo electrónico institucional');
-            $table->timestamp('email_verified_at')->nullable();
+            $table->timestamp(' ')->nullable();
             $table->string('password')->comment('Contraseña cifrada');
             $table->text('two_factor_secret')->nullable();
             $table->text('two_factor_recovery_codes')->nullable();
