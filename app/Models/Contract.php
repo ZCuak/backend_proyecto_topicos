@@ -18,6 +18,7 @@ class Contract extends Model
         'date_start',
         'date_end',
         'description',
+        'vacation_days_per_year',
         'is_active',
         'user_id',
     ];
