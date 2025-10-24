@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Schema;
@@ -14,16 +13,15 @@ use Illuminate\Support\Facades\DB;
 class UserController extends Controller
 {
     /**
-     * Listar usuarios
+     * Mostrar listado de personal (index)
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         try {
             $search = $request->input('search');
             $perPage = $request->input('perPage', 10);
             $all = $request->boolean('all', false);
 
-            // Eliminamos 'zone' porque ya no existe la relación
             $query = User::with(['usertype']);
             $columns = Schema::getColumnListing('users');
 
@@ -36,40 +34,29 @@ class UserController extends Controller
             }
 
             if ($all) {
-                $users = $query->get();
-                return response()->json([
-                    'success' => true,
-                    'data' => $users,
-                    'message' => 'Usuarios obtenidos exitosamente (todos)',
-                    'pagination' => null
-                ]);
+                $personales = $query->get();
+            } else {
+                $personales = $query->paginate($perPage);
             }
 
-            $users = $query->paginate($perPage);
-            return response()->json([
-                'success' => true,
-                'data' => $users->items(),
-                'message' => 'Usuarios listados correctamente',
-                'pagination' => [
-                    'current_page' => $users->currentPage(),
-                    'last_page' => $users->lastPage(),
-                    'per_page' => $users->perPage(),
-                    'total' => $users->total()
-                ]
-            ]);
+            return view('personal.index', compact('personales', 'search'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al listar usuarios',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al listar personal: ' . $e->getMessage());
         }
     }
 
     /**
-     * Crear un nuevo usuario
+     * Mostrar formulario de creación
      */
-    public function store(Request $request): JsonResponse
+    public function create()
+    {
+        return view('personal.create');
+    }
+
+    /**
+     * Registrar nuevo personal
+     */
+    public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'username' => 'required|string|max:100|unique:users,username',
@@ -88,70 +75,71 @@ class UserController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error de validación',
-                'errors' => $validator->errors()
-            ], 422);
+            return back()->withErrors($validator)->withInput();
         }
 
         DB::beginTransaction();
         try {
             $data = $validator->validated();
-            $data['password'] = Hash::make($data['password']); // Encriptar contraseña
+            $data['password'] = Hash::make($data['password']);
 
             $user = User::create($data);
-
             DB::commit();
-            return response()->json([
-                'success' => true,
-                'data' => $user->load(['usertype']),
-                'message' => 'Usuario creado exitosamente'
-            ], 201);
+
+            return redirect()
+                ->route('personal.index')
+                ->with('success', 'Personal registrado exitosamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear usuario',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al crear personal: ' . $e->getMessage());
         }
     }
 
     /**
-     * Mostrar usuario
+     * Mostrar perfil detallado
      */
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
             $user = User::with(['usertype'])->find($id);
             if (!$user) {
-                return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+                return back()->with('error', 'Personal no encontrado.');
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $user,
-                'message' => 'Usuario obtenido exitosamente'
-            ]);
+            return view('personal.show', compact('user'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener usuario',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al obtener personal: ' . $e->getMessage());
         }
     }
 
     /**
-     * Actualizar usuario
+     * Mostrar formulario de edición
      */
-    public function update(Request $request, $id): JsonResponse
+    public function edit($id)
+    {
+        try {
+            $user = User::with(['usertype'])->find($id);
+            if (!$user) {
+                return redirect()
+                    ->route('personal.index')
+                    ->with('error', 'Personal no encontrado.');
+            }
+
+            return view('personal.edit', compact('user'));
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al cargar el formulario de edición: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Actualizar datos del personal
+     */
+    public function update(Request $request, $id)
     {
         try {
             $user = User::find($id);
             if (!$user) {
-                return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+                return back()->with('error', 'Personal no encontrado.');
             }
 
             $validator = Validator::make($request->all(), [
@@ -171,57 +159,44 @@ class UserController extends Controller
             ]);
 
             if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
-                ], 422);
+                return back()->withErrors($validator)->withInput();
             }
 
             $data = $validator->validated();
             if (!empty($data['password'])) {
                 $data['password'] = Hash::make($data['password']);
+            } else {
+                unset($data['password']);
             }
 
             $user->update($data);
 
-            return response()->json([
-                'success' => true,
-                'data' => $user->load(['usertype']),
-                'message' => 'Usuario actualizado correctamente'
-            ]);
+            return redirect()
+                ->route('personal.index')
+                ->with('success', 'Datos del personal actualizados correctamente.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar usuario',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al actualizar personal: ' . $e->getMessage());
         }
     }
 
     /**
-     * Eliminar usuario (soft delete)
+     * Eliminar (Soft Delete)
      */
-    public function destroy($id): JsonResponse
+    public function destroy($id)
     {
         try {
             $user = User::find($id);
             if (!$user) {
-                return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+                return back()->with('error', 'Personal no encontrado.');
             }
 
             $user->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Usuario eliminado correctamente'
-            ]);
+            return redirect()
+                ->route('personal.index')
+                ->with('success', 'Personal eliminado correctamente.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al eliminar usuario',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al eliminar personal: ' . $e->getMessage());
         }
     }
 }
