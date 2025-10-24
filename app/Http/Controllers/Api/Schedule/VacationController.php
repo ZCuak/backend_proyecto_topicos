@@ -76,6 +76,7 @@ class VacationController extends Controller
                 'year' => 'required|integer|min:1900',
                 'start_date' => 'required|date',
                 'end_date' => 'required|date|after_or_equal:start_date',
+                'max_days' => 'required|integer',
                 'reason' => 'nullable|string',
                 'status' => 'sometimes|in:pendiente,aprobada,rechazada',
             ]);
@@ -91,6 +92,7 @@ class VacationController extends Controller
             // Calcular días programados automáticamente (diferencia de fechas + 1)
             $startDate = Carbon::parse($request->start_date);
             $endDate = Carbon::parse($request->end_date);
+            $max_days  = $request->max_days;
             $daysProgrammed = $startDate->diffInDays($endDate) + 1; // +1 para incluir ambos días
 
             // Validar que no supere los 30 días
@@ -146,9 +148,8 @@ class VacationController extends Controller
             ]);
 
             // Establecer valores calculados automáticamente
-            $data['max_days'] = 30;
             $data['days_programmed'] = $daysProgrammed;
-            $data['days_pending'] = 30 - $daysProgrammed;
+            $data['days_pending'] = $max_days - $daysProgrammed;
 
             // Establecer status por defecto si no se proporciona
             if (!isset($data['status'])) {
