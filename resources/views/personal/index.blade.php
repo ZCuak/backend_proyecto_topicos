@@ -10,9 +10,11 @@
             <h1 class="text-3xl font-bold text-slate-800">👥 Gestión de Personal</h1>
             <p class="text-slate-500">Administra los miembros del equipo de recolección y gestión del RSU.</p>
         </div>
-        <a href="{{ route('personal.create') }}" 
+
+        <a href="{{ route('personal.create') }}"
+           data-turbo-frame="modal-frame"
            class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
-            <i class="fa-solid fa-user-plus"></i> Nuevo Personal
+           <i class="fa-solid fa-user-plus"></i> Nuevo Personal
         </a>
     </div>
 
@@ -29,55 +31,83 @@
 
     {{-- BUSCADOR --}}
     <form method="GET" class="flex items-center gap-3 bg-white p-4 rounded-xl shadow border border-slate-100">
-        <input type="text" name="search" placeholder="Buscar por nombre, usuario o correo..."
-               value="{{ $search }}" class="flex-1 border-none focus:ring-0 text-slate-700 placeholder-slate-400">
-        <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+        <input type="text" name="search" placeholder="Buscar por nombre, usuario, DNI o correo..."
+               value="{{ $search }}"
+               class="flex-1 border-none focus:ring-0 text-slate-700 placeholder-slate-400">
+        <button type="submit"
+                class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
             <i class="fa-solid fa-search"></i>
         </button>
     </form>
 
-    {{-- TABLA --}}
-    <div class="bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden">
-        <table class="min-w-full divide-y divide-slate-200">
+    {{-- TABLA DE PERSONAL --}}
+    <div class="bg-white rounded-xl shadow-md border border-slate-100 overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-emerald-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">#</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Nombre</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Usuario</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Correo</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Rol</th>
-                    <th class="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Acciones</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">#</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">DNI</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Nombre Completo</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Usuario</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Correo</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Teléfono</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Rol</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Licencia</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Nacimiento</th>
+                    <th class="px-4 py-3 text-center font-semibold text-slate-600 uppercase">Estado</th>
+                    <th class="px-4 py-3 text-center font-semibold text-slate-600 uppercase">Acciones</th>
                 </tr>
             </thead>
+
             <tbody class="divide-y divide-slate-100">
                 @forelse($personales as $p)
-                    <tr class="hover:bg-emerald-50/50 transition">
-                        <td class="px-6 py-4 text-sm text-slate-600">{{ $p->id }}</td>
-                        <td class="px-6 py-4 text-sm text-slate-700 font-medium">{{ $p->firstname }} {{ $p->lastname }}</td>
-                        <td class="px-6 py-4 text-sm text-slate-700">{{ $p->username }}</td>
-                        <td class="px-6 py-4 text-sm text-slate-500">{{ $p->email }}</td>
-                        <td class="px-6 py-4 text-sm text-slate-500">{{ $p->usertype->name ?? '—' }}</td>
-                        <td class="px-6 py-4 flex justify-center gap-2">
-                            <a href="{{ route('personal.show', $p->id) }}" 
-                               class="px-2 py-1 bg-sky-100 text-sky-600 rounded-md hover:bg-sky-200" title="Ver">
-                                <i class="fa-solid fa-eye"></i>
-                            </a>
-                            <a href="{{ route('personal.edit', $p->id) }}" 
-                               class="px-2 py-1 bg-yellow-100 text-yellow-600 rounded-md hover:bg-yellow-200" title="Editar">
+                    <tr class="hover:bg-emerald-50/40 transition">
+                        <td class="px-4 py-3 text-slate-600">{{ $p->id }}</td>
+                        <td class="px-4 py-3 font-mono text-slate-700">{{ $p->dni }}</td>
+                        <td class="px-4 py-3 text-slate-700 font-medium">{{ $p->firstname }} {{ $p->lastname }}</td>
+                        <td class="px-4 py-3 text-slate-700">{{ $p->username }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $p->email }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $p->phone ?? '—' }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $p->usertype->name ?? '—' }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $p->license ?? '—' }}</td>
+                        <td class="px-4 py-3 text-slate-500">
+                            @if($p->birthdate)
+                                {{ \Carbon\Carbon::parse($p->birthdate)->format('d/m/Y') }}
+                            @else
+                                —
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            @if($p->status === 'ACTIVO')
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
+                                    ACTIVO
+                                </span>
+                            @else
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
+                                    INACTIVO
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 flex justify-center gap-2">
+                            <a href="{{ route('personal.edit', $p->id) }}"
+                               data-turbo-frame="modal-frame"
+                               class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200"
+                               title="Editar">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <form action="{{ route('personal.destroy', $p->id) }}" method="POST"
-                                  onsubmit="return confirm('¿Eliminar este registro?')">
-                                @csrf @method('DELETE')
-                                <button class="px-2 py-1 bg-red-100 text-red-600 rounded-md hover:bg-red-200" title="Eliminar">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </form>
+
+                            <button type="button"
+                                    class="btn-delete px-2 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+                                    data-id="{{ $p->id }}"
+                                    data-url="{{ route('personal.destroy', $p->id) }}"
+                                    title="Eliminar">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-slate-400">No se encontraron registros.</td>
+                        <td colspan="11" class="text-center py-4 text-slate-400">No se encontraron registros.</td>
                     </tr>
                 @endforelse
             </tbody>

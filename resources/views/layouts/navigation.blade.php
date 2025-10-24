@@ -27,7 +27,6 @@
     <!-- Perfil (estático) -->
     <div class="px-5 py-4 border-b border-slate-200">
         <p class="text-sm font-semibold text-slate-700">Administrador</p>
-        <p class="text-xs text-emerald-600">Sucursal Principal</p>
     </div>
 
     <!-- MENÚ PRINCIPAL -->
@@ -50,13 +49,15 @@
             <span class="font-medium">Gestión de Vehículos</span>
         </a>
 
-        <a href="{{ route('personal.index') }}"
-           class="group flex items-center gap-3 px-3 py-2.5 mb-1 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition">
-            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700">
-                <i class="fa-solid fa-people-group"></i>
-            </span>
-            <span class="font-medium">Gestión de Personal</span>
-        </a>
+     <a href="{{ route('personal.index') }}" 
+   data-turbo="true"
+   class="group flex items-center gap-3 px-3 py-2.5 mb-1 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition">
+   <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700">
+       <i class="fa-solid fa-people-group"></i>
+   </span>
+   <span class="font-medium">Gestión de Personal</span>
+</a>
+
 
         <a href="#"
            class="group flex items-center gap-3 px-3 py-2.5 mb-1 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition">
@@ -82,7 +83,7 @@
             <span class="font-medium">Reportes de Reciclaje</span>
         </a>
 
-        <p class="px-3 mt-5 mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Accesos rápidos</p>
+        {{-- <p class="px-3 mt-5 mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Accesos rápidos</p>
 
         <div class="space-y-1">
             <a href="#" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition">
@@ -91,7 +92,7 @@
             <a href="#" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition">
                 <i class="fa-solid fa-chart-line text-emerald-600"></i> <span>Estadísticas</span>
             </a>
-        </div>
+        </div> --}}
 
         <p class="px-3 mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Usuario</p>
         <div class="px-1 space-y-1">

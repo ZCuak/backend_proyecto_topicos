@@ -1,9 +1,17 @@
 @import 'tailwindcss';
 
+@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 /* Transiciones globales suaves */
 * {
     transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+.input.border-red-500 {
+    border-color: #ef4444 !important;
+}
+
+.swal2-container {
+    z-index: 10050 !important;
 }
 
 /* Scrollbar personalizado */
