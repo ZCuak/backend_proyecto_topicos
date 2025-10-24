@@ -1,6 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\Schedule\ScheduleController;
+use App\Http\Controllers\Api\Schedule\SchedulingController; //programaciones
+use App\Http\Controllers\Api\Schedule\ScheduleController; //turnos o shifts
 use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Api\User\UserTypeController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\ProvinceController;
 use App\Http\Controllers\Api\Schedule\ContractController;
 use App\Http\Controllers\Api\Schedule\VacationController;
+use App\Http\Controllers\Api\User\AttendaceController;
 use App\Http\Controllers\Api\ZoneCoordController;
 use Illuminate\Support\Facades\Artisan;
 
@@ -37,6 +39,7 @@ use Illuminate\Support\Facades\Artisan;
 Route::get('/test', [TestController::class, 'test']);
 Route::get('/data', [TestController::class, 'getData']);
 Route::post('/create', [TestController::class, 'create']);
+Route::post('attendances/mark', [AttendaceController::class, 'markAttendance']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [UserController::class, 'store']);
 
@@ -57,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('vehicle-colors', VehicleColorController::class);
     Route::apiResource('user-types', UserTypeController::class);
     Route::apiResource('persona', UserController::class);
+    Route::apiResource('schedulings', SchedulingController::class);
     Route::apiResource('schedules', ScheduleController::class);
     Route::apiResource('vehicles', VehicleController::class);
     Route::apiResource('zones', ZoneController::class);
@@ -68,4 +72,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('contracts', ContractController::class);
     Route::apiResource('vacations', VacationController::class);
     Route::apiResource('vehicle-types', VehicleTypeController::class);
+    Route::apiResource('attendances', AttendaceController::class);
 });

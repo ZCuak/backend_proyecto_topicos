@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Schedule;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contract;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -74,7 +75,6 @@ class ContractController extends Controller
                 'date_start' => 'required|date',
                 'date_end' => 'nullable|date|after_or_equal:date_start',
                 'description' => 'nullable|string',
-                'is_active' => 'boolean',
                 'user_id' => 'required|exists:users,id',
             ]);
 
@@ -84,6 +84,65 @@ class ContractController extends Controller
                     'message' => 'Error de validación',
                     'errors' => $validator->errors()
                 ], 422);
+            }
+
+            // Validación 1: Verificar si el usuario ya tiene un contrato activo
+            $activeContract = Contract::where('user_id', $request->user_id)
+                ->where('is_active', true)
+                ->first();
+
+            if ($activeContract) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El usuario ya tiene un contrato activo. No se puede agregar un nuevo contrato.',
+                    'active_contract_id' => $activeContract->id
+                ], 422);
+            }
+
+            // Validación 2: Si es nombrado o permanente, no debe tener fecha de fin
+            if (in_array($request->type, ['nombrado', 'permanente'])) {
+                if ($request->date_end) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Los contratos de tipo nombrado o permanente no deben tener fecha de fin.'
+                    ], 422);
+                }
+                // Asegurarse que date_end sea null
+                $request->merge(['date_end' => null]);
+            }
+
+            // Validación 3: Para contratos eventuales, verificar que hayan pasado mínimo 2 meses
+            if ($request->type === 'eventual') {
+                $lastEventualContract = Contract::where('user_id', $request->user_id)
+                    ->where('type', 'eventual')
+                    ->whereNotNull('date_end')
+                    ->orderBy('date_end', 'desc')
+                    ->first();
+
+                if ($lastEventualContract && $lastEventualContract->date_end) {
+                    // Calcular los meses entre la fecha de fin del último contrato y la fecha de inicio del nuevo
+                    $dateStart = Carbon::parse($request->date_start);
+                    $monthsSinceLastContract = $lastEventualContract->date_end->diffInMonths($dateStart);
+                    
+                    if ($monthsSinceLastContract < 2) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Para contratos eventuales, deben pasar mínimo 2 meses desde el último contrato.',
+                            'last_contract_end_date' => $lastEventualContract->date_end->format('Y-m-d'),
+                            'new_contract_start_date' => $request->date_start,
+                            'months_since_last_contract' => $monthsSinceLastContract,
+                            'months_remaining' => 2 - $monthsSinceLastContract
+                        ], 422);
+                    }
+                }
+
+                // Para eventuales, la fecha de fin es requerida
+                if (!$request->date_end) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Los contratos eventuales deben tener una fecha de fin.'
+                    ], 422);
+                }
             }
 
             $contract = Contract::create($request->all());
@@ -163,11 +222,77 @@ class ContractController extends Controller
                 ], 422);
             }
 
+            // Si se está cambiando el usuario, validar que el nuevo usuario no tenga un contrato activo
+            if ($request->has('user_id') && $request->user_id != $contract->user_id) {
+                $activeContract = Contract::where('user_id', $request->user_id)
+                    ->where('is_active', true)
+                    ->where('id', '!=', $id)
+                    ->first();
+
+                if ($activeContract) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El nuevo usuario ya tiene un contrato activo. No se puede asignar este contrato.',
+                        'active_contract_id' => $activeContract->id
+                    ], 422);
+                }
+            }
+
+            $contractType = $request->has('type') ? $request->type : $contract->type;
+            $userId = $request->has('user_id') ? $request->user_id : $contract->user_id;
+
+            // Validación: Si es nombrado o permanente, no debe tener fecha de fin
+            if (in_array($contractType, ['nombrado', 'permanente'])) {
+                if ($request->has('date_end') && $request->date_end) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Los contratos de tipo nombrado o permanente no deben tener fecha de fin.'
+                    ], 422);
+                }
+                // Asegurarse que date_end sea null
+                $request->merge(['date_end' => null]);
+            }
+
+            // Validación: Para contratos eventuales, verificar que hayan pasado mínimo 2 meses
+            if ($contractType === 'eventual') {
+                $lastEventualContract = Contract::where('user_id', $userId)
+                    ->where('type', 'eventual')
+                    ->where('id', '!=', $id)
+                    ->whereNotNull('date_end')
+                    ->orderBy('date_end', 'desc')
+                    ->first();
+
+                if ($lastEventualContract && $lastEventualContract->date_end) {
+                    $dateStart = $request->has('date_start') ? \Carbon\Carbon::parse($request->date_start) : $contract->date_start;
+                    $monthsSinceLastContract = $lastEventualContract->date_end->diffInMonths($dateStart);
+                    
+                    if ($monthsSinceLastContract < 2) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Para contratos eventuales, deben pasar mínimo 2 meses desde el último contrato.',
+                            'last_contract_end_date' => $lastEventualContract->date_end->format('Y-m-d'),
+                            'new_contract_start_date' => $dateStart->format('Y-m-d'),
+                            'months_since_last_contract' => $monthsSinceLastContract,
+                            'months_remaining' => 2 - $monthsSinceLastContract
+                        ], 422);
+                    }
+                }
+
+                // Para eventuales, la fecha de fin es requerida
+                $dateEnd = $request->has('date_end') ? $request->date_end : $contract->date_end;
+                if (!$dateEnd) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Los contratos eventuales deben tener una fecha de fin.'
+                    ], 422);
+                }
+            }
+
             $contract->update($request->all());
 
             return response()->json([
                 'success' => true,
-                'data' => $contract,
+                'data' => $contract->fresh(),
                 'message' => 'Contrato actualizado exitosamente'
             ], 200);
         } catch (\Exception $e) {

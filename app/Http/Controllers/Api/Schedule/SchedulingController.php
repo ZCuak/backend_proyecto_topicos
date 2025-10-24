@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Scheduling;
+namespace App\Http\Controllers\Api\Schedule;
 
 use App\Http\Controllers\Controller;
 use App\Models\Scheduling;
@@ -77,39 +77,42 @@ class SchedulingController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        // $validator = Validator::make($request->all(), [
-        //     'name' => 'required|string|max:100|unique:schedulings,name',
-        //     'time_start' => 'required|date_format:H:i',
-        //     'time_end' => 'required|date_format:H:i|after:time_start',
-        //     'description' => 'nullable|string|max:500'
-        // ]);
+        $validator = Validator::make($request->all(), [
+            'group_id'    => 'required|exists:employeegroups,id',
+            'schedule_id' => 'required|exists:schedules,id', 
+            'vehicle_id'  => 'nullable|exists:vehicles,id',
+            'zone_id'     => 'nullable|exists:zones,id',
+            'date'        => 'required|date',
+            'status'      => 'required|integer',
+            'notes'       => 'nullable|string',
+        ]);
 
-        // if ($validator->fails()) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Error de validación',
-        //         'errors' => $validator->errors()
-        //     ], 422);
-        // }
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-        // DB::beginTransaction();
-        // try {
-        //     $scheduling = Scheduling::create($validator->validated());
-        //     DB::commit();
+        DB::beginTransaction();
+        try {
+            $scheduling = Scheduling::create($validator->validated());
+            DB::commit();
 
-        //     return response()->json([
-        //         'success' => true,
-        //         'data' => $scheduling,
-        //         'message' => 'Programación creado exitosamente'
-        //     ], 201);
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Error al crear programación',
-        //         'error' => $e->getMessage()
-        //     ], 500);
-        // }
+            return response()->json([
+                'success' => true,
+                'data' => $scheduling,
+                'message' => 'Programación creada exitosamente'
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear programación',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -146,45 +149,48 @@ class SchedulingController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        // try {
-        //     $scheduling = Scheduling::find($id);
+        try {
+            $scheduling = Scheduling::find($id);
 
-        //     if (!$scheduling) {
-        //         return response()->json([
-        //             'success' => false,
-        //             'message' => 'Programación no encontrado'
-        //         ], 404);
-        //     }
+            if (!$scheduling) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Programación no encontrada'
+                ], 404);
+            }
 
-        //     $validator = Validator::make($request->all(), [
-        //         'name' => 'sometimes|required|string|max:100|unique:schedulings,name,' . $id,
-        //         'time_start' => 'sometimes|required|date_format:H:i',
-        //         'time_end' => 'sometimes|required|date_format:H:i|after:time_start',
-        //         'description' => 'nullable|string|max:500'
-        //     ]);
+            $validator = Validator::make($request->all(), [
+                'group_id'    => 'required|exists:employeegroups,id',
+                'schedule_id' => 'required|exists:schedules,id', 
+                'vehicle_id'  => 'nullable|exists:vehicles,id',
+                'zone_id'     => 'nullable|exists:zones,id',
+                'date'        => 'required|date',
+                'status'      => 'required|integer',
+                'notes'       => 'nullable|string',
+            ]);
 
-        //     if ($validator->fails()) {
-        //         return response()->json([
-        //             'success' => false,
-        //             'message' => 'Error de validación',
-        //             'errors' => $validator->errors()
-        //         ], 422);
-        //     }
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de validación',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
-        //     $scheduling->update($validator->validated());
+            $scheduling->update($validator->validated());
 
-        //     return response()->json([
-        //         'success' => true,
-        //         'data' => $scheduling,
-        //         'message' => 'Programación actualizado exitosamente'
-        //     ], 200);
-        // } catch (\Exception $e) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Error al actualizar programación',
-        //         'error' => $e->getMessage()
-        //     ], 500);
-        // }
+            return response()->json([
+                'success' => true,
+                'data' => $scheduling,
+                'message' => 'Programación actualizada exitosamente'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar programación',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
