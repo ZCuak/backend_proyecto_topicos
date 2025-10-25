@@ -59,7 +59,8 @@
 </a>
 
 
-        <a href="#"
+        <a href="{{ route('zones.index') }}"
+           data-turbo="true"
            class="group flex items-center gap-3 px-3 py-2.5 mb-1 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition">
             <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700">
                 <i class="fa-solid fa-map-location-dot"></i>

@@ -63,7 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('schedulings', SchedulingController::class);
     Route::apiResource('schedules', ScheduleController::class);
     Route::apiResource('vehicles', VehicleController::class);
-    Route::apiResource('zones', ZoneController::class);
+    Route::apiResource('zones-api', ZoneController::class);
     Route::apiResource('sectors', SectorController::class);
     Route::apiResource('districts', DistrictController::class);
     Route::apiResource('departments', DepartmentController::class);
@@ -73,4 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('vacations', VacationController::class);
     Route::apiResource('vehicle-types', VehicleTypeController::class);
     Route::apiResource('attendances', AttendaceController::class);
+    
+    // Ruta para obtener sectores por distrito
+    Route::get('sectors', [SectorController::class, 'index']);
 });
