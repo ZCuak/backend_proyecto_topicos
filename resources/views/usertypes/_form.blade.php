@@ -1,12 +1,3 @@
-{{-- 
-CONCEPTO: Formulario reutilizable
-    - Se usa tanto en crear como en editar
-    - La variable $usertype puede ser:
-      * Nueva instancia: $usertype = new UserType() (crear)
-      * Instancia existente: $usertype = UserType::find($id) (editar)
-    - old('name', $usertype->name ?? '') → Prioriza el valor anterior si hay error de validación
---}}
-
 <div class="space-y-6">
 
     {{-- CAMPO: NOMBRE  --}}
@@ -49,20 +40,13 @@ CONCEPTO: Formulario reutilizable
         @enderror
     </div>
 
-    {{-- CAMPO: IS_SYSTEM --}}
-    {{-- 
-        🎯 CONCEPTO: Campo is_system
-        - Solo se muestra si ya existe y es del sistema
-        - No permite editar funciones predefinidas (Conductor, Ayudante)
-        - Checkbox deshabilitado para que el usuario vea pero no modifique
-    --}}
     @if(isset($usertype->id) && $usertype->is_system)
         <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-info-circle text-blue-600"></i>
                 <div>
-                    <p class="text-sm font-medium text-blue-800">Función del Sistema</p>
-                    <p class="text-xs text-blue-600">Esta función es requerida por el sistema y no puede ser eliminada.</p>
+                    <p class="text-sm font-medium text-blue-800">Función del sistema</p>
+                    <p class="text-xs text-blue-600">Este tipo de usuario es requerida por el sistema y no puede ser eliminada.</p>
                 </div>
             </div>
             {{-- Campo oculto para mantener el valor --}}

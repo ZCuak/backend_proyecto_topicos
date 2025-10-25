@@ -244,7 +244,7 @@ class UserTypeController extends Controller
             if ($type->is_system) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se puede eliminar esta tipo porque es predefinida del sistema',
+                    'message' => 'No se puede eliminar este tipo porque es predefinida del sistema',
                     'errors' => [
                         'is_system' => [
                             'Las funciones "Conductor" y "Ayudante" son requeridas por el sistema y no pueden ser eliminadas'
