@@ -1,0 +1,56 @@
+<turbo-frame id="modal-frame">
+    <div id="flyonui-modal-container">
+        
+        {{-- Overlay --}}
+        <div class="flyonui-overlay fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9998]"
+             onclick="FlyonUI.modal.close('editModal')">
+        </div>
+
+        {{-- Modal --}}
+        <div id="editModal"
+             class="flyonui-modal fixed inset-0 flex items-center justify-center z-[9999]"
+             data-flyonui
+             role="dialog"
+             aria-modal="true">
+
+            {{-- 
+                🎯 APLICADO: max-w-5xl según tu especificación
+            --}}
+            <div class="flyonui-dialog relative bg-white rounded-2xl shadow-2xl w-full 
+                        max-w-5xl overflow-hidden animate-[flyonui-fade-in_0.3s_ease-out] 
+                        mx-4 sm:mx-6 md:mx-auto my-10">
+                
+                {{-- Header --}}
+                <div class="flyonui-header flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
+                    <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square text-emerald-600"></i>
+                        Editar Tipo de Vehículo: {{ $vehicletype->name }}
+                    </h3>
+                    <button type="button"
+                            onclick="FlyonUI.modal.close('editModal')"
+                            class="text-slate-400 hover:text-slate-600 transition">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                {{-- Body --}}
+                <div class="flyonui-body p-6 bg-white overflow-y-auto max-h-[85vh]">
+                    <form action="{{ route('vehicletypes.update', $vehicletype->id) }}"
+                          method="POST"
+                          enctype="multipart/form-data"
+                          data-turbo-frame="modal-frame"
+                          class="space-y-6">
+                        @csrf
+                        @method('PUT')
+
+                        {{-- Incluir formulario compartido --}}
+                        @include('vehicletypes._form', [
+                            'vehicletype' => $vehicletype,
+                            'buttonText' => 'Actualizar'
+                        ])
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</turbo-frame>

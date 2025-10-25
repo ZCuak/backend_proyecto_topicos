@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\VehicleType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
@@ -18,9 +19,9 @@ class VehicleTypeController extends Controller
     {
         try {
             $search = $request->input('search');
-            $perPage = $request->input('per_page', 10);
-            $sortBy = $request->input('sortBy', 'id');
-            $sortOrder = $request->input('sortOrder', 'asc');
+            // $perPage = $request->input('per_page', 10);
+            // $sortBy = $request->input('sortBy', 'id');
+            // $sortOrder = $request->input('sortOrder', 'asc');
 
             $query = VehicleType::query();
 
@@ -36,48 +37,20 @@ class VehicleTypeController extends Controller
             }
 
             // Aplicar filtros exactos por campo (si vienen en el request)
-            foreach ($request->all() as $key => $value) {
-                if (Schema::hasColumn('vehicletypes', $key) && $key !== 'search' && $key !== 'sortBy' && $key !== 'sortOrder' && $key !== 'per_page' && $key !== 'all') {
-                    $query->where($key, $value);
-                }
-            }
+            // foreach ($request->all() as $key => $value) {
+            //     if (Schema::hasColumn('vehicletypes', $key) && $key !== 'search' && $key !== 'sortBy' && $key !== 'sortOrder' && $key !== 'per_page' && $key !== 'all') {
+            //         $query->where($key, $value);
+            //     }
+            // }
 
-            // 🔌 Ordenamiento
-            if (Schema::hasColumn('vehicletypes', $sortBy)) {
-                $query->orderBy($sortBy, $sortOrder);
-            }
+            // Ordenamiento
+            $query->orderBy('name', 'asc');
 
-            // 📄 Paginación o todos los registros
-            $all = $request->input('all', false);
-            $pagination = [];
-            if ($all) {
-                $vehicleTypes = $query->get();
-            } else {
-                $vehicleTypes = $query->paginate($perPage)->appends([
-                    'search' => $search,
-                    'perPage' => $perPage
-                ]);
-                $pagination = [
-                    'current_page' => $vehicleTypes->currentPage(),
-                    'last_page' => $vehicleTypes->lastPage(),
-                    'per_page' => $vehicleTypes->perPage(),
-                    'total' => $vehicleTypes->total()
-                ];
-                $vehicleTypes = $vehicleTypes->items();
-            }
+            $vehicletypes = $query->paginate(10);
 
-            return response()->json([
-                'success' => true,
-                'data' => $vehicleTypes,
-                'message' => 'Tipos de vehículos obtenidos exitosamente',
-                'pagination' => $pagination
-            ], 200);
+            return view('vehicletypes.index', compact('vehicletypes', 'search'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener los tipos de vehículos',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al listar tipos de vehículos: ' . $e->getMessage());
         }
     }
 
@@ -86,27 +59,39 @@ class VehicleTypeController extends Controller
      */
     public function create()
     {
-        //
+        $vehicletype = new VehicleType();
+
+        // Retornar modal con header Turbo
+        return response()
+            ->view('vehicletypes._modal_create', compact('vehicletype'))
+            ->header('Turbo-Frame', 'modal-frame');
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:100',
-                'description' => 'nullable|string',
-            ]);
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
 
-            if ($validator->fails()) {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:100',
+            'description' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            if ($isTurbo) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
                 ], 422);
             }
+            return back()->withErrors($validator)->withInput();
+        }
+
+        DB::beginTransaction();
+        try {
 
             // Verificar si existe un tipo con el mismo nombre (incluyendo eliminados)
             $vehicleTypeExistente = VehicleType::withTrashed()
@@ -114,40 +99,62 @@ class VehicleTypeController extends Controller
                 ->first();
 
             if ($vehicleTypeExistente) {
+                // Si existe pero fue eliminado, restaurarlo y actualizar datos
                 if ($vehicleTypeExistente->trashed()) {
-                    // Si existe pero fue eliminado, restaurarlo y actualizar datos
                     $vehicleTypeExistente->restore();
                     $vehicleTypeExistente->update($request->all());
+                    DB::commit();
 
-                    return response()->json([
-                        'success' => true,
-                        'data' => $vehicleTypeExistente->fresh(),
-                        'message' => 'Tipo de vehículo restaurado y actualizado exitosamente'
-                    ], 200);
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Tipo de vehículo restaurado exitosamente.',
+                        ], 200);
+                    }
+
+                    return redirect()->route('vehicletypes.index')
+                        ->with('success', 'Tipo de vehículo restaurado exitosamente.');
                 } else {
                     // Si existe y no está eliminado, retornar error
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Ya existe un tipo de vehículo con este nombre',
-                        'errors' => ['name' => ['El nombre ya está registrado']]
-                    ], 422);
+                    DB::rollBack();
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Ya existe un tipo de vehículo con este nombre',
+                            'errors' => ['name' => ['El nombre ya está registrado']]
+                        ], 422);
+                    }
+
+                    return back()
+                        ->withErrors(['name' => 'Ya existe un tipo de vehículo con este nombre'])
+                        ->withInput();
                 }
             }
 
             // Si no existe, crear nuevo tipo de vehículo
             $vehicleType = VehicleType::create($request->all());
+            DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'data' => $vehicleType,
-                'message' => 'Tipo de vehículo creado exitosamente'
-            ], 201);
+            // Respuesta dual
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tipo de vehículo registrado exitosamente.',
+                ], 201);
+            }
+
+            return redirect()->route('vehicletypes.index')
+                ->with('success', 'Tipo de vehículo registrado exitosamente.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear el tipo de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al crear tipo de vehículo: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al crear tipo de vehículo: ' . $e->getMessage());
         }
     }
 
@@ -194,22 +201,31 @@ class VehicleTypeController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $vehicletype = VehicleType::findOrFail($id);
+
+        return response()
+            ->view('vehicletypes._modal_edit', compact('vehicletype'))
+            ->header('Turbo-Frame', 'modal-frame');
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(Request $request, string $id)
     {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         try {
             $vehicleType = VehicleType::find($id);
 
             if (!$vehicleType) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tipo de vehículo no encontrado'
-                ], 404);
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tipo de vehículo no encontrado.',
+                    ], 404);
+                }
+                return back()->with('error', 'Tipo de vehículo no encontrado.');
             }
 
             $validator = Validator::make($request->all(), [
@@ -218,26 +234,36 @@ class VehicleTypeController extends Controller
             ]);
 
             if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
-                ], 422);
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Errores de validación.',
+                        'errors' => $validator->errors(),
+                    ], 422);
+                }
+                return back()->withErrors($validator)->withInput();
             }
 
             $vehicleType->update($request->all());
 
-            return response()->json([
-                'success' => true,
-                'data' => $vehicleType,
-                'message' => 'Tipo de vehículo actualizado exitosamente'
-            ], 200);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tipo de vehículo actualizado correctamente.',
+                ], 200);
+            }
+
+            return redirect()->route('vehicletypes.index')
+                ->with('success', 'Tipo de vehículo actualizado correctamente.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar el tipo de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al actualizar: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al actualizar: ' . $e->getMessage());
         }
     }
 
@@ -248,21 +274,25 @@ class VehicleTypeController extends Controller
     {
         try {
             $vehicleType = VehicleType::find($id);
-            
+
             if (!$vehicleType) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Tipo de vehículo no encontrado'
                 ], 404);
             }
-            
+
             $vehiculo = $vehicleType->vehicles()->count();
             if ($vehiculo > 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se puede eliminar el tipo: tiene vehículos asociados',
-                    'details' => ['vehiculo_count' => $vehiculo]
-                ], 409);
+                    'message' => 'No se puede eliminar el tipo: tiene ' . $vehiculo . ' vehículo(s) asociado(s).',
+                    'errors' => [
+                        'vehicles' => [
+                            'Debes reasignar o eliminar los vehículos asociados primero.'
+                        ]
+                    ]
+                ], 422);
             }
 
 
@@ -275,8 +305,7 @@ class VehicleTypeController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al eliminar el tipo de vehículo',
-                'error' => $e->getMessage()
+                'message' => 'Error al eliminar: ' . $e->getMessage()
             ], 500);
         }
     }

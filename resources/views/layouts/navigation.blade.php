@@ -56,7 +56,7 @@
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-palette mr-2"></i>Color</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-tags mr-2"></i>Marcas</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-wrench mr-2"></i>Modelos</a>
-                <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car mr-2"></i>Tipo de Vehículo</a>
+                <a href="{{ route('vehicletypes.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car mr-2"></i>Tipo de Vehículo</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car-side mr-2"></i>Vehículo</a>
             </div>
         </details>

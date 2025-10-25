@@ -116,7 +116,7 @@ class UserTypeController extends Controller
                     }
 
                     return redirect()->route('usertypes.index')
-                    ->with('success', 'Función restaurada exitosamente.');
+                        ->with('success', 'Función restaurada exitosamente.');
                 } else {
                     DB::rollBack();
                     if ($isTurbo) {
@@ -253,11 +253,25 @@ class UserTypeController extends Controller
                 ], 422);
             }
 
+            $usuariosAsociados = $type->users()->count();
+
+            if ($usuariosAsociados > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la función: tiene ' . $usuariosAsociados . ' usuario(s) asignado(s).',
+                    'errors' => [
+                        'users' => [
+                            'Debes reasignar los usuarios a otra función antes de eliminar esta.'
+                        ]
+                    ]
+                ], 422);
+            }
+
             $type->delete();
 
             return response()->json(['success' => true, 'message' => 'Tipo de personal eliminado correctamente'], 200);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al eliminar Tipo de personal: '. $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Error al eliminar Tipo de personal: ' . $e->getMessage()], 500);
         }
     }
 }
