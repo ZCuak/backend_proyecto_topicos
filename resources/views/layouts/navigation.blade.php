@@ -94,7 +94,7 @@
             </summary>
             <div class="pl-14 mt-1 space-y-1">
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-clock mr-2"></i>Turnos</a>
-                <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-map-marker-alt mr-2"></i>Zonas</a>
+                <a href="{{ route('zones.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-map-marker-alt mr-2"></i>Zonas</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-users mr-2"></i>Grupo de Personal</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-calendar-check mr-2"></i>Programación</a>
             </div>
