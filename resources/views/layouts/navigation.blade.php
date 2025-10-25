@@ -73,7 +73,7 @@
                 <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
             </summary>
             <div class="pl-14 mt-1 space-y-1">
-                <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user-tie mr-2"></i>Tipo de Personal</a>
+                <a href="{{ route('usertypes.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user-tie mr-2"></i>Tipo de Personal</a>
                 <a href="{{ route('personal.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user mr-2"></i>Personal</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-file-contract mr-2"></i>Contratos</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user-clock mr-2"></i>Asistencia</a>

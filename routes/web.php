@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\User\UserController;
+use App\Http\Controllers\Api\User\UserTypeController;
 use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
@@ -20,5 +21,6 @@ Route::middleware('auth')->group(function () {
 
 
     Route::resource('personal', UserController::class);
+    Route::resource('usertypes', UserTypeController::class);
 
 });

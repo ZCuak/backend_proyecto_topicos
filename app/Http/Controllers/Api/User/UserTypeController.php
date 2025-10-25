@@ -15,14 +15,12 @@ class UserTypeController extends Controller
     /**
      * Listar tipos de usuario
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         try {
             $search = $request->input('search');
-            $perPage = $request->input('per_page', 10);
-            $sortBy = $request->input('sortBy', 'id');
-            $sortOrder = $request->input('sortOrder', 'asc');
 
+            // constructor de consultas
             $query = UserType::query();
 
             if ($search) {
@@ -37,63 +35,68 @@ class UserTypeController extends Controller
                 });
             }
 
-            foreach ($request->all() as $key => $value) {
-                if (
-                    Schema::hasColumn('usertypes', $key) &&
-                    $key !== 'search' &&
-                    $key !== 'sortBy' &&
-                    $key !== 'sortOrder' &&
-                    $key !== 'per_page' &&
-                    $key !== 'all'
-                ) {
-                    $query->where($key, $value);
-                }
-            }
+            // Ordenamiento por defecto
+            $query->orderBy('name', 'asc');
 
-            if (Schema::hasColumn('usertypes', $sortBy)) {
-                $query->orderBy($sortBy, $sortOrder);
-            }
+            // Paginación
+            $usertypes = $query->paginate(10);
 
-            $all = $request->input('all', false);
-            if ($all) {
-                $userTypes = $query->get();
-            } else {
-                $userTypes = $query->paginate($perPage);
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $userTypes,
-                'message' => 'Funciones de personal obtenidas exitosamente'
-            ], 200);
+            // Retornamos vista
+            return view('usertypes.index', compact('usertypes', 'search'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener las funciones de personal',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al listar funciones: ' . $e->getMessage());
         }
+    }
+
+    public function create(Request $request)
+    {
+        $usertype = new UserType();
+
+        return response()
+            ->view('usertypes._modal_create', compact('usertype'))
+            ->header('Turbo-Frame', 'modal-frame');
+    }
+
+    /**
+     * Formulario de edición (Turbo modal)
+     */
+    public function edit($id)
+    {
+        $usertype = UserType::findOrFail($id);
+
+        return response()
+            ->view('usertypes._modal_edit', compact('usertype'))
+            ->header('Turbo-Frame', 'modal-frame');
     }
 
     /**
      * Crear un nuevo tipo de usuario
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:100',
-                'description' => 'nullable|string',
-                'is_system' => 'nullable|boolean'
-            ]);
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
 
-            if ($validator->fails()) {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:100',
+            'description' => 'nullable|string',
+            'is_system' => 'nullable|boolean'
+        ]);
+
+        if ($validator->fails()) {
+            if ($isTurbo) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Error de validación',
                     'errors' => $validator->errors()
                 ], 422);
             }
+
+            return back()->withErrors($validator)->withInput();
+        }
+
+        DB::beginTransaction();
+
+        try {
 
             $userTypeExistente = UserType::withTrashed()
                 ->where('name', $request->name)
@@ -103,34 +106,51 @@ class UserTypeController extends Controller
                 if ($userTypeExistente->trashed()) {
                     $userTypeExistente->restore();
                     $userTypeExistente->update($request->all());
+                    DB::commit();
 
-                    return response()->json([
-                        'success' => true,
-                        'data' => $userTypeExistente->fresh(),
-                        'message' => 'Función de personal restaurada y actualizada exitosamente'
-                    ], 200);
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Tipo de personal restaurado y actualizado exitosamente.',
+                        ], 200);
+                    }
+
+                    return redirect()->route('usertypes.index')
+                    ->with('success', 'Función restaurada exitosamente.');
                 } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Ya existe una función con este nombre',
-                        'errors' => ['name' => ['El nombre ya está registrado']]
-                    ], 422);
+                    DB::rollBack();
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Ya existe una función con este nombre',
+                            'errors' => ['name' => ['El nombre ya está registrado']]
+                        ], 422);
+                    }
+                    return back()->withErrors(['name' => 'Ya existe un tipo de personal con este nombre'])
+                        ->withInput();
                 }
             }
 
-            $userType = UserType::create($request->all());
-            return response()->json([
-                'success' => true,
-                'data' => $userType,
-                'message' => 'Función de personal creada exitosamente'
-            ], 201);
+            UserType::create($request->all());
+            DB::commit();
+
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tipo de personal registrado exitosamente.',
+                ], 201);
+            }
+            return redirect()->route('usertypes.index')
+                ->with('success', 'Tipo de personal registrada exitosamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear la función de personal',
-                'error' => $e->getMessage()
-            ], 500);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al crear función: ' . $e->getMessage(),
+                ], 500); // 500 = Internal Server Error
+            }
+            return back()->with('error', 'Error al crear función: ' . $e->getMessage());
         }
     }
 
@@ -155,29 +175,57 @@ class UserTypeController extends Controller
     /**
      * Actualizar tipo de usuario
      */
-    public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, $id)
     {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
         try {
             $type = UserType::find($id);
             if (!$type) {
-                return response()->json(['success' => false, 'message' => 'Función de personal no encontrado'], 404);
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tipo de personal no encontrado.',
+                    ], 404);
+                }
+                return back()->with('error', 'Tipo de personal no encontrado.');
             }
 
             $validator = Validator::make($request->all(), [
-                'name' => 'sometimes|required|string|max:100|unique:usertypes,name,' . $id,
+                'name' => 'required|string|max:100|unique:usertypes,name,' . $id,
                 'description' => 'nullable|string',
                 'is_system' => 'nullable|boolean'
             ]);
 
             if ($validator->fails()) {
-                return response()->json(['success' => false, 'message' => 'Error de validación', 'errors' => $validator->errors()], 422);
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Errores de validación.',
+                        'errors' => $validator->errors(),
+                    ], 422);
+                }
+                return back()->withErrors($validator)->withInput();
             }
 
             $type->update($request->all());
 
-            return response()->json(['success' => true, 'data' => $type, 'message' => 'Función de personal actualizado exitosamente']);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tipo de personal actualizado correctamente.',
+                ], 200);
+            }
+            return redirect()->route('usertypes.index')
+                ->with('success', 'Tipo de personal actualizado correctamente.');
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al actualizar la función de personal', 'error' => $e->getMessage()], 500);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al actualizar: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al actualizar: ' . $e->getMessage());
         }
     }
 
@@ -188,14 +236,15 @@ class UserTypeController extends Controller
     {
         try {
             $type = UserType::find($id);
+
             if (!$type) {
-                return response()->json(['success' => false, 'message' => 'Función de personal no encontrado'], 404);
+                return response()->json(['success' => false, 'message' => 'Tipo de personal no encontrado'], 404);
             }
 
             if ($type->is_system) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se puede eliminar esta función porque es una función predefinida del sistema',
+                    'message' => 'No se puede eliminar esta tipo porque es predefinida del sistema',
                     'errors' => [
                         'is_system' => [
                             'Las funciones "Conductor" y "Ayudante" son requeridas por el sistema y no pueden ser eliminadas'
@@ -206,9 +255,9 @@ class UserTypeController extends Controller
 
             $type->delete();
 
-            return response()->json(['success' => true, 'message' => 'Función de personal eliminado correctamente']);
+            return response()->json(['success' => true, 'message' => 'Tipo de personal eliminado correctamente'], 200);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al eliminar Función de personal', 'error' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Error al eliminar Tipo de personal: '. $e->getMessage()], 500);
         }
     }
 }
