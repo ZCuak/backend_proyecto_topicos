@@ -75,6 +75,7 @@ class ContractController extends Controller
                 'date_start' => 'required|date',
                 'date_end' => 'nullable|date|after_or_equal:date_start',
                 'description' => 'nullable|string',
+                'vacation_days_per_year' => 'required|integer',
                 'user_id' => 'required|exists:users,id',
             ]);
 
@@ -141,6 +142,13 @@ class ContractController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Los contratos eventuales deben tener una fecha de fin.'
+                    ], 422);
+                }
+
+                if ($request->vacation_days_per_year) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Los contratos eventuales no pueden tener dias de vacaciones.'
                     ], 422);
                 }
             }

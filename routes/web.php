@@ -3,6 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Web\ZoneController;
+use App\Http\Controllers\Api\User\UserTypeController;
+use App\Http\Controllers\Api\Vehicle\VehicleTypeController;
 use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
@@ -25,5 +27,7 @@ Route::middleware('auth')->group(function () {
     
     // Ruta AJAX para obtener sectores por distrito
     Route::get('zones/sectors/{districtId}', [ZoneController::class, 'getSectorsByDistrict'])->name('zones.sectors');
+    Route::resource('usertypes', UserTypeController::class);
+    Route::resource('vehicletypes', VehicleTypeController::class);
 
 });
