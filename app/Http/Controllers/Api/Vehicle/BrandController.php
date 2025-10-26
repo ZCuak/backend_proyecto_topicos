@@ -5,28 +5,23 @@ namespace App\Http\Controllers\Api\Vehicle;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 class BrandController extends Controller
 {
     /**
-     * Listar colores de vehículos
+     * Mostrar listado de brands
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         try {
             $search = $request->input('search');
-            $perPage = $request->input('perPage', 10);
-            $all = $request->boolean('all', false);
-
             $query = Brand::query();
             $columns = Schema::getColumnListing('brands');
 
-            // 🔍 Filtro de búsqueda en todas las columnas
             if ($search) {
                 $query->where(function ($q) use ($columns, $search) {
                     foreach ($columns as $column) {
@@ -35,232 +30,177 @@ class BrandController extends Controller
                 });
             }
 
-            // 🔹 Retornar todos o paginados
-            if ($all) {
-                $brands = $query->orderBy('id', 'asc')->get();
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $brands,
-                    'message' => 'Marcas de vehículo obtenidos exitosamente (todos los registros)',
-                    'pagination' => null
-                ], 200);
-            } else {
-                $brands = $query->orderBy('id', 'asc')->paginate($perPage)->appends([
-                    'search' => $search,
-                    'perPage' => $perPage
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $brands->items(),
-                    'message' => 'Marcas de vehículo obtenidos exitosamente',
-                    'pagination' => [
-                        'current_page' => $brands->currentPage(),
-                        'last_page' => $brands->lastPage(),
-                        'per_page' => $brands->perPage(),
-                        'total' => $brands->total()
-                    ]
-                ], 200);
-            }
+            $brands = $query->paginate(10);
+            return view('brands.index', compact('brands', 'search'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener marcas de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al listar marcas: ' . $e->getMessage());
         }
     }
 
     /**
-     * Crear un nuevo color
+     * Formulario de creación (Turbo modal)
      */
-    public function store(Request $request): JsonResponse
+    public function create(Request $request)
     {
+        $brand = new Brand();
+
+        return response()
+            ->view('brands._modal_create', compact('brand'))
+            ->header('Turbo-Frame', 'modal-frame');
+    }
+
+    /**
+     * Formulario de edición (Turbo modal)
+     */
+    public function edit($id)
+    {
+        $brand = Brand::findOrFail($id);
+
+        return response()
+            ->view('brands._modal_edit', compact('brand'))
+            ->header('Turbo-Frame', 'modal-frame');
+    }
+
+    /**
+     * Guardar nuevo registro
+     */
+    public function store(Request $request)
+    {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:100|unique:brands,name',
+            'description' => 'nullable|string',
         ]);
 
+
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error de validación',
-                'errors' => $validator->errors()
-            ], 422);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
 
         DB::beginTransaction();
         try {
-            $logo = "";
-
-            $brand = Brand::create($request->all());
+            $data = $validator->validated();
 
             if ($request->hasFile('logo')) {
-
-                // Guardar nuevo logo
-                $path = $request->file('logo')->store('brand_logos', 'public');
-                $brand->logo = Storage::url($path);
+                $data['logo'] = $request->file('logo')->store('brand-logos', 'public');
             }
-            $brand->save();
+
+            $brand = Brand::create($data);
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'data' => $brand,
-                'message' => 'Marca de vehículo creado exitosamente'
-            ], 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear marca de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function show(int $id): JsonResponse
-    {
-        try {
-            $brand = Brand::find($id);
-
-            if (!$brand) {
+            if ($isTurbo) {
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Marca no encontrado'
-                ], 404);
+                    'success' => true,
+                    'message' => 'Marca registrado exitosamente.',
+                ], 201);
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $brand,
-                'message' => 'Marca de vehículo obtenido exitosamente'
-            ], 200);
+            return redirect()->route('brands.index')
+                ->with('success', 'Marca registrada exitosamente.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener marca de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al crear marca: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al crear marca: ' . $e->getMessage());
         }
     }
 
     /**
-     * Actualizar un color
+     * Actualizar datos
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(Request $request, $id)
     {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         try {
             $brand = Brand::find($id);
-
-
             if (!$brand) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Marca no encontrada'
+                    'message' => 'Marca no encontrado.',
                 ], 404);
             }
-            if ($request->isMethod('put') && empty($request->all())) {
-                $request = Request::createFromBase(\Symfony\Component\HttpFoundation\Request::createFromGlobals());
-            }
 
-
-
-            // 🔹 Validación
             $validator = Validator::make($request->all(), [
-                'name' => 'nullable|string|max:100|unique:brands,name,' . $id,
-                'logo' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:2048'
+                'name' => 'required|string|max:100|unique:brands,name,' . $id,
+                'description' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
             $data = $validator->validated();
 
-            // 🔹 Actualizar nombre si viene en el request
-            if ($request->filled('name')) {
-                $brand->name = $request->input('name');
-            }
-            // Eliminar logo anterior si existe
-            if ($brand->logo) {
-                $oldPath = str_replace('/storage/', '', $brand->logo);
-                Storage::disk('public')->delete($oldPath);
-                $brand->logo = null;
-            }
-            // 🔹 Subir nuevo logo si se envía
             if ($request->hasFile('logo')) {
-                // Guardar nuevo logo
-                $path = $request->file('logo')->store('brand_logos', 'public');
-                $brand->logo = Storage::url($path);
+                $data['logo'] = $request->file('logo')->store('brand-logos', 'public');
             }
 
-            $brand->save();
+            $brand->update($data);
 
-            return response()->json([
-                'success' => true,
-                'data' => $brand,
-                'message' => 'Marca de vehículo actualizada exitosamente'
-            ], 200);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Datos de la marca actualizados correctamente.',
+                ], 200);
+            }
 
+            return redirect()->route('brands.index')
+                ->with('success', 'Datos de la marca actualizados correctamente.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar marca de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al actualizar: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al actualizar: ' . $e->getMessage());
         }
     }
 
-
-    public function destroy(int $id): JsonResponse
+    /**
+     * Eliminar (Soft Delete)
+     */
+    public function destroy($id)
     {
         try {
             $brand = Brand::find($id);
-
             if (!$brand) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Marca no encontrado'
+                    'message' => 'Marca no encontrada.',
                 ], 404);
-            }
-
-            // Contar relaciones para evitar borrar si existen dependencias
-            $vehiclesCount = $brand->vehicles()->count();
-            $modelsCount = $brand->models()->count();
-
-            if ($modelsCount > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede eliminar la marca: tiene modelos asociados',
-                    'details' => ['models_count' => $modelsCount]
-                ], 409);
-            }
-
-            if ($vehiclesCount > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede eliminar la marca: tiene vehículos asociados',
-                    'details' => ['vehicles_count' => $vehiclesCount]
-                ], 409);
             }
 
             $brand->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Marca de vehículo eliminado correctamente'
+                'message' => 'Marca eliminada correctamente.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al eliminar marca de vehículo',
-                'error' => $e->getMessage()
+                'message' => 'Error al eliminar marca: ' . $e->getMessage(),
             ], 500);
         }
     }

@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('personal', UserController::class);
     Route::resource('brand-models', BrandModelController::class);
+    Route::resource('brands', BrandController::class);
     Route::resource('zones', ZoneController::class);
     
     // Ruta AJAX para obtener sectores por distrito
