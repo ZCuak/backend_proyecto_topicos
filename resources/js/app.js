@@ -301,3 +301,8 @@ document.addEventListener("turbo:load", () => {
         });
     });
 });
+
+/* =======================================================
+    Exponer SweetAlert2 al ámbito global (window)
+======================================================= */
+window.Swal = Swal;

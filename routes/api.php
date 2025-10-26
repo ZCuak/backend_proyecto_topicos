@@ -72,5 +72,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('contracts', ContractController::class);
     Route::apiResource('vacations', VacationController::class);
     Route::apiResource('vehicle-types', VehicleTypeController::class);
-    Route::apiResource('attendances', AttendaceController::class);
+    Route::apiResource('attendances2', AttendaceController::class);
 });
