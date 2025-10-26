@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\Vehicle\VehicleColorController;
 use App\Http\Controllers\Api\Vehicle\BrandModelController;
 use App\Http\Controllers\Api\Vehicle\BrandController;
 use App\Http\Controllers\Api\Vehicle\VehicleTypeController;
-use App\Http\Controllers\Api\Zones\ZoneController;
 use App\Http\Controllers\Api\SectorController;
 use App\Http\Controllers\Api\DistrictController;
 use App\Http\Controllers\Api\DepartmentController;
@@ -20,6 +19,7 @@ use App\Http\Controllers\Api\Schedule\SchedulingController; //programaciones
 use App\Http\Controllers\Api\Schedule\ScheduleController; //turnos o shifts
 use App\Http\Controllers\Api\User\UserTypeController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
+use App\Http\Controllers\Web\ZoneController;
 use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
@@ -39,5 +39,11 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('personal', UserController::class);
     Route::resource('brand-models', BrandModelController::class);
+    Route::resource('zones', ZoneController::class);
+    
+    // Ruta AJAX para obtener sectores por distrito
+    Route::get('zones/sectors/{districtId}', [ZoneController::class, 'getSectorsByDistrict'])->name('zones.sectors');
+    Route::resource('usertypes', UserTypeController::class);
+    Route::resource('vehicletypes', VehicleTypeController::class);
 
 });

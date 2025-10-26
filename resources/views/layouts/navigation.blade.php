@@ -56,7 +56,7 @@
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-palette mr-2"></i>Color</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-tags mr-2"></i>Marcas</a>
                 <a href="{{ route('brand-models.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-wrench mr-2"></i>Modelos</a>
-                <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car mr-2"></i>Tipo de Vehículo</a>
+                <a href="{{ route('vehicletypes.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car mr-2"></i>Tipo de Vehículo</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car-side mr-2"></i>Vehículo</a>
             </div>
         </details>
@@ -73,7 +73,7 @@
                 <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
             </summary>
             <div class="pl-14 mt-1 space-y-1">
-                <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user-tie mr-2"></i>Tipo de Personal</a>
+                <a href="{{ route('usertypes.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user-tie mr-2"></i>Tipo de Personal</a>
                 <a href="{{ route('personal.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user mr-2"></i>Personal</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-file-contract mr-2"></i>Contratos</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user-clock mr-2"></i>Asistencia</a>
@@ -94,7 +94,7 @@
             </summary>
             <div class="pl-14 mt-1 space-y-1">
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-clock mr-2"></i>Turnos</a>
-                <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-map-marker-alt mr-2"></i>Zonas</a>
+                <a href="{{ route('zones.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-map-marker-alt mr-2"></i>Zonas</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-users mr-2"></i>Grupo de Personal</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-calendar-check mr-2"></i>Programación</a>
             </div>

@@ -1,0 +1,45 @@
+/* Estilos para Leaflet */
+.leaflet-container {
+    font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 8px;
+}
+
+.leaflet-popup-content {
+    margin: 8px 12px;
+    line-height: 1.4;
+}
+
+.leaflet-control-zoom a {
+    background-color: #10b981;
+    color: white;
+    border: none;
+}
+
+.leaflet-control-zoom a:hover {
+    background-color: #059669;
+}
+
+/* Estilos para el mapa en modales */
+.flyonui-dialog #map {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Estilos para información del polígono */
+#polygonInfo {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border: 1px solid #bbf7d0;
+}
+
+#pointCount {
+    font-weight: 600;
+    color: #059669;
+}
+
+#calculatedArea {
+    font-weight: 600;
+    color: #059669;
+}

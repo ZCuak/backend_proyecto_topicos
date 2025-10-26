@@ -171,7 +171,7 @@ class AttendaceController extends Controller
 
                     return response()->json([
                         'success' => true,
-                        'data' => $attendanceExistente->load('user:id,name,dni'),
+                        'data' => $attendanceExistente,
                         'message' => 'Asistencia restaurada y actualizada exitosamente'
                     ], 200);
                 } else {
@@ -180,7 +180,7 @@ class AttendaceController extends Controller
                         'success' => false,
                         'message' => 'Ya existe una asistencia registrada para este usuario en esta fecha',
                         'errors' => [
-                            'date' => ['El usuario ya tiene asistencia registrada para esta fecha']
+                            'date' => ['El usuario tiene asistencia sin salida registrada para esta fecha']
                         ]
                     ], 422);
                 }
