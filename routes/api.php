@@ -55,7 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Recursos protegidos
-    Route::apiResource('brand-models', BrandModelController::class);
+    // Route::apiResource('brand-models', BrandModelController::class);
     Route::apiResource('brands', BrandController::class);
     Route::apiResource('vehicle-colors', VehicleColorController::class);
     Route::apiResource('user-types', UserTypeController::class);
