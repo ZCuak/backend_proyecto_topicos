@@ -17,10 +17,10 @@ use App\Http\Controllers\Api\Schedule\SchedulingController; //programaciones
 use App\Http\Controllers\Api\Schedule\ScheduleController; //turnos o shifts
 use App\Http\Controllers\Api\User\UserTypeController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
+use App\Http\Controllers\Web\ContractController;
 use App\Http\Controllers\Web\VacationController;
 use App\Http\Controllers\Web\ZoneController;
 use Illuminate\Support\Facades\Route;
-use Monolog\Handler\RotatingFileHandler;
 
 Route::get('/', function () {
     return view('welcome');
@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('zones', ZoneController::class);
 
     Route::resource('vacations', VacationController::class);
+    Route::resource('contracts', ContractController::class);
     
     // Ruta AJAX para obtener sectores por distrito
     Route::get('zones/sectors/{districtId}', [ZoneController::class, 'getSectorsByDistrict'])->name('zones.sectors');
