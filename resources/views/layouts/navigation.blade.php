@@ -77,7 +77,7 @@
                 <a href="{{ route('personal.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user mr-2"></i>Personal</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-file-contract mr-2"></i>Contratos</a>
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-user-clock mr-2"></i>Asistencia</a>
-                <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-plane mr-2"></i>Vacaciones</a>
+                <a href="{{ route('vacations.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-plane mr-2"></i>Vacaciones</a>
             </div>
         </details>
 
