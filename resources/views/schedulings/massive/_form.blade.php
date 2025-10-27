@@ -12,46 +12,61 @@
 
 <div class="space-y-6">
     {{-- ===========================
-         📅 DATOS DE LA PROGRAMACIÓN
+         📅 RANGO DE FECHAS
     ============================ --}}
     <fieldset class="border border-slate-200 rounded-xl p-5 bg-slate-50/60 hover:shadow-sm transition">
         <legend class="px-2 text-sm font-semibold text-slate-600 flex items-center gap-2">
-            <i class="fa-solid fa-calendar text-emerald-600"></i> Datos de la programación
+            <i class="fa-solid fa-calendar text-emerald-600"></i> Rango de Fechas
         </legend>
 
-        {{-- Fecha y Estado en una fila --}}
+        {{-- Fechas de inicio y fin --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Fecha <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Inicio <span class="text-red-500">*</span></label>
                 <div class="relative">
-                    <i class="fa-solid fa-calendar absolute left-3 top-2.5 text-slate-400"></i>
-                    <input type="date" name="date"
-                        value="{{ old('date', isset($scheduling) ? $scheduling->date->format('Y-m-d') : date('Y-m-d')) }}"
-                        class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('date') border-red-500 @enderror"
+                    <i class="fa-solid fa-calendar-day absolute left-3 top-2.5 text-slate-400"></i>
+                    <input type="date" name="start_date"
+                        value="{{ old('start_date', date('Y-m-d')) }}"
+                        class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('start_date') border-red-500 @enderror"
                         min="{{ date('Y-m-d') }}">
                 </div>
-                @error('date')
+                @error('start_date')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
             
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Fin <span class="text-red-500">*</span></label>
                 <div class="relative">
-                    <i class="fa-solid fa-circle-check absolute left-3 top-2.5 text-slate-400"></i>
-                    <select name="status"
-                            class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('status') border-red-500 @enderror">
-                        <option value="">Seleccionar estado...</option>
-                        <option value="0" {{ old('status', $scheduling->status ?? '0') == '0' ? 'selected' : '' }}>Pendiente</option>
-                        <option value="1" {{ old('status', $scheduling->status ?? '') == '1' ? 'selected' : '' }}>En Proceso</option>
-                        <option value="2" {{ old('status', $scheduling->status ?? '') == '2' ? 'selected' : '' }}>Completado</option>
-                        <option value="3" {{ old('status', $scheduling->status ?? '') == '3' ? 'selected' : '' }}>Cancelado</option>
-                    </select>
+                    <i class="fa-solid fa-calendar-check absolute left-3 top-2.5 text-slate-400"></i>
+                    <input type="date" name="end_date"
+                        value="{{ old('end_date', date('Y-m-d', strtotime('+7 days'))) }}"
+                        class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('end_date') border-red-500 @enderror"
+                        min="{{ date('Y-m-d') }}">
                 </div>
-                @error('status')
+                @error('end_date')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
+        </div>
+
+        {{-- Estado --}}
+        <div class="mt-3">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+            <div class="relative">
+                <i class="fa-solid fa-circle-check absolute left-3 top-2.5 text-slate-400"></i>
+                <select name="status"
+                        class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('status') border-red-500 @enderror">
+                    <option value="">Seleccionar estado...</option>
+                    <option value="0" {{ old('status', '0') == '0' ? 'selected' : '' }}>Pendiente</option>
+                    <option value="1" {{ old('status') == '1' ? 'selected' : '' }}>En Proceso</option>
+                    <option value="2" {{ old('status') == '2' ? 'selected' : '' }}>Completado</option>
+                    <option value="3" {{ old('status') == '3' ? 'selected' : '' }}>Cancelado</option>
+                </select>
+            </div>
+            @error('status')
+                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+            @enderror
         </div>
 
         {{-- Notas --}}
@@ -59,7 +74,7 @@
             <label class="block text-sm font-medium text-slate-700 mb-1">Notas</label>
             <textarea name="notes" rows="3"
                 class="w-full py-2 px-3 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Notas adicionales sobre la programación...">{{ old('notes', $scheduling->notes ?? '') }}</textarea>
+                placeholder="Notas adicionales para todas las programaciones...">{{ old('notes') }}</textarea>
         </div>
     </fieldset>
 
@@ -82,7 +97,7 @@
                         <option value="">Seleccionar grupo...</option>
                         @foreach($groups as $group)
                             <option value="{{ $group->id }}"
-                                {{ old('group_id', $scheduling->group_id ?? '') == $group->id ? 'selected' : '' }}>
+                                {{ old('group_id') == $group->id ? 'selected' : '' }}>
                                 {{ $group->name }}
                             </option>
                         @endforeach
@@ -102,7 +117,7 @@
                         <option value="">Seleccionar horario...</option>
                         @foreach($schedules as $schedule)
                             <option value="{{ $schedule->id }}"
-                                {{ old('schedule_id', $scheduling->schedule_id ?? '') == $schedule->id ? 'selected' : '' }}>
+                                {{ old('schedule_id') == $schedule->id ? 'selected' : '' }}>
                                 {{ $schedule->name }}
                             </option>
                         @endforeach
@@ -125,7 +140,7 @@
                         <option value="">Seleccionar vehículo...</option>
                         @foreach($vehicles as $vehicle)
                             <option value="{{ $vehicle->id }}"
-                                {{ old('vehicle_id', $scheduling->vehicle_id ?? '') == $vehicle->id ? 'selected' : '' }}>
+                                {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
                                 {{ $vehicle->name }} ({{ $vehicle->plate }})
                             </option>
                         @endforeach
@@ -145,7 +160,7 @@
                         <option value="">Seleccionar zona...</option>
                         @foreach($zones as $zone)
                             <option value="{{ $zone->id }}"
-                                {{ old('zone_id', $scheduling->zone_id ?? '') == $zone->id ? 'selected' : '' }}>
+                                {{ old('zone_id') == $zone->id ? 'selected' : '' }}>
                                 {{ $zone->name }}
                             </option>
                         @endforeach
@@ -160,18 +175,15 @@
 </div>
 
 {{-- BOTONES --}}
-@php
-    $modalId = isset($scheduling) && isset($scheduling->id) ? 'editModal' : 'createModal';
-@endphp
 <div class="flex justify-end gap-3 pt-5 border-t border-slate-200 mt-6">
     <button type="button"
-        onclick="FlyonUI.modal.close('{{ $modalId }}')"
+        onclick="FlyonUI.modal.close('massiveModal')"
         class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
         <i class="fa-solid fa-xmark mr-1"></i> Cancelar
     </button>
     <button type="submit"
         class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-2">
-        <i class="fa-solid fa-save"></i> {{ $buttonText }}
+        <i class="fa-solid fa-calendar-plus"></i> {{ $buttonText }}
     </button>
 </div>
 
@@ -183,7 +195,8 @@
     // Validación del formulario antes de enviar
     document.querySelector('form').addEventListener('submit', function(e) {
         const requiredFields = [
-            { name: 'date', label: 'Fecha' },
+            { name: 'start_date', label: 'Fecha de inicio' },
+            { name: 'end_date', label: 'Fecha de fin' },
             { name: 'group_id', label: 'Grupo de empleados' },
             { name: 'schedule_id', label: 'Horario' }
         ];
@@ -221,6 +234,19 @@
             }
         });
         
+        // Validar que la fecha de fin sea posterior a la fecha de inicio
+        const startDate = document.querySelector('[name="start_date"]').value;
+        const endDate = document.querySelector('[name="end_date"]').value;
+        
+        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+            hasErrors = true;
+            errorMessages.push('La fecha de fin debe ser posterior a la fecha de inicio');
+            
+            const endDateElement = document.querySelector('[name="end_date"]');
+            endDateElement.classList.add('border-red-500');
+            endDateElement.classList.remove('border-slate-300');
+        }
+        
         // Si hay errores, prevenir envío
         if (hasErrors) {
             e.preventDefault();
@@ -246,14 +272,30 @@
         }
     });
 
-    // Validación de fecha en tiempo real
-    document.querySelector('input[name="date"]').addEventListener('change', function(e) {
-        const selectedDate = new Date(e.target.value);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    // Validación de fechas en tiempo real
+    document.querySelector('input[name="start_date"]').addEventListener('change', function(e) {
+        const endDateInput = document.querySelector('input[name="end_date"]');
+        const startDate = new Date(e.target.value);
+        const endDate = new Date(endDateInput.value);
         
-        if (selectedDate < today) {
-            e.target.setCustomValidity('La fecha no puede ser anterior a hoy');
+        if (endDate < startDate) {
+            endDateInput.setCustomValidity('La fecha de fin debe ser posterior a la fecha de inicio');
+            endDateInput.classList.add('border-red-500');
+            endDateInput.classList.remove('border-slate-300');
+        } else {
+            endDateInput.setCustomValidity('');
+            endDateInput.classList.remove('border-red-500');
+            endDateInput.classList.add('border-slate-300');
+        }
+    });
+
+    document.querySelector('input[name="end_date"]').addEventListener('change', function(e) {
+        const startDateInput = document.querySelector('input[name="start_date"]');
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(e.target.value);
+        
+        if (endDate < startDate) {
+            e.target.setCustomValidity('La fecha de fin debe ser posterior a la fecha de inicio');
             e.target.classList.add('border-red-500');
             e.target.classList.remove('border-slate-300');
         } else {
@@ -264,7 +306,7 @@
     });
 
     // Validación en tiempo real para campos obligatorios
-    const requiredFields = ['date', 'group_id', 'schedule_id'];
+    const requiredFields = ['start_date', 'end_date', 'group_id', 'schedule_id'];
 
     requiredFields.forEach(fieldName => {
         const element = document.querySelector(`[name="${fieldName}"]`);

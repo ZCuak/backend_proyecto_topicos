@@ -11,11 +11,19 @@
             <p class="text-slate-500">Administra las programaciones de recolección por grupos y zonas.</p>
         </div>
 
-        <a href="{{ route('schedulings.create') }}"
-           data-turbo-frame="modal-frame"
-           class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
-           <i class="fa-solid fa-plus"></i> Nueva Programación
-        </a>
+        <div class="flex gap-2">
+            <a href="{{ route('schedulings.create') }}"
+               data-turbo-frame="modal-frame"
+               class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+               <i class="fa-solid fa-plus"></i> Nueva Programación
+            </a>
+            
+            <a href="{{ route('schedulings.create-massive') }}"
+               data-turbo-frame="modal-frame"
+               class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+               <i class="fa-solid fa-calendar-plus"></i> Programación Masiva
+            </a>
+        </div>
     </div>
 
     {{-- ALERTAS --}}

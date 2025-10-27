@@ -1,9 +1,9 @@
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
     {{-- ===========================
          📍 DATOS DE LA ZONA
     ============================ --}}
-    <fieldset class="border border-slate-200 rounded-xl p-5 bg-slate-50/60 hover:shadow-sm transition">
+    <fieldset class="xl:col-span-1 border border-slate-200 rounded-xl p-5 bg-slate-50/60 hover:shadow-sm transition">
         <legend class="px-2 text-sm font-semibold text-slate-600 flex items-center gap-2">
             <i class="fa-solid fa-map-location-dot text-emerald-600"></i> Datos de la zona
         </legend>
@@ -86,7 +86,7 @@
     {{-- ===========================
          🗺️ MAPA INTERACTIVO
     ============================ --}}
-    <fieldset class="border border-slate-200 rounded-xl p-5 bg-white hover:shadow-sm transition">
+    <fieldset class="xl:col-span-1 border border-slate-200 rounded-xl p-5 bg-white hover:shadow-sm transition">
         <legend class="px-2 text-sm font-semibold text-slate-600 flex items-center gap-2">
             <i class="fa-solid fa-map text-emerald-600"></i> Perímetro de la zona
         </legend>
@@ -97,64 +97,18 @@
                     class="px-3 py-1 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm">
                 <i class="fa-solid fa-pen mr-1"></i> Dibujar Polígono
             </button>
+            <button type="button" id="centerPolygon" 
+                    class="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                <i class="fa-solid fa-crosshairs mr-1"></i> Centrar en Polígono
+            </button>
             <button type="button" id="clearPolygon" 
                     class="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">
                 <i class="fa-solid fa-trash mr-1"></i> Limpiar
             </button>
         </div>
 
-        {{-- Mapa siguiendo la guía oficial --}}
-        <div id="map" style="height: 320px;" class="w-full rounded-lg border border-slate-300"></div>
-        
-        {{-- Tabla de coordenadas mejorada --}}
-        <div id="coordinatesTable" class="mt-4 hidden">
-            <div class="bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl border border-slate-200 shadow-sm">
-                <div class="p-4 border-b border-slate-200">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-table text-emerald-600"></i>
-                            <h4 class="text-sm font-semibold text-slate-700">Coordenadas del Polígono</h4>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                <i class="fa-solid fa-map-pin mr-1"></i>
-                                <span id="pointCount">0</span> puntos
-                            </span>
-                            <button type="button" id="addCoordinate" 
-                                class="px-3 py-1 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-xs transition">
-                                <i class="fa-solid fa-plus mr-1"></i> Agregar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="p-4">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <thead>
-                                <tr class="border-b border-slate-200 bg-slate-50">
-                                    <th class="text-left py-3 px-3 font-semibold text-slate-600">#</th>
-                                    <th class="text-left py-3 px-3 font-semibold text-slate-600">Latitud</th>
-                                    <th class="text-left py-3 px-3 font-semibold text-slate-600">Longitud</th>
-                                    <th class="text-center py-3 px-3 font-semibold text-slate-600">Estado</th>
-                                    <th class="text-center py-3 px-3 font-semibold text-slate-600">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="coordinatesList" class="divide-y divide-slate-200">
-                                <!-- Las filas se agregarán dinámicamente -->
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    {{-- Mensaje cuando no hay coordenadas --}}
-                    <div id="emptyCoordinates" class="text-center py-8 text-slate-500">
-                        <i class="fa-solid fa-map-location-dot text-4xl mb-3 text-slate-300"></i>
-                        <p class="text-sm">No hay coordenadas dibujadas</p>
-                        <p class="text-xs text-slate-400 mt-1">Haz clic en "Dibujar Polígono" para comenzar</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- Mapa principal --}}
+        <div id="map" style="height: 400px;" class="w-full rounded-lg border border-slate-300"></div>
 
 
         {{-- Campo oculto para coordenadas --}}
@@ -167,6 +121,67 @@
             }
         @endphp
         <input type="hidden" name="coords" id="coords" value="{{ old('coords', $existingCoords) }}">
+    </fieldset>
+
+    {{-- ===========================
+         📊 MAPA DE COORDENADAS
+    ============================ --}}
+    <fieldset class="xl:col-span-1 border border-slate-200 rounded-xl p-5 bg-slate-50/60 hover:shadow-sm transition">
+        <legend class="px-2 text-sm font-semibold text-slate-600 flex items-center gap-2">
+            <i class="fa-solid fa-table text-emerald-600"></i> Mapa de Coordenadas
+        </legend>
+
+        {{-- Tabla de coordenadas --}}
+        <div id="coordinatesTable" class="h-full hidden">
+            <div class="bg-gradient-to-b from-slate-50 to-slate-100 rounded-xl border border-slate-200 shadow-sm h-full flex flex-col">
+                <div class="p-4 border-b border-slate-200 flex-shrink-0">
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-map-pin text-emerald-600"></i>
+                            <h4 class="text-sm font-semibold text-slate-700">Coordenadas</h4>
+                            <span id="scrollIndicator" class="hidden text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                                <i class="fa-solid fa-arrows-up-down mr-1"></i>Scroll
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                <i class="fa-solid fa-map-pin mr-1"></i>
+                                <span id="pointCount">0</span> puntos
+                            </span>
+                            <button type="button" id="addCoordinate" 
+                                class="px-2 py-1 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-xs transition">
+                                <i class="fa-solid fa-plus mr-1"></i> Agregar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-4 flex-1 overflow-hidden flex flex-col">
+                    <div class="overflow-y-auto flex-1">
+                        <table class="w-full text-xs">
+                            <thead class="sticky top-0 bg-slate-50">
+                                <tr class="border-b border-slate-200">
+                                    <th class="text-left py-2 px-2 font-semibold text-slate-600">#</th>
+                                    <th class="text-left py-2 px-2 font-semibold text-slate-600">Lat</th>
+                                    <th class="text-left py-2 px-2 font-semibold text-slate-600">Lng</th>
+                                    <th class="text-center py-2 px-2 font-semibold text-slate-600">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coordinatesList" class="divide-y divide-slate-200">
+                                <!-- Las filas se agregarán dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {{-- Mensaje cuando no hay coordenadas --}}
+                    <div id="emptyCoordinates" class="text-center py-8 text-slate-500 flex-1 flex flex-col justify-center">
+                        <i class="fa-solid fa-map-location-dot text-3xl mb-3 text-slate-300"></i>
+                        <p class="text-sm">No hay coordenadas</p>
+                        <p class="text-xs text-slate-400 mt-1">Haz clic en "Dibujar Polígono"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </fieldset>
 </div>
 
@@ -186,11 +201,12 @@
     </button>
 </div>
 
-{{-- Estilos para marcadores de puntos --}}
+{{-- Estilos para marcadores de puntos arrastrables --}}
 <style>
 .custom-marker {
     background: transparent !important;
     border: none !important;
+    cursor: move !important;
 }
 
 .marker-point {
@@ -200,6 +216,11 @@
     justify-content: center;
     width: 30px;
     height: 30px;
+    transition: transform 0.2s ease;
+}
+
+.marker-point:hover {
+    transform: scale(1.1);
 }
 
 .marker-number {
@@ -219,11 +240,94 @@
     z-index: 1000;
     border: 2px solid white;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: background-color 0.2s ease;
+}
+
+.marker-point:hover .marker-number {
+    background: #059669;
 }
 
 .marker-icon {
     font-size: 20px;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    transition: filter 0.2s ease;
+}
+
+.marker-point:hover .marker-icon {
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+}
+
+/* Estilo para marcadores siendo arrastrados */
+.leaflet-marker-dragging {
+    opacity: 0.8;
+    transform: scale(1.2);
+    z-index: 2000 !important;
+}
+
+/* Cursor para elementos arrastrables */
+.leaflet-marker-icon {
+    cursor: move !important;
+}
+
+/* Estilos para el layout lateral */
+#coordinatesTable {
+    min-height: 400px;
+}
+
+#coordinatesTable .overflow-y-auto {
+    max-height: 320px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+#coordinatesTable .overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+#coordinatesTable .overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+#coordinatesTable .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+#coordinatesTable .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Responsive: En pantallas pequeñas, volver al layout vertical */
+@media (max-width: 1280px) {
+    .xl\:grid-cols-3 {
+        grid-template-columns: 1fr;
+    }
+    
+    .xl\:col-span-1 {
+        grid-column: span 1;
+    }
+    
+    #map {
+        height: 320px !important;
+    }
+    
+    #coordinatesTable {
+        min-height: auto;
+    }
+}
+
+/* Estilos específicos para el layout de 3 columnas */
+fieldset {
+    min-height: 450px;
+}
+
+#map {
+    min-height: 400px;
+}
+
+#coordinatesTable {
+    min-height: 400px;
 }
 </style>
 
@@ -252,6 +356,7 @@ var map;
 var polygon;
 var coordinates = [];
 var isDrawing = false;
+var isDragging = false; // Variable para controlar si se está arrastrando
 
 // Coordenadas por defecto (Chiclayo, Perú)
 const defaultLat = -6.7639;
@@ -300,10 +405,8 @@ function drawPolygon() {
 
     console.log('Nuevo polígono creado y agregado al mapa');
 
-    // Centrar mapa en el polígono
-    if (latLngs.length > 0) {
-        map.fitBounds(polygon.getBounds());
-    }
+    // NO centrar automáticamente durante el dibujo - solo cuando se termine
+    // El zoom automático se hará solo cuando se termine de dibujar
 
     updatePolygonInfo();
     updateCoordinatesTable();
@@ -313,16 +416,18 @@ function drawPolygon() {
         calculatePolygonArea();
     }
     
-    // Dibujar marcadores de puntos
-    drawPointMarkers();
+    // Dibujar marcadores de puntos solo si no se está arrastrando
+    if (!isDragging) {
+        drawPointMarkers();
+    }
 }
 
-// Función para dibujar marcadores de puntos
+// Función para dibujar marcadores de puntos arrastrables
 function drawPointMarkers() {
     // Limpiar marcadores anteriores
     clearPointMarkers();
     
-    // Crear marcadores para cada punto
+    // Crear marcadores arrastrables para cada punto
     coordinates.forEach((coord, index) => {
         const marker = L.marker([coord.latitude, coord.longitude], {
             icon: L.divIcon({
@@ -333,7 +438,8 @@ function drawPointMarkers() {
                 </div>`,
                 iconSize: [30, 30],
                 iconAnchor: [15, 15]
-            })
+            }),
+            draggable: !isDrawing // Solo arrastrable cuando no se está dibujando
         }).addTo(map);
         
         // Agregar popup con información
@@ -341,9 +447,84 @@ function drawPointMarkers() {
             <div class="text-center">
                 <strong>Punto ${index + 1}</strong><br>
                 <small>Lat: ${parseFloat(coord.latitude).toFixed(6)}</small><br>
-                <small>Lng: ${parseFloat(coord.longitude).toFixed(6)}</small>
+                <small>Lng: ${parseFloat(coord.longitude).toFixed(6)}</small><br>
+                <small class="text-blue-600">💡 Arrastra para mover</small>
             </div>
         `);
+        
+        // Evento cuando se inicia el arrastre
+        marker.on('dragstart', function(e) {
+            isDragging = true;
+            console.log(`Iniciando arrastre del punto ${index + 1}`);
+        });
+        
+        // Evento cuando se arrastra el marcador
+        marker.on('drag', function(e) {
+            const newLat = e.target.getLatLng().lat;
+            const newLng = e.target.getLatLng().lng;
+            
+            // Actualizar coordenada en el array
+            coordinates[index] = {
+                latitude: newLat,
+                longitude: newLng
+            };
+            
+            // Actualizar popup con nuevas coordenadas
+            marker.setPopupContent(`
+                <div class="text-center">
+                    <strong>Punto ${index + 1}</strong><br>
+                    <small>Lat: ${parseFloat(newLat).toFixed(6)}</small><br>
+                    <small>Lng: ${parseFloat(newLng).toFixed(6)}</small><br>
+                    <small class="text-orange-600">🔄 Moviendo...</small>
+                </div>
+            `);
+            
+            // Solo actualizar polígono, no redibujar marcadores
+            updatePolygonOnly();
+            
+            // Actualizar tabla de coordenadas
+            updateCoordinatesTable();
+            
+            console.log(`Punto ${index + 1} arrastrado a: ${newLat.toFixed(6)}, ${newLng.toFixed(6)}`);
+        });
+        
+        // Evento cuando se termina de arrastrar
+        marker.on('dragend', function(e) {
+            const finalLat = e.target.getLatLng().lat;
+            const finalLng = e.target.getLatLng().lng;
+            
+            // Actualizar coordenada final
+            coordinates[index] = {
+                latitude: finalLat,
+                longitude: finalLng
+            };
+            
+            // Restaurar popup original
+            marker.setPopupContent(`
+                <div class="text-center">
+                    <strong>Punto ${index + 1}</strong><br>
+                    <small>Lat: ${parseFloat(finalLat).toFixed(6)}</small><br>
+                    <small>Lng: ${parseFloat(finalLng).toFixed(6)}</small><br>
+                    <small class="text-blue-600">💡 Arrastra para mover</small>
+                </div>
+            `);
+            
+            // Recalcular área si hay suficientes puntos
+            if (coordinates.length >= 3) {
+                calculatePolygonArea();
+            }
+            
+            // Resetear variable de arrastre
+            isDragging = false;
+            
+            // Guardar coordenadas finales
+            saveCoordinates();
+            
+            // Mostrar notificación de actualización
+            showNotification(`Punto ${index + 1} movido a: ${finalLat.toFixed(6)}, ${finalLng.toFixed(6)}`, 'success');
+            
+            console.log(`Arrastre completado para punto ${index + 1}`);
+        });
         
         // Guardar referencia del marcador
         if (!window.pointMarkers) {
@@ -352,7 +533,7 @@ function drawPointMarkers() {
         window.pointMarkers.push(marker);
     });
     
-    console.log('Marcadores de puntos dibujados:', coordinates.length);
+    console.log('Marcadores de puntos arrastrables dibujados:', coordinates.length);
 }
 
 // Función para limpiar marcadores de puntos
@@ -364,6 +545,56 @@ function clearPointMarkers() {
             }
         });
         window.pointMarkers = [];
+    }
+}
+
+// Función para actualizar solo el polígono sin recrear marcadores
+function updatePolygonOnly() {
+    if (coordinates.length < 3) {
+        return;
+    }
+
+    // Limpiar polígono anterior
+    if (typeof polygon !== 'undefined' && polygon) {
+        if (typeof map !== 'undefined' && map) {
+            map.removeLayer(polygon);
+        }
+    }
+
+    // Crear nuevo polígono con las coordenadas actualizadas
+    const latLngs = coordinates.map(coord => [coord.latitude, coord.longitude]);
+    polygon = L.polygon(latLngs, {
+        color: '#10b981',
+        fillColor: '#10b981',
+        fillOpacity: 0.3,
+        weight: 2
+    }).addTo(map);
+}
+
+// Función para actualizar la capacidad de arrastre de los marcadores
+function updateMarkersDraggable() {
+    if (window.pointMarkers) {
+        window.pointMarkers.forEach(marker => {
+            marker.dragging.disable();
+            if (!isDrawing) {
+                marker.dragging.enable();
+            }
+        });
+        console.log('Capacidad de arrastre actualizada:', !isDrawing ? 'Habilitada' : 'Deshabilitada');
+    }
+}
+
+// Función para auto-scroll a la última coordenada agregada
+function scrollToLastCoordinate() {
+    const scrollContainer = document.querySelector('#coordinatesTable .overflow-y-auto');
+    if (scrollContainer && coordinates.length > 3) {
+        // Scroll suave hacia abajo para mostrar la última coordenada
+        setTimeout(() => {
+            scrollContainer.scrollTo({
+                top: scrollContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }, 100);
     }
 }
 
@@ -403,6 +634,21 @@ function updateCoordinatesTable() {
             pointCount.textContent = coordinates.length;
         }
         
+        // Configurar scroll si hay más de 3 puntos
+        const scrollContainer = document.querySelector('#coordinatesTable .overflow-y-auto');
+        const scrollIndicator = document.getElementById('scrollIndicator');
+        if (scrollContainer) {
+            if (coordinates.length > 3) {
+                if (scrollIndicator) {
+                    scrollIndicator.classList.remove('hidden');
+                }
+            } else {
+                if (scrollIndicator) {
+                    scrollIndicator.classList.add('hidden');
+                }
+            }
+        }
+        
         // Limpiar tabla
         if (coordinatesList) {
             coordinatesList.innerHTML = '';
@@ -413,38 +659,28 @@ function updateCoordinatesTable() {
             const row = document.createElement('tr');
             row.className = 'hover:bg-slate-50 transition-colors';
             row.innerHTML = `
-                <td class="py-3 px-3">
-                    <span class="inline-flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full">
+                <td class="py-2 px-2">
+                    <span class="inline-flex items-center justify-center w-5 h-5 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full">
                         ${index + 1}
                     </span>
                 </td>
-                <td class="py-3 px-3">
-                    <div class="flex items-center gap-2">
-                        <input type="number" 
-                            value="${parseFloat(coord.latitude).toFixed(6)}" 
-                            step="0.000001"
-                            onchange="updateCoordinate(${index}, 'latitude', this.value)"
-                            class="w-full px-2 py-1 text-xs border border-slate-300 rounded focus:ring-emerald-500 focus:border-emerald-500 font-mono">
-                        <span class="text-xs text-slate-500">°N</span>
-                    </div>
+                <td class="py-2 px-2">
+                    <input type="number" 
+                        value="${parseFloat(coord.latitude).toFixed(6)}" 
+                        step="0.000001"
+                        onchange="updateCoordinate(${index}, 'latitude', this.value)"
+                        class="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-emerald-500 focus:border-emerald-500 font-mono"
+                        title="Latitud">
                 </td>
-                <td class="py-3 px-3">
-                    <div class="flex items-center gap-2">
-                        <input type="number" 
-                            value="${parseFloat(coord.longitude).toFixed(6)}" 
-                            step="0.000001"
-                            onchange="updateCoordinate(${index}, 'longitude', this.value)"
-                            class="w-full px-2 py-1 text-xs border border-slate-300 rounded focus:ring-emerald-500 focus:border-emerald-500 font-mono">
-                        <span class="text-xs text-slate-500">°W</span>
-                    </div>
+                <td class="py-2 px-2">
+                    <input type="number" 
+                        value="${parseFloat(coord.longitude).toFixed(6)}" 
+                        step="0.000001"
+                        onchange="updateCoordinate(${index}, 'longitude', this.value)"
+                        class="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-emerald-500 focus:border-emerald-500 font-mono"
+                        title="Longitud">
                 </td>
-                <td class="py-3 px-3 text-center">
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <i class="fa-solid fa-check-circle mr-1"></i>
-                        Válida
-                    </span>
-                </td>
-                <td class="py-3 px-3 text-center">
+                <td class="py-2 px-2 text-center">
                     <div class="flex justify-center gap-1">
                         <button type="button" onclick="centerOnCoordinate(${index})" 
                             class="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition"
@@ -617,6 +853,9 @@ function reinitMap() {
                 console.log('Tabla forzada a mostrarse');
             }
             
+            // Auto-scroll a la última coordenada si hay muchas
+            scrollToLastCoordinate();
+            
             // Mostrar popup (como en la guía oficial)
             popup
                 .setLatLng(e.latlng)
@@ -669,10 +908,12 @@ function loadExistingCoordinates() {
                 
                 console.log('Coordenadas existentes cargadas:', coordinates.length);
                 
-                // Centrar el mapa en las coordenadas existentes
-                if (coordinates.length > 0 && typeof map !== 'undefined' && map) {
+                // Centrar el mapa en las coordenadas existentes solo si estamos editando
+                // No centrar automáticamente durante el dibujo
+                if (coordinates.length > 0 && typeof map !== 'undefined' && map && !isDrawing) {
                     const bounds = L.latLngBounds(coordinates.map(coord => [coord.latitude, coord.longitude]));
                     map.fitBounds(bounds);
+                    console.log('Mapa centrado en coordenadas existentes (modo edición)');
                 }
             } else {
                 console.log('No hay coordenadas válidas para cargar');
@@ -907,6 +1148,14 @@ function addCoordinateManually() {
     }
 }
 
+// Función para centrar el mapa en el polígono cuando se termine de dibujar
+function centerMapOnPolygon() {
+    if (polygon && map) {
+        map.fitBounds(polygon.getBounds());
+        console.log('Mapa centrado en el polígono completado');
+    }
+}
+
 // Eventos de botones - versión simplificada
 document.addEventListener('click', function(e) {
     // Botón de dibujar/parar
@@ -919,6 +1168,15 @@ document.addEventListener('click', function(e) {
             if (map) {
                 map.getContainer().style.cursor = 'default';
             }
+            
+            // Centrar mapa en el polígono cuando se termine de dibujar
+            if (coordinates.length >= 3) {
+                centerMapOnPolygon();
+            }
+            
+            // Habilitar arrastre de marcadores
+            updateMarkersDraggable();
+            
             console.log('Modo dibujo desactivado');
         } else {
             // Iniciar dibujo
@@ -938,6 +1196,9 @@ document.addEventListener('click', function(e) {
                 console.log('Tabla mostrada al iniciar dibujo');
             }
             
+            // Deshabilitar arrastre de marcadores durante el dibujo
+            updateMarkersDraggable();
+            
             console.log('Modo dibujo activado');
         }
     }
@@ -945,6 +1206,11 @@ document.addEventListener('click', function(e) {
     // Botón de agregar coordenada manualmente
     if (e.target.closest('#addCoordinate')) {
         addCoordinateManually();
+    }
+    
+    // Botón de centrar polígono
+    if (e.target.closest('#centerPolygon')) {
+        centerMapOnPolygon();
     }
     
     // Botón de limpiar

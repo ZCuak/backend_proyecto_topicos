@@ -14,7 +14,7 @@
 
             <!-- 🧩 Ancho flexible y acoplable -->
             <div class="flyonui-dialog relative bg-white rounded-2xl shadow-2xl w-full 
-                        max-w-6xl sm:mx-4 overflow-hidden 
+                        max-w-[95vw] sm:mx-4 overflow-hidden 
                         animate-[flyonui-fade-in_0.3s_ease-out]">
 
                 <!-- Header -->

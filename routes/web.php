@@ -12,7 +12,7 @@ use App\Http\Controllers\Api\DistrictController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\ProvinceController;
 use App\Http\Controllers\Api\ZoneCoordController;
-use App\Http\Controllers\Api\Schedule\SchedulingController; //programaciones
+use App\Http\Controllers\Web\SchedulingController; //programaciones
 use App\Http\Controllers\Api\Schedule\ScheduleController; //turnos o shifts
 use App\Http\Controllers\Api\User\UserTypeController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
@@ -50,6 +50,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('brands', BrandController::class);
     Route::resource('zones', ZoneController::class);
     Route::resource('vehicles', VehicleController::class);
+    // Rutas para programación masiva
+    Route::get('schedulings/create-massive', [SchedulingController::class, 'createMassive'])->name('schedulings.create-massive');
+    Route::post('schedulings/store-massive', [SchedulingController::class, 'storeMassive'])->name('schedulings.store-massive');
+    
     Route::resource('schedulings', SchedulingController::class);
 
     Route::resource('vacations', VacationController::class);
