@@ -21,7 +21,6 @@ class Vacation extends Model
         'days_programmed',
         'days_pending',
         'max_days',
-        'reason',
         'status',
     ];
 

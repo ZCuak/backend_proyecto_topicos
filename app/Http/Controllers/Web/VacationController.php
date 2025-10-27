@@ -27,12 +27,11 @@ class VacationController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('year', 'LIKE', "%{$search}%")
-                      ->orWhere('status', 'LIKE', "%{$search}%")
-                      ->orWhere('reason', 'LIKE', "%{$search}%")
-                      ->orWhereHas('user', function ($u) use ($search) {
-                          $u->where('firstname', 'LIKE', "%{$search}%")
-                            ->orWhere('lastname', 'LIKE', "%{$search}%");
-                      });
+                        ->orWhere('status', 'LIKE', "%{$search}%")
+                        ->orWhereHas('user', function ($u) use ($search) {
+                            $u->where('firstname', 'LIKE', "%{$search}%")
+                                ->orWhere('lastname', 'LIKE', "%{$search}%");
+                        });
                 });
             }
 
@@ -50,7 +49,27 @@ class VacationController extends Controller
     public function create()
     {
         try {
-            $users = User::select('id', 'firstname', 'lastname', 'dni')->get();
+            // Solo traer usuarios que tengan un contrato activo de tipo nombrado o permanente
+            $userIds = Contract::where('is_active', true)
+                ->whereIn('type', ['nombrado', 'permanente'])
+                ->pluck('user_id')
+                ->unique()
+                ->toArray();
+
+            $users = User::select('id', 'firstname', 'lastname', 'dni')
+                ->whereIn('id', $userIds)
+                ->get();
+
+            // Añadir el campo max_days desde el contrato activo (si existe)
+            $users = $users->map(function ($user) {
+                $activeContract = Contract::where('user_id', $user->id)
+                    ->where('is_active', true)
+                    ->whereIn('type', ['nombrado', 'permanente'])
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $user->max_days = $activeContract ? (int) $activeContract->vacation_days_per_year : null;
+                return $user;
+            });
             $vacation = new Vacation();
             return response()->view('vacations._modal_create', compact('users', 'vacation'))
                 ->header('Turbo-Frame', 'modal-frame');
@@ -70,10 +89,9 @@ class VacationController extends Controller
             'user_id' => 'required|exists:users,id',
             'year' => 'required|integer|min:1900',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'max_days' => 'required|integer',
-            'reason' => 'nullable|string',
-            'status' => 'sometimes|in:pendiente,aprobada,rechazada',
+            'days_requested' => 'required|integer|min:1',
+            'max_days' => 'required|integer|min:1',
+            'status' => 'sometimes|in:pendiente,aprobada,rechazada,cancelada,completada',
         ]);
 
         if ($validator->fails()) {
@@ -90,21 +108,11 @@ class VacationController extends Controller
         DB::beginTransaction();
         try {
             $startDate = Carbon::parse($request->start_date);
-            $endDate = Carbon::parse($request->end_date);
-            $max_days = $request->max_days;
-            $daysProgrammed = $startDate->diffInDays($endDate) + 1;
+            $daysRequested = (int) $request->days_requested;
 
-            if ($daysProgrammed > 30) {
-                $resp = [
-                    'success' => false,
-                    'message' => 'El período de vacaciones no puede superar los 30 días.',
-                    'days_calculated' => $daysProgrammed,
-                    'max_allowed' => 30,
-                ];
-                if ($isTurbo) return response()->json($resp, 422);
-                return back()->with('error', $resp['message'])->withInput();
-            }
+            $daysProgrammed = $daysRequested;
 
+            // Obtener contrato activo y usar su vacation_days_per_year como autoridad
             $activeContract = Contract::where('user_id', $request->user_id)
                 ->where('is_active', true)
                 ->whereIn('type', ['nombrado', 'permanente'])
@@ -112,17 +120,35 @@ class VacationController extends Controller
 
             if (! $activeContract) {
                 $resp = ['success' => false, 'message' => 'El usuario no tiene un contrato activo de tipo nombrado o permanente. Solo estos tipos de contrato pueden solicitar vacaciones.'];
+                DB::rollBack();
                 if ($isTurbo) return response()->json($resp, 422);
                 return back()->with('error', $resp['message'])->withInput();
             }
 
+            $max_days = (int) ($activeContract->vacation_days_per_year ?? 0);
+
+            // Validar que no exceda los días del contrato
+            if ($daysProgrammed > $max_days) {
+                $resp = [
+                    'success' => false,
+                    'message' => 'Los días solicitados exceden los días máximos disponibles para este empleado.',
+                    'days_requested' => $daysProgrammed,
+                    'max_allowed' => $max_days,
+                ];
+                DB::rollBack();
+                if ($isTurbo) return response()->json($resp, 422);
+                return back()->with('error', $resp['message'])->withInput();
+            }
+
+            $endDate = $startDate->copy()->addDays($daysProgrammed - 1)->startOfDay();
+
             $overlappingVacations = Vacation::where('user_id', $request->user_id)
-                ->where(function ($query) use ($request) {
-                    $query->whereBetween('start_date', [$request->start_date, $request->end_date])
-                        ->orWhereBetween('end_date', [$request->start_date, $request->end_date])
-                        ->orWhere(function ($q) use ($request) {
-                            $q->where('start_date', '<=', $request->start_date)
-                              ->where('end_date', '>=', $request->end_date);
+                ->where(function ($query) use ($startDate, $endDate) {
+                    $query->whereBetween('start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                        ->orWhereBetween('end_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                        ->orWhere(function ($q) use ($startDate, $endDate) {
+                            $q->where('start_date', '<=', $startDate->format('Y-m-d'))
+                                ->where('end_date', '>=', $endDate->format('Y-m-d'));
                         });
                 })
                 ->whereIn('status', ['pendiente', 'aprobada'])
@@ -130,12 +156,15 @@ class VacationController extends Controller
 
             if ($overlappingVacations) {
                 $resp = ['success' => false, 'message' => 'Las fechas de vacaciones se solapan con otra solicitud existente (pendiente o aprobada).'];
+                DB::rollBack();
                 if ($isTurbo) return response()->json($resp, 422);
                 return back()->with('error', $resp['message'])->withInput();
             }
 
-            $data = $request->only(['user_id','year','start_date','end_date','reason','status']);
+            $data = $request->only(['user_id', 'year', 'start_date', 'status']);
+            $data['end_date'] = $endDate->format('Y-m-d');
             $data['days_programmed'] = $daysProgrammed;
+            $data['max_days'] = $max_days;
             $data['days_pending'] = $max_days - $daysProgrammed;
             if (! isset($data['status'])) $data['status'] = 'pendiente';
 
@@ -177,8 +206,28 @@ class VacationController extends Controller
     {
         try {
             $vacation = Vacation::findOrFail($id);
-            $users = User::select('id','firstname','lastname','dni')->get();
-            return response()->view('vacations._modal_edit', compact('vacation','users'))
+            // Solo traer usuarios que tengan un contrato activo de tipo nombrado o permanente
+            $userIds = Contract::where('is_active', true)
+                ->whereIn('type', ['nombrado', 'permanente'])
+                ->pluck('user_id')
+                ->unique()
+                ->toArray();
+
+            $users = User::select('id', 'firstname', 'lastname', 'dni')
+                ->whereIn('id', $userIds)
+                ->get();
+
+            // Añadir max_days a cada usuario para mostrar en el modal
+            $users = $users->map(function ($user) {
+                $activeContract = Contract::where('user_id', $user->id)
+                    ->where('is_active', true)
+                    ->whereIn('type', ['nombrado', 'permanente'])
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $user->max_days = $activeContract ? (int) $activeContract->vacation_days_per_year : null;
+                return $user;
+            });
+            return response()->view('vacations._modal_edit', compact('vacation', 'users'))
                 ->header('Turbo-Frame', 'modal-frame');
         } catch (\Exception $e) {
             return back()->with('error', 'Error al abrir edición: ' . $e->getMessage());
@@ -193,75 +242,108 @@ class VacationController extends Controller
         $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
 
         $validator = Validator::make($request->all(), [
-            'user_id' => 'sometimes|required|exists:users,id',
-            'year' => 'sometimes|required|integer|min:1900',
-            'start_date' => 'sometimes|required|date',
-            'end_date' => 'sometimes|required|date|after_or_equal:start_date',
-            'reason' => 'nullable|string',
+            'user_id' => 'required|exists:users,id',
+            'year' => 'required|integer|min:1900',
+            'start_date' => 'required|date',
+            'days_requested' => 'required|integer|min:1',
             'status' => 'sometimes|in:pendiente,aprobada,rechazada',
         ]);
 
         if ($validator->fails()) {
-            if ($isTurbo) return response()->json(['success' => false, 'message' => 'Errores de validación.', 'errors' => $validator->errors()], 422);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
             return back()->withErrors($validator)->withInput();
         }
 
+        DB::beginTransaction();
         try {
             $vacation = Vacation::findOrFail($id);
 
-            $userId = $request->has('user_id') ? $request->user_id : $vacation->user_id;
+            $startDate = Carbon::parse($request->start_date);
+            $daysRequested = (int) $request->days_requested;
 
-            if ($request->has('user_id')) {
-                $activeContract = Contract::where('user_id', $userId)
-                    ->where('is_active', true)
-                    ->whereIn('type', ['nombrado', 'permanente'])
-                    ->first();
-                if (! $activeContract) {
-                    $resp = ['success' => false, 'message' => 'El usuario no tiene un contrato activo de tipo nombrado o permanente.'];
-                    if ($isTurbo) return response()->json($resp, 422);
-                    return back()->with('error', $resp['message'])->withInput();
+            $daysProgrammed = $daysRequested;
+
+            // Obtener contrato activo y usar su vacation_days_per_year como autoridad
+            $activeContract = Contract::where('user_id', $request->user_id)
+                ->where('is_active', true)
+                ->whereIn('type', ['nombrado', 'permanente'])
+                ->first();
+
+            if (! $activeContract) {
+                $resp = ['success' => false, 'message' => 'El usuario no tiene un contrato activo de tipo nombrado o permanente. Solo estos tipos de contrato pueden solicitar vacaciones.'];
+                if ($isTurbo) {
+                    DB::rollBack();
+                    return response()->json($resp, 422);
                 }
+                DB::rollBack();
+                return back()->with('error', $resp['message'])->withInput();
             }
 
-            if ($request->has('start_date') || $request->has('end_date')) {
-                $startDate = Carbon::parse($request->has('start_date') ? $request->start_date : $vacation->start_date);
-                $endDate = Carbon::parse($request->has('end_date') ? $request->end_date : $vacation->end_date);
-                $daysProgrammed = $startDate->diffInDays($endDate) + 1;
-                if ($daysProgrammed > 30) {
-                    $resp = ['success' => false, 'message' => 'El período de vacaciones no puede superar los 30 días.', 'days_calculated' => $daysProgrammed, 'max_allowed' => 30];
-                    if ($isTurbo) return response()->json($resp, 422);
-                    return back()->with('error', $resp['message'])->withInput();
-                }
+            $max_days = (int) ($activeContract->vacation_days_per_year ?? 0);
 
-                $overlappingVacations = Vacation::where('user_id', $userId)
-                    ->where('id', '!=', $id)
-                    ->where(function ($query) use ($startDate, $endDate) {
-                        $query->whereBetween('start_date', [$startDate, $endDate])
-                            ->orWhereBetween('end_date', [$startDate, $endDate])
-                            ->orWhere(function ($q) use ($startDate, $endDate) {
-                                $q->where('start_date', '<=', $startDate)
-                                  ->where('end_date', '>=', $endDate);
-                            });
-                    })->whereIn('status', ['pendiente', 'aprobada'])->exists();
-
-                if ($overlappingVacations) {
-                    $resp = ['success' => false, 'message' => 'Las fechas de vacaciones se solapan con otra solicitud existente.'];
-                    if ($isTurbo) return response()->json($resp, 422);
-                    return back()->with('error', $resp['message'])->withInput();
+            // Validar que no exceda los días del contrato
+            if ($daysProgrammed > $max_days) {
+                $resp = [
+                    'success' => false,
+                    'message' => 'Los días solicitados exceden los días máximos disponibles para este empleado.',
+                    'days_requested' => $daysProgrammed,
+                    'max_allowed' => $max_days,
+                ];
+                if ($isTurbo) {
+                    DB::rollBack();
+                    return response()->json($resp, 422);
                 }
+                DB::rollBack();
+                return back()->with('error', $resp['message'])->withInput();
             }
 
-            $data = $request->only(['user_id','year','start_date','end_date','reason','status']);
-            if ($request->has('start_date') || $request->has('end_date')) {
-                $data['days_programmed'] = $daysProgrammed;
-                $data['days_pending'] = 30 - $daysProgrammed;
+            $endDate = $startDate->copy()->addDays($daysProgrammed - 1)->startOfDay();
+
+            $overlappingVacations = Vacation::where('user_id', $request->user_id)
+                ->where('id', '!=', $id)
+                ->where(function ($query) use ($startDate, $endDate) {
+                    $query->whereBetween('start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                        ->orWhereBetween('end_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                        ->orWhere(function ($q) use ($startDate, $endDate) {
+                            $q->where('start_date', '<=', $startDate->format('Y-m-d'))
+                                ->where('end_date', '>=', $endDate->format('Y-m-d'));
+                        });
+                })
+                ->whereIn('status', ['pendiente', 'aprobada'])
+                ->exists();
+
+            if ($overlappingVacations) {
+                $resp = ['success' => false, 'message' => 'Las fechas de vacaciones se solapan con otra solicitud existente (pendiente o aprobada).'];
+                if ($isTurbo) {
+                    DB::rollBack();
+                    return response()->json($resp, 422);
+                }
+                DB::rollBack();
+                return back()->with('error', $resp['message'])->withInput();
             }
+
+            $data = $request->only(['user_id', 'year', 'start_date', 'status']);
+            $data['end_date'] = $endDate->format('Y-m-d');
+            $data['days_programmed'] = $daysProgrammed;
+            $data['days_pending'] = $max_days - $daysProgrammed;
+            if (! isset($data['status'])) $data['status'] = 'pendiente';
 
             $vacation->update($data);
+            DB::commit();
 
-            if ($isTurbo) return response()->json(['success' => true, 'data' => $vacation->fresh(), 'message' => 'Vacación actualizada exitosamente.'], 200);
+            if ($isTurbo) {
+                return response()->json(['success' => true, 'data' => $vacation->fresh(), 'message' => 'Vacación actualizada exitosamente.'], 200);
+            }
+
             return redirect()->route('vacations.index')->with('success', 'Vacación actualizada exitosamente.');
         } catch (\Exception $e) {
+            DB::rollBack();
             if ($isTurbo) return response()->json(['success' => false, 'message' => 'Error al actualizar vacación: ' . $e->getMessage()], 500);
             return back()->with('error', 'Error al actualizar vacación: ' . $e->getMessage());
         }

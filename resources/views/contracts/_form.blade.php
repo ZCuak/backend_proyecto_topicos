@@ -161,8 +161,8 @@
     <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">Activo</label>
         <div class="relative">
-            <i class="fa-solid fa-toggle-on absolute left-3 top-3 text-slate-400"></i>
-            <select name="is_active" class="w-full pl-10 pr-3 py-3 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
+            <i class="fa-solid fa-toggle-on absolute left-3 top-2.5 text-slate-400"></i>
+            <select name="is_active" class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
                 <option value="1" {{ (old('is_active', $contract->is_active ?? 0) == 1) ? 'selected' : '' }}>Sí</option>
                 <option value="0" {{ (old('is_active', $contract->is_active ?? 0) == 0) ? 'selected' : '' }}>No</option>
             </select>
