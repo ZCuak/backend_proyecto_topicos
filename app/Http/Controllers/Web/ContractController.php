@@ -201,14 +201,18 @@ class ContractController extends Controller
                 }
             }
 
-            $contract = Contract::create($request->all());
+            Contract::create($request->all());
             DB::commit();
 
-            // After successful creation navigate back to index so the session success
-            // banner in the layout/index can be used (same UI as other resources).
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Contrato registrado exitosamente.',
+                ], 201);
+            }
+
             return redirect()->route('contracts.index')
-                ->with('success', 'Contrato creado exitosamente.')
-                ->header('Turbo-Location', route('contracts.index'));
+                ->with('success', 'Contrato creado exitosamente.');
         } catch (\Exception $e) {
             DB::rollBack();
             if ($isTurbo) {
@@ -287,17 +291,127 @@ class ContractController extends Controller
         try {
             $contract = Contract::findOrFail($id);
 
+            // Validación 1: Verificar si el usuario ya tiene un contrato activo (excluir el contrato actual)
+            $activeContract = Contract::where('user_id', $request->user_id)
+                ->where('is_active', true)
+                ->where('id', '!=', $contract->id)
+                ->first();
+
+            if ($activeContract) {
+                $resp = [
+                    'success' => false,
+                    'message' => 'El usuario ya tiene un contrato activo. No se puede asignar este contrato.',
+                    'active_contract_id' => $activeContract->id
+                ];
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $resp['message'],
+                        'errors' => ['general' => [$resp['message']]],
+                        'active_contract_id' => $activeContract->id,
+                    ], 422);
+                }
+                return back()->with('error', $resp['message'])->withInput();
+            }
+
+            // Si es nombrado o permanente, no debe tener fecha de fin
             if (in_array($request->type, ['nombrado', 'permanente'])) {
+                if ($request->date_end) {
+                    $resp = [
+                        'success' => false,
+                        'message' => 'Los contratos de tipo nombrado o permanente no deben tener fecha de fin.'
+                    ];
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $resp['message'],
+                            'errors' => ['general' => [$resp['message']]],
+                        ], 422);
+                    }
+                    return back()->with('error', $resp['message'])->withInput();
+                }
                 $request->merge(['date_end' => null]);
+            }
+
+            // Validación para contratos eventuales
+            if ($request->type === 'eventual') {
+                $lastEventualContract = Contract::where('user_id', $request->user_id)
+                    ->where('type', 'eventual')
+                    ->whereNotNull('date_end')
+                    ->where('id', '!=', $contract->id)
+                    ->orderBy('date_end', 'desc')
+                    ->first();
+
+                if ($lastEventualContract && $lastEventualContract->date_end) {
+                    $dateStart = Carbon::parse($request->date_start);
+                    $monthsSinceLastContract = $lastEventualContract->date_end->diffInMonths($dateStart);
+
+                    if ($monthsSinceLastContract < 2) {
+                        $resp = [
+                            'success' => false,
+                            'message' => 'Para contratos eventuales, deben pasar mínimo 2 meses desde el último contrato.',
+                            'last_contract_end_date' => $lastEventualContract->date_end->format('Y-m-d'),
+                            'months_since_last_contract' => $monthsSinceLastContract,
+                            'months_remaining' => 2 - $monthsSinceLastContract
+                        ];
+                        if ($isTurbo) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => $resp['message'],
+                                'errors' => ['general' => [$resp['message']]],
+                                'last_contract_end_date' => $resp['last_contract_end_date'],
+                                'months_remaining' => $resp['months_remaining'],
+                            ], 422);
+                        }
+                        return back()->with('error', $resp['message'])->withInput();
+                    }
+                }
+
+                // Para eventuales, la fecha de fin es requerida
+                if (!$request->date_end) {
+                    $resp = [
+                        'success' => false,
+                        'message' => 'Los contratos eventuales deben tener una fecha de fin.'
+                    ];
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $resp['message'],
+                            'errors' => ['general' => [$resp['message']]],
+                        ], 422);
+                    }
+                    return back()->with('error', $resp['message'])->withInput();
+                }
+
+                // Para eventuales no se permiten días de vacaciones
+                if ($request->vacation_days_per_year) {
+                    $resp = [
+                        'success' => false,
+                        'message' => 'Los contratos eventuales no pueden tener dias de vacaciones.'
+                    ];
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $resp['message'],
+                            'errors' => ['general' => [$resp['message']]],
+                        ], 422);
+                    }
+                    return back()->with('error', $resp['message'])->withInput();
+                }
             }
 
             $contract->update($request->all());
             DB::commit();
 
-            // After update, navigate back to index so the session success banner is shown
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Contrato actualizado exitosamente.',
+                ], 201);
+            }
+
             return redirect()->route('contracts.index')
-                ->with('success', 'Contrato actualizado.')
-                ->header('Turbo-Location', route('contracts.index'));
+                ->with('success', 'Contrato actualizado exitosamente.');
         } catch (\Exception $e) {
             DB::rollBack();
             if ($isTurbo) {

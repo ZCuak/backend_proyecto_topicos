@@ -95,16 +95,6 @@ class VacationController extends Controller
             $max_days  = $request->max_days;
             $daysProgrammed = $startDate->diffInDays($endDate) + 1; // +1 para incluir ambos días
 
-            // Validar que no supere los 30 días
-            if ($daysProgrammed > 30) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El período de vacaciones no puede superar los 30 días.',
-                    'days_calculated' => $daysProgrammed,
-                    'max_allowed' => 30
-                ], 422);
-            }
-
             // Validación 1: Verificar que el usuario tenga un contrato activo de tipo nombrado o permanente
             $activeContract = Contract::where('user_id', $request->user_id)
                 ->where('is_active', true)
@@ -115,6 +105,19 @@ class VacationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'El usuario no tiene un contrato activo de tipo nombrado o permanente. Solo estos tipos de contrato pueden solicitar vacaciones.'
+                ], 422);
+            }
+
+            // Usar los días de vacaciones que indica el contrato como límite
+            $max_days = (int) ($activeContract->vacation_days_per_year ?? 0);
+
+            // Validar que no exceda los días del contrato
+            if ($daysProgrammed > $max_days) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El período de vacaciones excede los días máximos establecidos en el contrato.',
+                    'days_calculated' => $daysProgrammed,
+                    'max_allowed' => $max_days
                 ], 422);
             }
 
@@ -299,8 +302,15 @@ class VacationController extends Controller
 
             // Recalcular days_programmed y days_pending si se actualizan las fechas
             if ($request->has('start_date') || $request->has('end_date')) {
+                // obtener contrato activo del usuario (autoridad)
+                $activeContractForUser = Contract::where('user_id', $userId)
+                    ->where('is_active', true)
+                    ->whereIn('type', ['nombrado', 'permanente'])
+                    ->first();
+                $max_days_for_user = (int) ($activeContractForUser->vacation_days_per_year ?? 0);
+
                 $data['days_programmed'] = $daysProgrammed;
-                $data['days_pending'] = 30 - $daysProgrammed;
+                $data['days_pending'] = $max_days_for_user - $daysProgrammed;
             }
 
             $vacation->update($data);
