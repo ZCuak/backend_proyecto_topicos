@@ -32,4 +32,9 @@ class Department extends Model
     {
         return $this->hasManyThrough(District::class, Province::class, 'department_id', 'province_id');
     }
+
+    public function contracts()
+    {
+        return $this->hasMany(Contract::class, 'department_id');
+    }
 }

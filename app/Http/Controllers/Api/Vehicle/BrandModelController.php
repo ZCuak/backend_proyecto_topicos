@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api\Vehicle;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\BrandModel;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Schema;
@@ -13,13 +13,13 @@ use Illuminate\Support\Facades\DB;
 
 class BrandModelController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    /**
+     * Mostrar listado de brandmodel
+     */
+    public function index(Request $request)
     {
         try {
             $search = $request->input('search');
-            $perPage = $request->input('perPage', 10);
-            $all = $request->boolean('all', false);
-
             $query = BrandModel::with(['brand']);
             $columns = Schema::getColumnListing('brandmodels');
 
@@ -31,140 +31,176 @@ class BrandModelController extends Controller
                 });
             }
 
-            if ($all) {
-                $models = $query->get();
-                return response()->json([
-                    'success' => true,
-                    'data' => $models,
-                    'message' => 'Modelos obtenidos exitosamente (todos)',
-                    'pagination' => null
-                ]);
-            }
-
-            $models = $query->paginate($perPage);
-            return response()->json([
-                'success' => true,
-                'data' => $models->items(),
-                'message' => 'Modelos listados correctamente',
-                'pagination' => [
-                    'current_page' => $models->currentPage(),
-                    'last_page' => $models->lastPage(),
-                    'per_page' => $models->perPage(),
-                    'total' => $models->total()
-                ]
-            ]);
+            $models = $query->paginate(10);
+            return view('brandmodels.index', compact('models', 'search'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al listar modelos',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al listar modelos: ' . $e->getMessage());
         }
     }
 
-    public function store(Request $request): JsonResponse
+    /**
+     * Formulario de creación (Turbo modal)
+     */
+    public function create(Request $request)
     {
+        $brands = Brand::all();
+        $model = new BrandModel();
+
+        return response()
+            ->view('brandmodels._modal_create', compact('brands', 'model'))
+            ->header('Turbo-Frame', 'modal-frame');
+    }
+
+    /**
+     * Formulario de edición (Turbo modal)
+     */
+    public function edit($id)
+    {
+        $model = BrandModel::findOrFail($id);
+        $brands = Brand::all();
+
+        return response()
+            ->view('brandmodels._modal_edit', compact('model', 'brands'))
+            ->header('Turbo-Frame', 'modal-frame');
+    }
+
+    /**
+     * Guardar nuevo registro
+     */
+    public function store(Request $request)
+    {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:100|unique:brandmodels,name',
+            'code' => 'nullable|string|unique:brandmodels,code',
+            'description' => 'nullable|string',
             'brand_id' => 'required|exists:brands,id'
         ]);
 
+
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error de validación',
-                'errors' => $validator->errors()
-            ], 422);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
 
         DB::beginTransaction();
         try {
             $data = $validator->validated();
 
-            $user = BrandModel::create($request->all());
+            $model = BrandModel::create($data);
 
             DB::commit();
-            return response()->json([
-                'success' => true,
-                'data' => $user->load(['brand']),
-                'message' => 'Modelo creado exitosamente'
-            ], 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear modelo',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
-    public function show($id): JsonResponse
-    {
-        try {
-            $model = BrandModel::with(['brand'])->find($id);
-            if (!$model) {
-                return response()->json(['success' => false, 'message' => 'Modelo no encontrado'], 404);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Modelo registrado exitosamente.',
+                ], 201);
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $model,
-                'message' => 'Modelo obtenido exitosamente'
-            ]);
+            return redirect()->route('brand-models.index')
+                ->with('success', 'Modelo registrado exitosamente.');
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al obtener modelo', 'error' => $e->getMessage()], 500);
+            DB::rollBack();
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al crear modelo: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al crear modelo: ' . $e->getMessage());
         }
     }
 
     /**
-     * Actualizar modelo
+     * Actualizar datos
      */
-    public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, $id)
     {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         try {
             $model = BrandModel::find($id);
             if (!$model) {
-                return response()->json(['success' => false, 'message' => 'Modelo no encontrado'], 404);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Modelo no encontrado.',
+                ], 404);
             }
 
             $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:100|unique:brandmodels,name',
+                'name' => 'required|string|max:100|unique:brandmodels,name,' . $id,
+                'code' => 'nullable|string|unique:brandmodels,code,' . $id,
+                'description' => 'nullable|string',
                 'brand_id' => 'required|exists:brands,id'
             ]);
 
             if ($validator->fails()) {
-                return response()->json(['success' => false, 'message' => 'Error de validación', 'errors' => $validator->errors()], 422);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
+                ], 422);
             }
 
             $data = $validator->validated();
 
-            $model->update($request->all());
+            $model->update($data);
 
-            return response()->json([
-                'success' => true,
-                'data' => $model->load(['brand']),
-                'message' => 'Modelo actualizado correctamente'
-            ]);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Datos del modelo actualizados correctamente.',
+                ], 200);
+            }
+
+            return redirect()->route('brand-models.index')
+                ->with('success', 'Datos del modelo actualizados correctamente.');
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al actualizar modelo', 'error' => $e->getMessage()], 500);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al actualizar: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al actualizar: ' . $e->getMessage());
         }
     }
 
-
-    public function destroy($id): JsonResponse
+    /**
+     * Eliminar (Soft Delete)
+     */
+    public function destroy($id)
     {
         try {
             $model = BrandModel::find($id);
             if (!$model) {
-                return response()->json(['success' => false, 'message' => 'Modelo no encontrado'], 404);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Modelo no encontrado.',
+                ], 404);
             }
 
             $model->delete();
 
-            return response()->json(['success' => true, 'message' => 'Modelo eliminado correctamente']);
+            return response()->json([
+                'success' => true,
+                'message' => 'Modelo eliminado correctamente.',
+            ], 200);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al eliminar modelo', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar modelo: ' . $e->getMessage(),
+            ], 500);
         }
     }
 }

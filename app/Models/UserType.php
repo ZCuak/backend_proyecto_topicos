@@ -34,4 +34,9 @@ class UserType extends Model
     {
         return $this->hasMany(VehicleOccupant::class, 'usertype_id');
     }
+
+    public function contracts()
+    {
+        return $this->hasMany(Contract::class, 'position_id');
+    }
 }

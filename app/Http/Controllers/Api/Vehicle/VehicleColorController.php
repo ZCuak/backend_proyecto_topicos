@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Vehicle;
 use App\Http\Controllers\Controller;
 use App\Models\VehicleColor;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -13,19 +12,17 @@ use Illuminate\Support\Facades\DB;
 class VehicleColorController extends Controller
 {
     /**
-     * Listar colores de vehículos
+     * Mostrar listado de colores (vista web)
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         try {
             $search = $request->input('search');
             $perPage = $request->input('perPage', 10);
-            $all = $request->boolean('all', false);
 
             $query = VehicleColor::query();
             $columns = Schema::getColumnListing('vehiclecolors');
 
-            // 🔍 Filtro de búsqueda en todas las columnas
             if ($search) {
                 $query->where(function ($q) use ($columns, $search) {
                     foreach ($columns as $column) {
@@ -34,181 +31,190 @@ class VehicleColorController extends Controller
                 });
             }
 
-            // 🔹 Retornar todos o paginados
-            if ($all) {
-                $colors = $query->orderBy('id', 'asc')->get();
+            $colors = $query->orderBy('id', 'asc')->paginate($perPage)->appends(['search' => $search]);
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $colors,
-                    'message' => 'Colores de vehículo obtenidos exitosamente (todos los registros)',
-                    'pagination' => null
-                ], 200);
-            } else {
-                $colors = $query->orderBy('id', 'asc')->paginate($perPage)->appends([
-                    'search' => $search,
-                    'perPage' => $perPage
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $colors->items(),
-                    'message' => 'Colores de vehículo obtenidos exitosamente',
-                    'pagination' => [
-                        'current_page' => $colors->currentPage(),
-                        'last_page' => $colors->lastPage(),
-                        'per_page' => $colors->perPage(),
-                        'total' => $colors->total()
-                    ]
-                ], 200);
-            }
+            return view('vehiclecolors.index', compact('colors', 'search'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener colores de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al listar colores: ' . $e->getMessage());
         }
     }
 
     /**
      * Crear un nuevo color
      */
-    public function store(Request $request): JsonResponse
+    /**
+     * Guardar nuevo color (soporta Turbo frames y peticiones normales)
+     */
+    public function store(Request $request)
     {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:100|unique:vehiclecolors,name',
             'rgb_code' => 'required|string|max:10'
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error de validación',
-                'errors' => $validator->errors()
-            ], 422);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
 
         DB::beginTransaction();
         try {
-            $color = VehicleColor::create($validator->validated());
+            VehicleColor::create($validator->validated());
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'data' => $color,
-                'message' => 'Color de vehículo creado exitosamente'
-            ], 201);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Color registrado correctamente.',
+                ], 201);
+            }
+
+            return redirect()->route('vehiclecolors.index')->with('success', 'Color registrado correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear color de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al crear color: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al crear color: ' . $e->getMessage());
         }
     }
 
     /**
      * Mostrar un color específico
      */
-    public function show(int $id): JsonResponse
+    /**
+     * Mostrar detalle de un color (vista)
+     */
+    public function show(int $id)
     {
         try {
             $color = VehicleColor::find($id);
 
             if (!$color) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Color no encontrado'
-                ], 404);
+                return back()->with('error', 'Color no encontrado');
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $color,
-                'message' => 'Color de vehículo obtenido exitosamente'
-            ], 200);
+            return view('vehiclecolors.show', compact('color'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener color de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al obtener color: ' . $e->getMessage());
         }
     }
 
     /**
      * Actualizar un color
      */
-    public function update(Request $request, int $id): JsonResponse
+    /**
+     * Actualizar color (soporta Turbo frames y peticiones normales)
+     */
+    public function update(Request $request, int $id)
     {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         try {
             $color = VehicleColor::find($id);
-
             if (!$color) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Color no encontrado'
-                ], 404);
+                if ($isTurbo) {
+                    return response()->json(['success' => false, 'message' => 'Color no encontrado.'], 404);
+                }
+                return back()->with('error', 'Color no encontrado.');
             }
 
             $validator = Validator::make($request->all(), [
-                'name' => 'sometimes|required|string|max:100|unique:vehiclecolors,name,' . $id,
-                'rgb_code' => 'sometimes|required|string|max:10'
+                'name' => 'required|string|max:100|unique:vehiclecolors,name,' . $id,
+                'rgb_code' => 'required|string|max:10'
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
             $color->update($validator->validated());
 
-            return response()->json([
-                'success' => true,
-                'data' => $color,
-                'message' => 'Color de vehículo actualizado exitosamente'
-            ], 200);
+            if ($isTurbo) {
+                return response()->json(['success' => true, 'message' => 'Color actualizado correctamente.'], 200);
+            }
+
+            return redirect()->route('vehiclecolors.index')->with('success', 'Color actualizado correctamente.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar color de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            if ($isTurbo) {
+                return response()->json(['success' => false, 'message' => 'Error al actualizar: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Error al actualizar: ' . $e->getMessage());
         }
     }
 
     /**
      * Eliminar un color (soft delete)
      */
-    public function destroy(int $id): JsonResponse
+    /**
+     * Eliminar (soft delete)
+     */
+    public function destroy(Request $request, int $id)
     {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         try {
             $color = VehicleColor::find($id);
 
             if (!$color) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Color no encontrado'
-                ], 404);
+                if ($isTurbo) {
+                    return response()->json(['success' => false, 'message' => 'Color no encontrado.'], 404);
+                }
+                return back()->with('error', 'Color no encontrado.');
             }
 
             $color->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Color de vehículo eliminado correctamente'
-            ], 200);
+            if ($isTurbo) {
+                return response()->json(['success' => true, 'message' => 'Color eliminado correctamente.'], 200);
+            }
+
+            return redirect()->route('vehiclecolors.index')->with('success', 'Color eliminado correctamente.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al eliminar color de vehículo',
-                'error' => $e->getMessage()
-            ], 500);
+            if ($isTurbo) {
+                return response()->json(['success' => false, 'message' => 'Error al eliminar: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Error al eliminar: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Formulario de creación (Turbo modal)
+     */
+    public function create(Request $request)
+    {
+        $color = new VehicleColor();
+
+        return response()
+            ->view('vehiclecolors._modal_create', compact('color'))
+            ->header('Turbo-Frame', 'modal-frame');
+    }
+
+    /**
+     * Formulario de edición (Turbo modal)
+     */
+    public function edit($id)
+    {
+        $color = VehicleColor::findOrFail($id);
+
+        return response()
+            ->view('vehiclecolors._modal_edit', compact('color'))
+            ->header('Turbo-Frame', 'modal-frame');
     }
 }

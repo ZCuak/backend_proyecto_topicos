@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
@@ -24,17 +25,34 @@ class AttendaceController extends Controller
      * - type: ENTRADA o SALIDA
      * - status: PRESENTE, AUSENTE, TARDANZA
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
+        $request->validate([
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'start_date' => 'nullable|date',
+        ], [
+            'end_date.after_or_equal' => 'La fecha final no puede ser anterior a la fecha inicial.',
+        ]);
+
+
         try {
             $search = $request->input('search');
-            $perPage = $request->input('per_page', 10);
-            $sortBy = $request->input('sortBy', 'date');
-            $sortOrder = $request->input('sortOrder', 'desc');
+            $today = Carbon::today();
 
-            $query = Attendace::with('user:id,firstname,lastname,dni,usertype_id');
+            $query = Attendace::with('user:id,firstname,lastname,dni,usertype_id')
+                ->orderBy('date', 'desc')
+                ->orderBy('check_in', 'desc');
 
-            if (!$request->has('start_date') && !$request->has('end_date') && !$request->has('date')) {
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+
+            if ($request->filled('start_date')) {
+                if ($request->filled('end_date') && $endDate > $startDate) {
+                    $query->dateRange($startDate, $endDate);
+                } else {
+                    $query->whereDate('date', $startDate);
+                }
+            } elseif (!$request->hasAny(['start_date', 'end_date'])) {
                 $query->today();
             }
 
@@ -42,164 +60,161 @@ class AttendaceController extends Controller
                 $query->whereHas('user', function ($q) use ($search) {
                     $q->where('firstname', 'ILIKE', "%{$search}%")
                         ->orWhere('lastname', 'ILIKE', "%{$search}%")
-                        ->orWhere('username', 'ILIKE', "%{$search}%")
                         ->orWhere('dni', 'ILIKE', "%{$search}%");
                 });
             }
 
-            // Filtro por rango de fechas
-            if ($request->has('start_date') && $request->has('end_date')) {
-                $query->dateRange($request->start_date, $request->end_date);
-            }
-
-            // Filtro por fecha específica
-            if ($request->has('date')) {
-                $query->whereDate('date', $request->date);
-            }
-
-            // Filtro por usuario
-            if ($request->has('user_id')) {
-                $query->byUser($request->user_id);
-            }
-
             // Filtro por tipo (ENTRADA/SALIDA)
-            if ($request->has('type')) {
+            if ($request->filled('type')) {
                 $query->byType($request->type);
             }
 
             // Filtro por estado
-            if ($request->has('status')) {
+            if ($request->filled('status')) {
                 $query->byStatus($request->status);
             }
+            // dd($query->toSql(), $query->getBindings());
 
-            // foreach ($request->all() as $key => $value) {
-            //     if (
-            //         Schema::hasColumn('attendances', $key) &&
-            //         !in_array($key, ['search', 'sortBy', 'sortOrder', 'per_page', 'all', 'start_date', 'end_date', 'user_id', 'status', 'date'])
-            //     ) {
-            //         $query->where($key, $value);
-            //     }
-            // }
-
-            // Ordenamiento
-            if (Schema::hasColumn('attendances', $sortBy)) {
-                $query->orderBy($sortBy, $sortOrder);
-            }
-
-            // 📄 Paginación o todos los registros
-            $all = $request->input('all', false);
-            $pagination = [];
-            if ($all) {
-                $attendances = $query->get();
-            } else {
-                $attendances = $query->paginate($perPage)->appends([
-                    'search' => $search,
-                    'perPage' => $perPage
-                ]);
-                $pagination = [
-                    'current_page' => $attendances->currentPage(),
-                    'last_page' => $attendances->lastPage(),
-                    'per_page' => $attendances->perPage(),
-                    'total' => $attendances->total()
-                ];
-                $attendances = $attendances->items();
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $attendances,
-                'message' => 'Asistencias obtenidas exitosamente',
-                'pagination' => $pagination
-            ], 200);
+            $attendances = $query->paginate(15);
+            return view('attendances.index', compact('attendances', 'search', 'today'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener las asistencias',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al listar asistencias: ' . $e->getMessage());
         }
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create() {}
+    public function create()
+    {
+        $usuarios = User::where('status', 'ACTIVO')
+            ->orderBy('firstname', 'asc')
+            ->get();
+
+        $attendance = new Attendace();
+
+        return response()
+            ->view('attendances._modal_create', compact('attendance', 'usuarios'))
+            ->header('Turbo-Frame', 'modal-frame');
+    }
 
     /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'user_id' => 'required|exists:users,id',
-                'date' => 'required|date',
-                'check_in' => 'nullable|date_format:H:i:s',
-                'check_out' => 'nullable|date_format:H:i:s',
-                'type' => 'required|in:ENTRADA,SALIDA',
-                'status' => 'required|in:PRESENTE,AUSENTE,TARDANZA',
-                'notes' => 'nullable|string|max:255',
-            ], [
-                'user_id.required' => 'El ID del usuario es obligatorio',
-                'user_id.exists' => 'El usuario no existe',
-                'date.required' => 'La fecha es obligatoria',
-                'date.date' => 'La fecha no tiene un formato válido',
-                'type.required' => 'El tipo es obligatorio',
-                'type.in' => 'El tipo debe ser ENTRADA o SALIDA',
-                'status.required' => 'El estado es obligatorio',
-                'status.in' => 'El estado debe ser PRESENTE, AUSENTE o TARDANZA',
-            ]);
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
 
-            if ($validator->fails()) {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'date' => 'required|date_format:Y-m-d',
+            'check_in' => 'required|date_format:H:i',
+            'check_out' => 'nullable|date_format:H:i|after:check_in',
+            'status' => 'required|in:PRESENTE,AUSENTE,TARDANZA',
+            'notes' => 'nullable|string|max:255',
+        ], [
+            'user_id.required' => 'El usuario es obligatorio',
+            'user_id.exists' => 'El usuario no existe',
+            'date.required' => 'La fecha es obligatoria',
+            'check_in.required' => 'La Hora de entrada es obligatoria',
+            'check_out.after'   => 'La hora de salida debe ser posterior a la hora de entrada',
+            'status.required' => 'El estado es obligatorio',
+            'status.in' => 'El estado debe ser PRESENTE, AUSENTE o TARDANZA',
+        ]);
+
+        if ($validator->fails()) {
+            if ($isTurbo) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
+                    'message' => 'Errores de validación.',
+                    'errors' => $validator->errors(),
                 ], 422);
             }
+            return back()->withErrors($validator)->withInput();
+        }
+        $request->merge([
+            'type' => !$request->filled('check_out')
+                ? Attendace::TYPE_ENTRADA
+                : Attendace::TYPE_SALIDA
+        ]);
 
-            // Verificar si ya existe asistencia para ese usuario en esa fecha
-            $attendanceExistente = Attendace::withTrashed()
+        DB::beginTransaction();
+
+        try {
+            $user = User::find($request->user_id);
+
+            if (!$user || $user->status !== 'ACTIVO') {
+                DB::rollBack();
+
+                $mensaje = 'Solo el personal activo puede marcar asistencia.';
+
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $mensaje,
+                        'errors' => ['user_id' => [$mensaje]]
+                    ], 422);
+                }
+                return back()->withErrors(['user_id' => $mensaje])->withInput();
+            }
+
+            $attendanceEliminada = Attendace::onlyTrashed()
                 ->where('user_id', $request->user_id)
                 ->whereDate('date', $request->date)
                 ->first();
 
-            if ($attendanceExistente) {
-                if ($attendanceExistente->trashed()) {
-                    $attendanceExistente->restore();
-                    $attendanceExistente->update($request->all());
+            if ($attendanceEliminada) {
+                $checkInExistente = Carbon::parse($attendanceEliminada->check_in);
+                if ($checkInExistente->format('H:i') === $request->check_in && !$attendanceEliminada->check_out) {
 
-                    return response()->json([
-                        'success' => true,
-                        'data' => $attendanceExistente,
-                        'message' => 'Asistencia restaurada y actualizada exitosamente'
-                    ], 200);
-                } else {
-                    // Ya existe asistencia activa para ese día
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Ya existe una asistencia registrada para este usuario en esta fecha',
-                        'errors' => [
-                            'date' => ['El usuario tiene asistencia sin salida registrada para esta fecha']
-                        ]
-                    ], 422);
+                    $attendanceEliminada->restore();
+                    $attendanceEliminada->update($request->all());
+
+                    DB::commit();
+
+                    $mensaje = 'Asistencia restaurada y actualizada exitosamente.';
+
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => $mensaje,
+                        ], 200);
+                    }
+
+                    return redirect()->route('attendances.index')->with('success', $mensaje);
                 }
             }
 
             // Crear nueva asistencia
             $attendance = Attendace::create($request->all());
 
-            return response()->json([
-                'success' => true,
-                'data' => $attendance, //, //->load('user:id,name,dni'),
-                'message' => 'Asistencia registrada exitosamente'
-            ], 201);
+            DB::commit();
+
+            $mensaje = 'Asistencia registrada exitosamente como ' . $request->type . '.';
+
+            if ($attendance->date->lt(Carbon::today()) && $attendance->check_out === null) {
+                $formattedDate = $attendance->date->format('d/m/Y');
+                $mensaje = "¡Asistencia registrada! PERO la marcación del {$formattedDate} no tiene salida registrada.";
+            }
+
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $attendance->load(['user:firstname,lastname']), //, //->load('user:id,name,dni'),
+                    'message' => $mensaje,
+                ], 201);
+            }
+            return redirect()->route('attendances.index')->with("success", $mensaje);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al registrar la asistencia',
-                'error' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al registrar asistencia: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Error al registrar asistencia: ' . $e->getMessage());
         }
     }
 
@@ -235,77 +250,96 @@ class AttendaceController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id) {}
+    public function edit(string $id)
+    {
+        $attendance = Attendace::with('user')->findOrFail($id);
+
+        $usuarios = User::where('status', 'ACTIVO')
+            ->orderBy('firstname', 'asc')
+            ->get();
+
+        return response()
+            ->view('attendances._modal_edit', compact('attendance', 'usuarios'))
+            ->header('Turbo-Frame', 'modal-frame');
+    }
 
     /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
     {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
         try {
             $attendance = Attendace::find($id);
 
             if (!$attendance) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Asistencia no encontrada'
-                ], 404);
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Asistencia no encontrada.',
+                    ], 404);
+                }
+                return back()->with('error', 'Asistencia no encontrada.');
             }
 
             $validator = Validator::make($request->all(), [
-                'user_id' => 'sometimes|required|exists:users,id',
-                'date' => 'sometimes|required|date',
-                'check_in' => 'nullable|date_format:H:i:s',
-                'check_out' => 'nullable|date_format:H:i:s',
-                'type' => 'sometimes|required|in:ENTRADA,SALIDA',
-                'status' => 'sometimes|required|in:PRESENTE,AUSENTE,TARDANZA',
+                'user_id' => 'required|exists:users,id',
+                'date' => 'required|date_format:Y-m-d',
+                'check_in' => 'required|date_format:H:i',
+                'check_out' => 'nullable|date_format:H:i|after:check_in',
+                'status' => 'required|in:PRESENTE,AUSENTE,TARDANZA',
                 'notes' => 'nullable|string|max:255',
             ], [
+                'user_id.required' => 'El usuario es obligatorio',
                 'user_id.exists' => 'El usuario no existe',
-                'date.date' => 'La fecha no tiene un formato válido',
-                'type.in' => 'El tipo debe ser ENTRADA o SALIDA',
+                'date.required' => 'La fecha es obligatoria',
+                'check_in.required' => 'La Hora de entrada es obligatoria',
+                'check_out.after'   => 'La hora de salida debe ser posterior a la hora de entrada',
+                'status.required' => 'El estado es obligatorio',
                 'status.in' => 'El estado debe ser PRESENTE, AUSENTE o TARDANZA',
             ]);
 
             if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-            // Verificar duplicado si se cambia user_id o date
-            if ($request->has('user_id') || $request->has('date')) {
-                $userId = $request->user_id ?? $attendance->user_id;
-                $date = $request->date ?? $attendance->date;
-
-                $duplicado = Attendace::where('user_id', $userId)
-                    ->whereDate('date', $date)
-                    ->where('id', '!=', $id)
-                    ->exists();
-
-                if ($duplicado) {
+                if ($isTurbo) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Ya existe una asistencia para este usuario en esta fecha',
-                        'errors' => ['date' => ['Conflicto con asistencia existente']]
+                        'message' => 'Errores de validación.',
+                        'errors' => $validator->errors(),
                     ], 422);
                 }
+                return back()->withErrors($validator)->withInput();
             }
+
+            $request->merge([
+                'type' => !$request->filled('check_out')
+                    ? Attendace::TYPE_ENTRADA
+                    : Attendace::TYPE_SALIDA
+            ]);
 
             $attendance->update($request->all());
 
-            return response()->json([
-                'success' => true,
-                'data' => $attendance, //->load('user:id,name,dni'),
-                'message' => 'Asistencia actualizada exitosamente'
-            ], 200);
+            $mensaje = 'Asistencia actualizada exitosamente como ' . $attendance->type . '.';
+
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $attendance,
+                    'message' => $mensaje,
+                ], 200);
+            }
+
+            return redirect()->route('attendances.index')->with('success', $mensaje);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar la asistencia',
-                'error' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+
+            $mensaje = 'Error al actualizar asistencia: ' . $e->getMessage();
+
+            if ($isTurbo) {
+                return response()->json(['success' => false, 'message' => $mensaje], 500);
+            }
+
+            return back()->with('error', $mensaje);
         }
     }
 
@@ -351,20 +385,17 @@ class AttendaceController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
-    public function markAttendance(Request $request): JsonResponse
+    public function markAttendance(Request $request)
     {
         try {
             // Validar DNI y contraseña
             $validator = Validator::make($request->all(), [
                 'username' => 'required_without:dni|string',
-                // 'dni' => 'required_without:username|string|size:8',
                 'password' => 'required|string',
                 'notes' => 'nullable|string|max:255',
             ], [
-                'username.required_without' => 'El username o DNI es obligatorio',
-                // 'dni.required_without' => 'El DNI o username es obligatorio',
-                // 'dni.size' => 'El DNI debe tener 8 dígitos',
-                'password.required' => 'La contraseña es obligatoria',
+                'username.required_without' => '- El nombre de usuario o DNI es obligatorio',
+                'password.required' => '- La contraseña es obligatoria',
             ]);
 
             if ($validator->fails()) {
@@ -406,55 +437,57 @@ class AttendaceController extends Controller
                 ], 403);
             }
 
-            $today = Carbon::now()->toDateString();
-            $now = Carbon::now()->toTimeString();
+            $today = Carbon::now()->format('d-m-Y');
+            $now = Carbon::now()->format('H:i');
 
             // Buscar la última asistencia del día (ordenada por ID desc)
             $lastAttendance = Attendace::where('user_id', $user->id)
                 ->whereDate('date', $today)
-                ->orderBy('id', 'desc')
+                ->orderBy('updated_at', 'desc')
                 ->first();
 
-            // CASO 1: No tiene asistencia HOY o la última ya tiene SALIDA → Nueva ENTRADA
+            // CASO 1: La última asistencia es ENTRADA sin SALIDA → Registrar SALIDA
+            if ($lastAttendance && $lastAttendance->check_out === null) {
+                $lastAttendance->update([
+                    'check_out' => $now,
+                    'type' => Attendace::TYPE_SALIDA,
+                    'notes' => $request->notes ?? $lastAttendance->notes,
+                ]);
+
+                $lastAttendance->formatted_date = $lastAttendance->date->format('d-m-Y');
+                return response()->json([
+                    'success' => true,
+                    'data' => $lastAttendance->load(['user:id,username,firstname,lastname']),
+                    'message' => "SALIDA registrada exitosamente",
+                ], 200);
+            }
+
+            // CASO 2: No tiene asistencia HOY o la última ya tiene SALIDA → Nueva ENTRADA
             if (!$lastAttendance || $lastAttendance->check_out !== null) {
+
                 $attendance = Attendace::create([
                     'user_id' => $user->id,
                     'date' => $today,
                     'check_in' => $now,
                     'check_out' => null,
-                    'type' => 'ENTRADA',
-                    'status' => 'PRESENTE',
+                    'type' => Attendace::TYPE_ENTRADA,
+                    'status' => Attendace::STATUS_PRESENTE,
                     'notes' => $request->notes,
                 ]);
 
+                $attendance->formatted_date = $attendance->date->format('d-m-Y');
+
                 return response()->json([
                     'success' => true,
-                    'data' => $attendance,
+                    'data' => $attendance->load(['user:id,username,firstname,lastname']),
                     'message' => "ENTRADA registrada exitosamente",
                 ], 201);
             }
 
-            // CASO 2: La última asistencia es ENTRADA sin SALIDA → Registrar SALIDA
-            if ($lastAttendance->check_out === null) {
-                $lastAttendance->update([
-                    'check_out' => $now,
-                    'type' => 'SALIDA',
-                    'notes' => $request->notes ?? $lastAttendance->notes,
-                    // NO SE ACTUALIZA EL STATUS
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $lastAttendance,
-                    'message' => "SALIDA registrada exitosamente",
-                ], 200);
-            }
-
-            // Ya marcó ENTRADA y SALIDA Evaluar cantidades
             return response()->json([
                 'success' => false,
                 'message' => 'No se pudo procesar la marcación',
-                'data' => $lastAttendance
+                'data' => $lastAttendance->load(['user:id,username,firstname,lastname'])
             ], 422);
         } catch (\Exception $e) {
             return response()->json([

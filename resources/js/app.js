@@ -25,6 +25,8 @@ const fixSweetAlertZIndex = () => {
     if (swalContainer) swalContainer.style.zIndex = '10050';
 };
 
+
+
 document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('DOMNodeInserted', (event) => {
         if (event.target.classList?.contains('swal2-container')) fixSweetAlertZIndex();
@@ -301,3 +303,8 @@ document.addEventListener("turbo:load", () => {
         });
     });
 });
+
+/* =======================================================
+    Exponer SweetAlert2 al ámbito global (window)
+======================================================= */
+window.Swal = Swal;

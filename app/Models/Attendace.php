@@ -17,7 +17,7 @@ class Attendace extends Model
         'date',
         'check_in',
         'check_out',
-        'dni_key',
+        'type',
         'status',
     ];
 
@@ -26,8 +26,8 @@ class Attendace extends Model
      */
     protected $casts = [
         'date' => 'date',
-        'check_in' => 'datetime:H:i:s',
-        'check_out' => 'datetime:H:i:s',
+        'check_in' => 'datetime:H:i',
+        'check_out' => 'datetime:H:i',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

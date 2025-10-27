@@ -19,7 +19,6 @@ use App\Http\Controllers\Api\DistrictController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\ProvinceController;
 use App\Http\Controllers\Api\Schedule\ContractController;
-use App\Http\Controllers\Api\Schedule\VacationController;
 use App\Http\Controllers\Api\User\AttendaceController;
 use App\Http\Controllers\Api\ZoneCoordController;
 use Illuminate\Support\Facades\Artisan;
@@ -55,8 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Recursos protegidos
-    Route::apiResource('brand-models', BrandModelController::class);
-    Route::apiResource('brands', BrandController::class);
+    // Route::apiResource('brand-models', BrandModelController::class);
+    // Route::apiResource('brands', BrandController::class);
     Route::apiResource('vehicle-colors', VehicleColorController::class);
     Route::apiResource('user-types', UserTypeController::class);
     Route::apiResource('persona', UserController::class);
@@ -69,10 +68,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('departments', DepartmentController::class);
     Route::apiResource('provinces', ProvinceController::class);
     Route::apiResource('zone-coords', ZoneCoordController::class);
-    Route::apiResource('contracts', ContractController::class);
-    Route::apiResource('vacations', VacationController::class);
+    //Route::apiResource('contracts', ContractController::class);
+    //Route::apiResource('vacations', VacationController::class);
     Route::apiResource('vehicle-types', VehicleTypeController::class);
-    Route::apiResource('attendances', AttendaceController::class);
+    Route::apiResource('attendances1', AttendaceController::class);
     
     // Ruta para obtener sectores por distrito
     Route::get('sectors', [SectorController::class, 'index']);

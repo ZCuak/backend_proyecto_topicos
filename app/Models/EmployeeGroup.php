@@ -39,4 +39,9 @@ class EmployeeGroup extends Model
         return $this->hasMany(Scheduling::class, 'group_id');
     }
 
+    public function configgroups()
+    {
+        return $this->hasMany(ConfigGroup::class, 'group_id');
+    }
+
 }
