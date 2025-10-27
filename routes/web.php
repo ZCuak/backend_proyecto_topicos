@@ -17,9 +17,11 @@ use App\Http\Controllers\Api\Schedule\SchedulingController; //programaciones
 use App\Http\Controllers\Api\Schedule\ScheduleController; //turnos o shifts
 use App\Http\Controllers\Api\User\UserTypeController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
+use App\Http\Controllers\Api\Schedule\EmployeeGroupController;
 use App\Http\Controllers\Web\ContractController;
 use App\Http\Controllers\Web\VacationController;
 use App\Http\Controllers\Web\ZoneController;
+use App\Models\EmployeeGroup;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -56,4 +58,5 @@ Route::middleware('auth')->group(function () {
     Route::resource('usertypes', UserTypeController::class);
     Route::resource('vehicletypes', VehicleTypeController::class);
     Route::resource('attendances', AttendaceController::class);
+    Route::resource('groups', EmployeeGroupController::class);
 });

@@ -100,7 +100,7 @@ class BrandController extends Controller
             if ($isTurbo) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Marca registrado exitosamente.',
+                    'message' => 'Marca registrada exitosamente.',
                 ], 201);
             }
 

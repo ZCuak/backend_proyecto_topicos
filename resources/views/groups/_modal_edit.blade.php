@@ -20,7 +20,7 @@
                 <div class="flyonui-header flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
                     <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
                         <i class="fa-solid fa-user-pen text-emerald-600"></i>
-                        Editar Marca
+                        Editar Grupo
                     </h3>
                     <button type="button"
                             onclick="FlyonUI.modal.close('editModal')"
@@ -31,7 +31,7 @@
 
                 <!-- Body -->
                 <div class="flyonui-body p-6 bg-white overflow-y-auto max-h-[85vh]">
-                    <form action="{{ route('brands.update', $brand->id) }}"
+                    <form action="{{ route('groups.update', $group->id) }}"
                           method="POST"
                           enctype="multipart/form-data"
                           data-turbo-frame="modal-frame"
@@ -39,7 +39,7 @@
                         @csrf
                         @method('PUT')
 
-                        @include('brands._form', ['buttonText' => 'Actualizar'])
+                        @include('groups._form', ['buttonText' => 'Actualizar'])
                     </form>
                 </div>
             </div>
