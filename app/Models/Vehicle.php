@@ -71,9 +71,26 @@ class Vehicle extends Model
 
     /**
      * 🔹 Relación: Rutas o programaciones donde participa el vehículo
+     * TODO: Implementar cuando se cree el modelo VehicleRoute
      */
-    public function routes()
+    // public function routes()
+    // {
+    //     return $this->hasMany(\App\Models\VehicleRoute::class, 'vehicle_id');
+    // }
+
+    /**
+     * 🔹 Relación: Imágenes del vehículo
+     */
+    public function images()
     {
-        return $this->hasMany(VehicleRoute::class, 'vehicle_id');
+        return $this->hasMany(VehicleImage::class, 'vehicle_id');
+    }
+
+    /**
+     * 🔹 Relación: Imagen de perfil
+     */
+    public function profileImage()
+    {
+        return $this->hasOne(VehicleImage::class, 'vehicle_id')->where('is_profile', true);
     }
 }

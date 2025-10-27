@@ -14,7 +14,7 @@ class Scheduling extends Model
 
     protected $fillable = [
         'group_id',
-        'shift_id',
+        'schedule_id',
         'vehicle_id',
         'zone_id',
         'date',
