@@ -60,7 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('user-types', UserTypeController::class);
     Route::apiResource('persona', UserController::class);
     Route::apiResource('schedulings', SchedulingController::class);
-    Route::apiResource('schedules', ScheduleController::class);
+
     Route::apiResource('vehicles', VehicleController::class);
     Route::apiResource('zones-api', ZoneController::class);
     Route::apiResource('sectors', SectorController::class);

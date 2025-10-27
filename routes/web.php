@@ -44,6 +44,7 @@ Route::middleware('auth')->group(function () {
 
 
     Route::resource('personal', UserController::class);
+    Route::resource('vehiclecolors', VehicleColorController::class);
     Route::resource('brand-models', BrandModelController::class);
     Route::resource('brands', BrandController::class);
     Route::resource('zones', ZoneController::class);
@@ -55,5 +56,6 @@ Route::middleware('auth')->group(function () {
     Route::get('zones/sectors/{districtId}', [ZoneController::class, 'getSectorsByDistrict'])->name('zones.sectors');
     Route::resource('usertypes', UserTypeController::class);
     Route::resource('vehicletypes', VehicleTypeController::class);
+    Route::resource('schedules', ScheduleController::class);
     Route::resource('attendances', AttendaceController::class);
 });
