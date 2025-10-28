@@ -40,6 +40,12 @@
         </button>
     </form>
 
+    {{-- MAPA: Mostrar todas las zonas registradas --}}
+    <div class="mt-6 bg-white rounded-xl shadow-md border border-slate-100 p-4">
+        <h2 class="text-lg font-semibold text-slate-700 mb-3">Mapa de Zonas</h2>
+        <div id="zonesMap" class="w-full rounded-md" style="height: 420px;"></div>
+    </div>
+
     {{-- TABLA DE ZONAS --}}
     <div class="bg-white rounded-xl shadow-md border border-slate-100 overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -115,4 +121,76 @@
         {{ $zones->links() }}
     </div>
 </div>
+<script>
+document.addEventListener('turbo:load', function () {
+    try {
+        const zones = @json($zonesAll ?? []);
+        const mapContainer = document.getElementById('zonesMap');
+        if (!mapContainer) return;
+
+        // 🧹 Si ya hay un mapa Leaflet activo, destruirlo completamente
+        if (mapContainer._leaflet_map_instance) {
+            mapContainer._leaflet_map_instance.remove();
+            mapContainer._leaflet_map_instance = null;
+        }
+
+        // 🗺️ Crear nuevo mapa limpio
+        const map = L.map('zonesMap', { zoomControl: true, scrollWheelZoom: true, dragging: true })
+            .setView([-8.09, -79.11], 12);
+
+        // Guardar referencia del mapa en el DOM (para futuras limpiezas)
+        mapContainer._leaflet_map_instance = map;
+
+        // Cargar capa base
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const boundsList = [];
+
+        zones.forEach(zone => {
+            if (!zone.coordinates || zone.coordinates.length < 1) return;
+
+            const latlngs = zone.coordinates.map(c => [parseFloat(c.latitude), parseFloat(c.longitude)]);
+            if (latlngs.some(p => isNaN(p[0]) || isNaN(p[1]))) return;
+
+            const polygon = L.polygon(latlngs, {
+                color: '#06b6d4',
+                weight: 2,
+                opacity: 0.85,
+                fillOpacity: 0.12
+            }).addTo(map);
+
+            boundsList.push(polygon.getBounds());
+
+            const districtName = zone.district ? zone.district.name : '';
+            const sectorName = zone.sector ? zone.sector.name : '';
+
+            const popupHtml = `
+                <div style="min-width:200px">
+                    <strong style="font-size:1rem">${zone.name}</strong>
+                    <div style="font-size:0.85rem;color:#475569">${districtName} ${sectorName ? ' / ' + sectorName : ''}</div>
+                    <div style="margin-top:8px;font-size:0.85rem">${zone.description || ''}</div>
+                    <div style="margin-top:8px"><a href="${'{{ url("zones") }}'}/${zone.id}" class="text-emerald-600">Ver detalle</a></div>
+                </div>
+            `;
+            polygon.bindPopup(popupHtml);
+        });
+
+        if (boundsList.length) {
+            const combined = boundsList.reduce((acc, b) => acc ? acc.extend(b) : b, null);
+            map.fitBounds(combined.pad(0.1));
+        }
+
+        // 🧭 Asegurar controles activos
+        map.scrollWheelZoom.enable();
+        map.dragging.enable();
+
+    } catch (e) {
+        console.error('Error inicializando mapa de zonas:', e);
+    }
+});
+</script>
+    
 @endsection
