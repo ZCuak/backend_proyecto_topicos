@@ -28,7 +28,8 @@ class SectorSeeder extends Seeder
         }
 
         $data = $response->json();
-        echo $data;
+        print_r($data);
+
         if (! isset($data['features'])) {
             $this->command->error("⚠️ La respuesta no contiene 'features'");
             file_put_contents(storage_path('logs/sector_debug.json'), $response->body());
@@ -59,7 +60,7 @@ class SectorSeeder extends Seeder
                 'name' => $name,
                 'area' => $props['shape_area'] ?? null,
                 'description' => 'Manzana censal importada desde INEI',
-                'district_id' => $districtId,
+                'district_id' => 1255,
             ]);
 
             $count++;

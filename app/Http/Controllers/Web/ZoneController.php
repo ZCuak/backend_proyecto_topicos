@@ -33,7 +33,11 @@ class ZoneController extends Controller
             }
 
             $zones = $query->paginate(10);
-            return view('zones.index', compact('zones', 'search'));
+
+            // Para el mapa necesitamos todas las zonas (sin paginar) con sus coordenadas
+            $zonesAll = Zone::with(['district', 'sector', 'coordinates'])->get();
+
+            return view('zones.index', compact('zones', 'search', 'zonesAll'));
         } catch (\Exception $e) {
             return back()->with('error', 'Error al listar zonas: ' . $e->getMessage());
         }
