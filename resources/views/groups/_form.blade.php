@@ -96,8 +96,8 @@
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Conductor <span class="text-red-500">*</span></label>
                 <div class="relative">
-                    <select name="driver_id" class="h-7 w-7 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 transition">
-                        @foreach($users as $user)
+                    <select name="driver_id" class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
+                        @foreach($users->where('usertype_id',1) as $user)
                             <option value="{{ $user->id }}"
                                 {{ old('driver_id', $driver_id ?? '') == $user->id ? 'selected' : '' }}>
                                 {{ $user->firstname.' '.$user->lastname  }}
@@ -111,8 +111,8 @@
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Ayudante 1 <span class="text-red-500">*</span></label>
                 <div class="relative">
-                    <select name="user1_id" class="h-7 w-7 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 transition">
-                        @foreach($users as $user)
+                    <select name="user1_id" class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
+                        @foreach($users->where('usertype_id',2) as $user)
                             <option value="{{ $user->id }}"
                                 {{ old('user1_id', $user1_id ?? '') == $user->id ? 'selected' : '' }}>
                                 {{ $user->firstname.' '.$user->lastname  }}
@@ -124,8 +124,8 @@
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Ayudante 2 </label>
                 <div class="relative">
-                    <select name="user2_id" class="h-7 w-7 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 transition">
-                        @foreach($users as $user)
+                    <select name="user2_id" class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
+                        @foreach($users->where('usertype_id',2) as $user)
                             <option value="{{ $user->id }}"
                                 {{ old('user2_id', $user2_id ?? '') == $user->id ? 'selected' : '' }}>
                                 {{ $user->firstname.' '.$user->lastname  }}
