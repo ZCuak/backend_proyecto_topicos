@@ -40,7 +40,7 @@
                         <label class="text-sm font-medium text-slate-500">Fecha</label>
                         <p class="text-slate-800 font-medium flex items-center gap-2">
                             <i class="fa-solid fa-calendar text-emerald-600"></i>
-                            {{ \Carbon\Carbon::parse($scheduling->date)->format('d/m/Y') }}
+                            {{ is_string($scheduling->date) ? \Carbon\Carbon::parse($scheduling->date)->format('d/m/Y') : $scheduling->date->format('d/m/Y') }}
                         </p>
                     </div>
                     

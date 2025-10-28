@@ -44,4 +44,21 @@ class EmployeeGroup extends Model
         return $this->hasMany(ConfigGroup::class, 'group_id');
     }
 
+    /**
+     * Obtener usuarios del grupo a través de ConfigGroup
+     */
+    public function users()
+    {
+        return $this->hasManyThrough(User::class, ConfigGroup::class, 'group_id', 'id', 'id', 'user_id');
+    }
+
+    /**
+     * Obtener usuarios con contratos activos del grupo
+     */
+    public function usersWithActiveContracts()
+    {
+        return $this->users()->whereHas('contracts', function($query) {
+            $query->where('is_active', true);
+        });
+    }
 }

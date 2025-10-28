@@ -12,6 +12,11 @@
         </div>
 
         <div class="flex gap-2">
+            <a href="{{ route('schedulings.calendar') }}"
+               class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+               <i class="fa-solid fa-calendar"></i> Vista Calendario
+            </a>
+            
             <a href="{{ route('schedulings.create') }}"
                data-turbo-frame="modal-frame"
                class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
@@ -85,7 +90,7 @@
                             <div class="flex items-center gap-2">
                                 <i class="fa-solid fa-calendar text-emerald-600"></i>
                                 <span class="text-slate-700 font-medium">
-                                    {{ \Carbon\Carbon::parse($scheduling->date)->format('d/m/Y') }}
+                                    {{ is_string($scheduling->date) ? \Carbon\Carbon::parse($scheduling->date)->format('d/m/Y') : $scheduling->date->format('d/m/Y') }}
                                 </span>
                             </div>
                         </td>

@@ -26,7 +26,7 @@
                 <div class="relative">
                     <i class="fa-solid fa-calendar absolute left-3 top-2.5 text-slate-400"></i>
                     <input type="date" name="date"
-                        value="{{ old('date', isset($scheduling) ? $scheduling->date->format('Y-m-d') : date('Y-m-d')) }}"
+                        value="{{ old('date', isset($scheduling) ? (is_string($scheduling->date) ? $scheduling->date : $scheduling->date->format('Y-m-d')) : date('Y-m-d')) }}"
                         class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('date') border-red-500 @enderror"
                         min="{{ date('Y-m-d') }}">
                 </div>

@@ -51,6 +51,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('zones', ZoneController::class);
     Route::resource('vehicles', VehicleController::class);
     // Rutas para programación masiva
+    Route::get('schedulings/calendar', [SchedulingController::class, 'calendar'])->name('schedulings.calendar');
+    Route::get('schedulings/{id}/details', [SchedulingController::class, 'getSchedulingDetails'])->name('schedulings.details');
     Route::get('schedulings/create-massive', [SchedulingController::class, 'createMassive'])->name('schedulings.create-massive');
     Route::post('schedulings/store-massive', [SchedulingController::class, 'storeMassive'])->name('schedulings.store-massive');
     

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 class SchedulingController extends Controller
 {
     /**
-     * Listar programaciones (Web)
+     * Listar programaciones (Web) - Vista de tabla
      */
     public function index(Request $request)
     {
@@ -50,6 +50,118 @@ class SchedulingController extends Controller
         ]);
 
         return view('schedulings.index', compact('schedulings', 'search', 'dateFilter'));
+    }
+
+    /**
+     * Mostrar calendario de programaciones (Web)
+     */
+    public function calendar(Request $request)
+    {
+        $year = $request->input('year', now()->year);
+        $month = $request->input('month', now()->month);
+        
+        // Obtener programaciones del mes seleccionado
+        $startDate = \Carbon\Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = $startDate->copy()->endOfMonth();
+        
+        $schedulings = Scheduling::with(['group', 'schedule', 'vehicle', 'zone', 'details.user'])
+            ->whereBetween('date', [$startDate, $endDate])
+            ->orderBy('date')
+            ->orderBy('schedule_id')
+            ->get()
+            ->map(function($scheduling) {
+                // Asegurar que date sea un objeto Carbon
+                if (is_string($scheduling->date)) {
+                    $scheduling->date = \Carbon\Carbon::parse($scheduling->date);
+                }
+                return $scheduling;
+            });
+        
+        // Obtener horarios para identificar turnos
+        $schedules = \App\Models\Schedule::orderBy('time_start')->get();
+        
+        // Organizar programaciones por fecha y turno
+        $calendarData = [];
+        foreach ($schedulings as $scheduling) {
+            $date = $scheduling->date->format('Y-m-d');
+            $scheduleId = $scheduling->schedule_id;
+            
+            if (!isset($calendarData[$date])) {
+                $calendarData[$date] = [];
+            }
+            
+            if (!isset($calendarData[$date][$scheduleId])) {
+                $calendarData[$date][$scheduleId] = [];
+            }
+            
+            $calendarData[$date][$scheduleId][] = $scheduling;
+        }
+        
+        // Generar días del calendario
+        $calendarDays = [];
+        $currentDate = $startDate->copy();
+        
+        // Días del mes anterior (para completar la primera semana)
+        $firstDayOfWeek = $startDate->dayOfWeek;
+        $prevMonth = $startDate->copy()->subMonth();
+        $daysInPrevMonth = $prevMonth->daysInMonth;
+        
+        for ($i = $firstDayOfWeek - 1; $i >= 0; $i--) {
+            $day = $daysInPrevMonth - $i;
+            $calendarDays[] = [
+                'date' => $prevMonth->copy()->day($day),
+                'isCurrentMonth' => false,
+                'isToday' => false,
+                'schedulings' => []
+            ];
+        }
+        
+        // Días del mes actual
+        while ($currentDate->month == $month) {
+            $dateString = $currentDate->format('Y-m-d');
+            $calendarDays[] = [
+                'date' => $currentDate->copy(),
+                'isCurrentMonth' => true,
+                'isToday' => $currentDate->isToday(),
+                'schedulings' => $calendarData[$dateString] ?? []
+            ];
+            $currentDate->addDay();
+        }
+        
+        // Días del mes siguiente (para completar la última semana)
+        $lastDayOfWeek = $currentDate->subDay()->dayOfWeek;
+        $nextMonth = $currentDate->copy()->addMonth();
+        
+        for ($i = 1; $i <= (6 - $lastDayOfWeek); $i++) {
+            $calendarDays[] = [
+                'date' => $nextMonth->copy()->day($i),
+                'isCurrentMonth' => false,
+                'isToday' => false,
+                'schedulings' => []
+            ];
+        }
+        
+        return view('schedulings.calendar', compact('calendarDays', 'schedules', 'year', 'month'));
+    }
+
+    /**
+     * Obtener detalles de programación para el modal del calendario
+     */
+    public function getSchedulingDetails($id)
+    {
+        $scheduling = Scheduling::with(['group', 'schedule', 'vehicle', 'zone', 'details.user.userType'])
+            ->findOrFail($id);
+        
+        // Asegurar que date sea un objeto Carbon
+        if (is_string($scheduling->date)) {
+            $scheduling->date = \Carbon\Carbon::parse($scheduling->date);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'data' => $scheduling,
+            'html' => view('schedulings._modal_details', compact('scheduling'))->render()
+        ]);
     }
 
     /**
@@ -109,6 +221,12 @@ class SchedulingController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
+        // Validación adicional: Verificar que el grupo tenga usuarios con contratos activos
+        $validationError = $this->validateGroupHasActiveContracts($request->group_id, $isTurbo);
+        if ($validationError) {
+            return $validationError;
+        }
+
         DB::beginTransaction();
         try {
             $data = $validator->validated();
@@ -123,7 +241,68 @@ class SchedulingController extends Controller
             
             Log::info('Validated data: ', $data);
             
+            // Verificar sobreposición antes de crear
+            $existingScheduling = Scheduling::where('date', $data['date'])
+                ->where('group_id', $data['group_id'])
+                ->where('schedule_id', $data['schedule_id'])
+                ->first();
+            
+            if ($existingScheduling) {
+                $errorMessage = 'Ya existe una programación para este grupo, horario y fecha.';
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => ['date' => [$errorMessage]],
+                    ], 422);
+                }
+                return back()->withErrors(['date' => $errorMessage])->withInput();
+            }
+            
+            // Verificar conflictos con vehículo
+            if ($data['vehicle_id']) {
+                $vehicleConflict = Scheduling::where('date', $data['date'])
+                    ->where('vehicle_id', $data['vehicle_id'])
+                    ->where('schedule_id', $data['schedule_id'])
+                    ->first();
+                
+                if ($vehicleConflict) {
+                    $errorMessage = 'El vehículo seleccionado ya está programado para esta fecha y horario.';
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $errorMessage,
+                            'errors' => ['vehicle_id' => [$errorMessage]],
+                        ], 422);
+                    }
+                    return back()->withErrors(['vehicle_id' => $errorMessage])->withInput();
+                }
+            }
+            
+            // Verificar conflictos con zona
+            if ($data['zone_id']) {
+                $zoneConflict = Scheduling::where('date', $data['date'])
+                    ->where('zone_id', $data['zone_id'])
+                    ->where('schedule_id', $data['schedule_id'])
+                    ->first();
+                
+                if ($zoneConflict) {
+                    $errorMessage = 'La zona seleccionada ya está programada para esta fecha y horario.';
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $errorMessage,
+                            'errors' => ['zone_id' => [$errorMessage]],
+                        ], 422);
+                    }
+                    return back()->withErrors(['zone_id' => $errorMessage])->withInput();
+                }
+            }
+            
             $scheduling = Scheduling::create($data);
+            
+            // Crear detalles de programación
+            $this->createSchedulingDetails($scheduling->id, $data['group_id']);
             
             Log::info('Scheduling created with ID: ' . $scheduling->id);
             
@@ -233,6 +412,67 @@ class SchedulingController extends Controller
             
             Log::info('Validated data: ', $data);
             
+            // Verificar sobreposición antes de actualizar (excluyendo el registro actual)
+            $existingScheduling = Scheduling::where('date', $data['date'])
+                ->where('group_id', $data['group_id'])
+                ->where('schedule_id', $data['schedule_id'])
+                ->where('id', '!=', $scheduling->id)
+                ->first();
+            
+            if ($existingScheduling) {
+                $errorMessage = 'Ya existe una programación para este grupo, horario y fecha.';
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => ['date' => [$errorMessage]],
+                    ], 422);
+                }
+                return back()->withErrors(['date' => $errorMessage])->withInput();
+            }
+            
+            // Verificar conflictos con vehículo (excluyendo el registro actual)
+            if ($data['vehicle_id']) {
+                $vehicleConflict = Scheduling::where('date', $data['date'])
+                    ->where('vehicle_id', $data['vehicle_id'])
+                    ->where('schedule_id', $data['schedule_id'])
+                    ->where('id', '!=', $scheduling->id)
+                    ->first();
+                
+                if ($vehicleConflict) {
+                    $errorMessage = 'El vehículo seleccionado ya está programado para esta fecha y horario.';
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $errorMessage,
+                            'errors' => ['vehicle_id' => [$errorMessage]],
+                        ], 422);
+                    }
+                    return back()->withErrors(['vehicle_id' => $errorMessage])->withInput();
+                }
+            }
+            
+            // Verificar conflictos con zona (excluyendo el registro actual)
+            if ($data['zone_id']) {
+                $zoneConflict = Scheduling::where('date', $data['date'])
+                    ->where('zone_id', $data['zone_id'])
+                    ->where('schedule_id', $data['schedule_id'])
+                    ->where('id', '!=', $scheduling->id)
+                    ->first();
+                
+                if ($zoneConflict) {
+                    $errorMessage = 'La zona seleccionada ya está programada para esta fecha y horario.';
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $errorMessage,
+                            'errors' => ['zone_id' => [$errorMessage]],
+                        ], 422);
+                    }
+                    return back()->withErrors(['zone_id' => $errorMessage])->withInput();
+                }
+            }
+            
             $scheduling->update($data);
             
             Log::info('Scheduling updated successfully');
@@ -312,7 +552,7 @@ class SchedulingController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'status' => 'nullable|integer|in:0,1,2,3',
             'notes' => 'nullable|string|max:500',
-            'exclude_weekends' => 'boolean',
+            'exclude_weekends' => 'nullable|boolean',
             'exclude_specific_dates' => 'nullable|string'
         ], [
             'group_id.required' => 'El grupo de empleados es obligatorio',
@@ -341,6 +581,17 @@ class SchedulingController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
+        // Validación adicional: Verificar contratos activos con position_id correcto y fechas
+        $programmingDates = [
+            'start' => $request->start_date,
+            'end' => $request->end_date
+        ];
+        
+        $contractValidation = $this->validateGroupContractsForProgramming($request->group_id, $programmingDates, $isTurbo);
+        if ($contractValidation) {
+            return $contractValidation;
+        }
+
         DB::beginTransaction();
         try {
             $data = $validator->validated();
@@ -353,9 +604,12 @@ class SchedulingController extends Controller
             $startDate = \Carbon\Carbon::parse($data['start_date']);
             $endDate = \Carbon\Carbon::parse($data['end_date']);
             $excludeWeekends = $data['exclude_weekends'] ?? false;
-            $excludeSpecificDates = $data['exclude_specific_dates'] ? explode(',', $data['exclude_specific_dates']) : [];
+            $excludeSpecificDates = isset($data['exclude_specific_dates']) && $data['exclude_specific_dates'] 
+                ? explode(',', $data['exclude_specific_dates']) 
+                : [];
             
             $createdCount = 0;
+            $conflictDates = [];
             $currentDate = $startDate->copy();
             
             while ($currentDate->lte($endDate)) {
@@ -378,8 +632,34 @@ class SchedulingController extends Controller
                     ->where('schedule_id', $data['schedule_id'])
                     ->first();
                 
-                if (!$existingScheduling) {
-                    Scheduling::create([
+                // Verificar también si hay conflictos con vehículo en la misma fecha y horario
+                $vehicleConflict = null;
+                if ($data['vehicle_id']) {
+                    $vehicleConflict = Scheduling::where('date', $dateString)
+                        ->where('vehicle_id', $data['vehicle_id'])
+                        ->where('schedule_id', $data['schedule_id'])
+                        ->where('id', '!=', $existingScheduling?->id)
+                        ->first();
+                }
+                
+                // Verificar conflictos con zona en la misma fecha y horario
+                $zoneConflict = null;
+                if ($data['zone_id']) {
+                    $zoneConflict = Scheduling::where('date', $dateString)
+                        ->where('zone_id', $data['zone_id'])
+                        ->where('schedule_id', $data['schedule_id'])
+                        ->where('id', '!=', $existingScheduling?->id)
+                        ->first();
+                }
+                
+                if ($existingScheduling) {
+                    $conflictDates[] = "Ya existe una programación para el grupo, horario y fecha {$dateString}";
+                } elseif ($vehicleConflict) {
+                    $conflictDates[] = "El vehículo ya está programado para la fecha {$dateString} y horario";
+                } elseif ($zoneConflict) {
+                    $conflictDates[] = "La zona ya está programada para la fecha {$dateString} y horario";
+                } else {
+                    $scheduling = Scheduling::create([
                         'group_id' => $data['group_id'],
                         'schedule_id' => $data['schedule_id'],
                         'vehicle_id' => $data['vehicle_id'],
@@ -388,10 +668,27 @@ class SchedulingController extends Controller
                         'status' => $data['status'],
                         'notes' => $data['notes']
                     ]);
+                    
+                    // Crear detalles de programación
+                    $this->createSchedulingDetails($scheduling->id, $data['group_id']);
+                    
                     $createdCount++;
                 }
                 
                 $currentDate->addDay();
+            }
+            
+            // Si hay conflictos, mostrar error
+            if (!empty($conflictDates)) {
+                $errorMessage = 'Se encontraron conflictos en las siguientes fechas: ' . implode(', ', $conflictDates);
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => ['start_date' => [$errorMessage]],
+                    ], 422);
+                }
+                return back()->withErrors(['start_date' => $errorMessage])->withInput();
             }
             
             Log::info("Massive scheduling created: {$createdCount} schedulings");
@@ -421,5 +718,211 @@ class SchedulingController extends Controller
                 ->withInput()
                 ->with('error', 'Error al registrar programaciones masivas: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Obtener usuarios con contratos activos de un grupo
+     */
+    private function getGroupUsersWithActiveContracts($groupId)
+    {
+        return \App\Models\ConfigGroup::where('group_id', $groupId)
+            ->with(['user.contracts' => function($query) {
+                $query->where('is_active', true);
+            }])
+            ->get()
+            ->filter(function($configGroup) {
+                return $configGroup->user->contracts->isNotEmpty();
+            });
+    }
+
+    /**
+     * Validar que un grupo tenga usuarios con contratos activos
+     */
+    private function validateGroupHasActiveContracts($groupId, $isTurbo = false)
+    {
+        $groupUsers = $this->getGroupUsersWithActiveContracts($groupId);
+
+        if ($groupUsers->isEmpty()) {
+            $errorMessage = 'El grupo seleccionado no tiene usuarios con contratos activos.';
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage,
+                    'errors' => ['group_id' => [$errorMessage]],
+                ], 422);
+            }
+            return back()->withErrors(['group_id' => $errorMessage])->withInput();
+        }
+
+        return null; // No hay errores
+    }
+
+    /**
+     * Validar contratos de usuarios del grupo para programación
+     */
+    private function validateGroupContractsForProgramming($groupId, $programmingDates, $isTurbo = false)
+    {
+        $groupUsers = \App\Models\ConfigGroup::where('group_id', $groupId)
+            ->with(['user.contracts' => function($query) {
+                $query->where('is_active', true);
+            }])
+            ->get();
+
+        if ($groupUsers->isEmpty()) {
+            $errorMessage = 'El grupo seleccionado no tiene usuarios asignados.';
+            if ($isTurbo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage,
+                    'errors' => ['group_id' => [$errorMessage]],
+                ], 422);
+            }
+            return back()->withErrors(['group_id' => $errorMessage])->withInput();
+        }
+
+        foreach ($groupUsers as $configGroup) {
+            $user = $configGroup->user;
+            
+            // Verificar si tiene contrato activo
+            if ($user->contracts->isEmpty()) {
+                $errorMessage = "El usuario {$user->firstname} {$user->lastname} no tiene un contrato activo.";
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => ['group_id' => [$errorMessage]],
+                    ], 422);
+                }
+                return back()->withErrors(['group_id' => $errorMessage])->withInput();
+            }
+
+            $activeContract = $user->contracts->first();
+            
+            // Verificar fechas del contrato
+            $contractStartDate = \Carbon\Carbon::parse($activeContract->date_start);
+            $contractEndDate = $activeContract->date_end ? \Carbon\Carbon::parse($activeContract->date_end) : null;
+            
+            // Verificar si el contrato ya expiró
+            if ($contractEndDate && $contractEndDate->isPast()) {
+                $errorMessage = "El contrato del usuario {$user->firstname} {$user->lastname} expiró el {$contractEndDate->format('d/m/Y')}.";
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => ['group_id' => [$errorMessage]],
+                    ], 422);
+                }
+                return back()->withErrors(['group_id' => $errorMessage])->withInput();
+            }
+            
+            // Verificar si el contrato aún no ha iniciado
+            if ($contractStartDate->isFuture()) {
+                $errorMessage = "El contrato del usuario {$user->firstname} {$user->lastname} inicia el {$contractStartDate->format('d/m/Y')}.";
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => ['group_id' => [$errorMessage]],
+                    ], 422);
+                }
+                return back()->withErrors(['group_id' => $errorMessage])->withInput();
+            }
+            
+            // Verificar que el contrato cubra el rango de programación
+            $programmingStart = \Carbon\Carbon::parse($programmingDates['start']);
+            $programmingEnd = \Carbon\Carbon::parse($programmingDates['end']);
+            
+            // Verificar que el contrato cubra el inicio de la programación
+            if ($programmingStart->lt($contractStartDate)) {
+                $errorMessage = "El contrato del usuario {$user->firstname} {$user->lastname} inicia el {$contractStartDate->format('d/m/Y')} pero la programación comienza el {$programmingStart->format('d/m/Y')}.";
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => ['group_id' => [$errorMessage]],
+                    ], 422);
+                }
+                return back()->withErrors(['group_id' => $errorMessage])->withInput();
+            }
+            
+            // Verificar que el contrato cubra el final de la programación (si tiene fecha de fin)
+            if ($contractEndDate && $programmingEnd->gt($contractEndDate)) {
+                $errorMessage = "El contrato del usuario {$user->firstname} {$user->lastname} expira el {$contractEndDate->format('d/m/Y')} pero la programación termina el {$programmingEnd->format('d/m/Y')}.";
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => ['group_id' => [$errorMessage]],
+                    ], 422);
+                }
+                return back()->withErrors(['group_id' => $errorMessage])->withInput();
+            }
+        }
+
+        return null; // No hay errores
+    }
+
+    /**
+     * Crear detalles de programación basados en el grupo
+     */
+    private function createSchedulingDetails($schedulingId, $groupId)
+    {
+        $scheduling = Scheduling::find($schedulingId);
+        
+        // Obtener usuarios del grupo
+        $groupUsers = \App\Models\ConfigGroup::where('group_id', $groupId)
+            ->with('user')
+            ->orderBy('id')
+            ->get();
+
+        // Determinar fechas para crear detalles
+        $dates = [];
+        if ($scheduling->isRangeScheduling()) {
+            // Programación de rango: crear detalles para cada fecha del rango
+            $dates = $scheduling->getAllDates();
+        } else {
+            // Programación de un solo día: solo esa fecha
+            $dateValue = is_string($scheduling->date) ? $scheduling->date : $scheduling->date->format('Y-m-d');
+            $dates = [$dateValue];
+        }
+
+        // Crear detalles para cada usuario en cada fecha
+        foreach ($dates as $date) {
+            $positionOrder = 1;
+            
+            foreach ($groupUsers as $configGroup) {
+                $user = $configGroup->user;
+                
+                // Obtener el usertype_id del contrato activo (que hace referencia a usertypes.id)
+                // Posición 1 = Conductor (usertype_id = 1), Posiciones 2 y 3 = Ayudantes (usertype_id = 2)
+                $activeContract = $user->contracts()->where('is_active', true)->with('position')->first();
+                $usertype_id = $activeContract ? $activeContract->position_id : null;
+
+                // Crear detalle de programación para esta fecha
+                \App\Models\SchedulingDetail::create([
+                    'scheduling_id' => $schedulingId,
+                    'user_id' => $user->id,
+                    'usertype_id' => $usertype_id,
+                    'position_order' => $positionOrder,
+                    'attendance_status' => 'pendiente',
+                    'notes' => null,
+                    'date' => $date,
+                ]);
+
+                $positionOrder++;
+            }
+        }
+    }
+
+    /**
+     * Actualizar detalles de programación
+     */
+    private function updateSchedulingDetails($schedulingId, $groupId)
+    {
+        // Eliminar detalles existentes
+        \App\Models\SchedulingDetail::where('scheduling_id', $schedulingId)->delete();
+        
+        // Crear nuevos detalles
+        $this->createSchedulingDetails($schedulingId, $groupId);
     }
 }
