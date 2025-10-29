@@ -55,22 +55,22 @@ Route::middleware('auth')->group(function () {
     Route::get('schedulings/{id}/details', [SchedulingController::class, 'getSchedulingDetails'])->name('schedulings.details');
     Route::get('schedulings/create-massive', [SchedulingController::class, 'createMassive'])->name('schedulings.create-massive');
     Route::post('schedulings/store-massive', [SchedulingController::class, 'storeMassive'])->name('schedulings.store-massive');
-    
+
     Route::resource('schedulings', SchedulingController::class);
 
     Route::resource('vacations', VacationController::class);
     Route::resource('contracts', ContractController::class);
-    
+
     // Ruta AJAX para obtener sectores por distrito
     Route::get('zones/sectors/{districtId}', [ZoneController::class, 'getSectorsByDistrict'])->name('zones.sectors');
-    
+
     // Ruta AJAX para obtener modelos por marca
     Route::get('vehicles/models/{brandId}', [VehicleController::class, 'getModelsByBrand'])->name('vehicles.models');
-    
+
     // Rutas AJAX para manejo de imágenes
     Route::post('vehicles/{vehicleId}/images/{imageId}/profile', [VehicleController::class, 'setProfileImage'])->name('vehicles.images.profile');
     Route::delete('vehicles/{vehicleId}/images/{imageId}', [VehicleController::class, 'deleteImage'])->name('vehicles.images.delete');
-    
+
     Route::resource('usertypes', UserTypeController::class);
     Route::resource('vehicletypes', VehicleTypeController::class);
     Route::resource('schedules', ScheduleController::class);

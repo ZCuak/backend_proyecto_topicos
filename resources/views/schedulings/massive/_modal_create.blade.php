@@ -13,8 +13,8 @@
              aria-modal="true">
 
             <!-- 🧩 Ancho flexible y acoplable -->
-            <div class="flyonui-dialog relative bg-white rounded-2xl shadow-2xl w-full 
-                        max-w-4xl sm:mx-4 overflow-hidden 
+            <div class="flyonui-dialog relative bg-white rounded-2xl shadow-2xl w-full
+                        max-w-4xl sm:mx-4 overflow-hidden
                         animate-[flyonui-fade-in_0.3s_ease-out]">
 
                 <!-- Header -->

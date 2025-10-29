@@ -34,7 +34,7 @@
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
-            
+
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Fin <span class="text-red-500">*</span></label>
                 <div class="relative">
@@ -76,6 +76,34 @@
                 class="w-full py-2 px-3 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Notas adicionales para todas las programaciones...">{{ old('notes') }}</textarea>
         </div>
+
+        {{-- Días de la semana --}}
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Días de la semana</label>
+            <div class="flex gap-3 flex-wrap">
+                @php
+                    $days = [
+                        'lunes' => 'Lun',
+                        'martes' => 'Mar',
+                        'miercoles' => 'Mié',
+                        'jueves' => 'Jue',
+                        'viernes' => 'Vie',
+                        'sabado' => 'Sáb',
+                        'domingo' => 'Dom',
+                    ];
+                    $selectedDays = old('days', []);
+                @endphp
+                @foreach($days as $key => $label)
+                    <label class="inline-flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" name="days[]" value="{{ $key }}"
+                            class="h-7 w-7 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 transition"
+                            {{ in_array($key, $selectedDays) ? 'checked' : '' }}>
+                        <span class="text-slate-700 text-sm">{{ $label }}</span>
+                    </label>
+                @endforeach
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Selecciona los días de la semana para las programaciones. Si no seleccionas ningún día, se aplicará a todos los días del rango.</p>
+        </div>
     </fieldset>
 
     {{-- ===========================
@@ -107,7 +135,7 @@
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
-            
+
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Horario <span class="text-red-500">*</span></label>
                 <div class="relative">
@@ -150,7 +178,7 @@
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
-            
+
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Zona</label>
                 <div class="relative">
@@ -191,7 +219,7 @@
 <script>
 (function() {
     'use strict';
-    
+
     // Validación del formulario antes de enviar
     document.querySelector('form').addEventListener('submit', function(e) {
         const requiredFields = [
@@ -200,31 +228,31 @@
             { name: 'group_id', label: 'Grupo de empleados' },
             { name: 'schedule_id', label: 'Horario' }
         ];
-    
+
         let hasErrors = false;
         let errorMessages = [];
-        
+
         // Limpiar errores anteriores
         document.querySelectorAll('.field-error').forEach(el => el.remove());
         document.querySelectorAll('.border-red-500').forEach(el => {
             el.classList.remove('border-red-500');
             el.classList.add('border-slate-300');
         });
-        
+
         // Validar cada campo obligatorio
         requiredFields.forEach(field => {
             const element = document.querySelector(`[name="${field.name}"]`);
             if (element) {
                 const value = element.value.trim();
-                
+
                 if (!value || value === '') {
                     hasErrors = true;
                     errorMessages.push(`${field.label} es obligatorio`);
-                    
+
                     // Marcar campo con error
                     element.classList.add('border-red-500');
                     element.classList.remove('border-slate-300');
-                    
+
                     // Agregar mensaje de error
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'field-error text-red-500 text-xs mt-1';
@@ -233,24 +261,24 @@
                 }
             }
         });
-        
+
         // Validar que la fecha de fin sea posterior a la fecha de inicio
         const startDate = document.querySelector('[name="start_date"]').value;
         const endDate = document.querySelector('[name="end_date"]').value;
-        
+
         if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
             hasErrors = true;
             errorMessages.push('La fecha de fin debe ser posterior a la fecha de inicio');
-            
+
             const endDateElement = document.querySelector('[name="end_date"]');
             endDateElement.classList.add('border-red-500');
             endDateElement.classList.remove('border-slate-300');
         }
-        
+
         // Si hay errores, prevenir envío
         if (hasErrors) {
             e.preventDefault();
-            
+
             // Mostrar mensaje general
             const generalError = document.createElement('div');
             generalError.className = 'mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg';
@@ -260,14 +288,14 @@
                     ${errorMessages.map(msg => `<li class="text-sm">${msg}</li>`).join('')}
                 </ul>
             `;
-            
+
             // Insertar mensaje al inicio del formulario
             const form = document.querySelector('form');
             form.insertBefore(generalError, form.firstChild);
-            
+
             // Scroll al mensaje de error
             generalError.scrollIntoView({ behavior: 'smooth' });
-            
+
             return false;
         }
     });
@@ -277,7 +305,7 @@
         const endDateInput = document.querySelector('input[name="end_date"]');
         const startDate = new Date(e.target.value);
         const endDate = new Date(endDateInput.value);
-        
+
         if (endDate < startDate) {
             endDateInput.setCustomValidity('La fecha de fin debe ser posterior a la fecha de inicio');
             endDateInput.classList.add('border-red-500');
@@ -293,7 +321,7 @@
         const startDateInput = document.querySelector('input[name="start_date"]');
         const startDate = new Date(startDateInput.value);
         const endDate = new Date(e.target.value);
-        
+
         if (endDate < startDate) {
             e.target.setCustomValidity('La fecha de fin debe ser posterior a la fecha de inicio');
             e.target.classList.add('border-red-500');
@@ -313,13 +341,13 @@
         if (element) {
             element.addEventListener('input', function(e) {
                 const value = e.target.value.trim();
-                
+
                 // Remover mensajes de error anteriores
                 const existingError = e.target.parentNode.querySelector('.field-error');
                 if (existingError) {
                     existingError.remove();
                 }
-                
+
                 if (value && value !== '') {
                     // Campo válido
                     e.target.classList.remove('border-red-500');
@@ -332,16 +360,16 @@
                     e.target.setCustomValidity('Este campo es obligatorio');
                 }
             });
-            
+
             element.addEventListener('change', function(e) {
                 const value = e.target.value.trim();
-                
+
                 // Remover mensajes de error anteriores
                 const existingError = e.target.parentNode.querySelector('.field-error');
                 if (existingError) {
                     existingError.remove();
                 }
-                
+
                 if (value && value !== '') {
                     // Campo válido
                     e.target.classList.remove('border-red-500');
