@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendace;
+use App\Models\Contract;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 class AttendaceController extends Controller
@@ -87,9 +87,21 @@ class AttendaceController extends Controller
      */
     public function create()
     {
+
         $usuarios = User::where('status', 'ACTIVO')
-            ->orderBy('firstname', 'asc')
+            ->whereHas('contracts', function ($query) {
+                $query->where('is_active', true)
+                    ->whereDate('date_start', '<=', now())
+                    ->where(function ($q) {
+                        $q->whereNull('date_end')
+                            ->orWhereDate('date_end', '>=', now());
+                    });
+            })
+            ->orderBy('firstname')
             ->get();
+        
+        // dd($usuarios);
+
 
         $attendance = new Attendace();
 
@@ -143,10 +155,19 @@ class AttendaceController extends Controller
         try {
             $user = User::find($request->user_id);
 
-            if (!$user || $user->status !== 'ACTIVO') {
+            $activeContract = Contract::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->whereDate('date_start', '<=', now())
+                ->where(function ($q) {
+                    $q->whereNull('date_end')
+                        ->orWhereDate('date_end', '>=', now());
+                })
+                ->first();
+
+            if (!$user || !$activeContract) {
                 DB::rollBack();
 
-                $mensaje = 'Solo el personal activo puede marcar asistencia.';
+                $mensaje = 'Solo el personal EXISITENTE con contrato ACTIVO puede marcar asistencia.';
 
                 if ($isTurbo) {
                     return response()->json([
@@ -255,7 +276,15 @@ class AttendaceController extends Controller
         $attendance = Attendace::with('user')->findOrFail($id);
 
         $usuarios = User::where('status', 'ACTIVO')
-            ->orderBy('firstname', 'asc')
+            ->whereHas('contracts', function ($query) {
+                $query->where('is_active', true)
+                    ->whereDate('date_start', '<=', now())
+                    ->where(function ($q) {
+                        $q->whereNull('date_end')
+                          ->orWhereDate('date_end', '>=', now());
+                    });
+            })
+            ->orderBy('firstname')
             ->get();
 
         return response()
@@ -415,6 +444,25 @@ class AttendaceController extends Controller
                     'message' => 'Usuario no encontrado',
                     'errors' => ['dni' => ['El DNI o Nombre de usuario no está registrado en el sistema']]
                 ], 404);
+            }
+
+            $activeContract = Contract::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->whereDate('date_start', '<=', now())
+                ->where(function ($q) {
+                    $q->whereNull('date_end')
+                        ->orWhereDate('date_end', '>=', now());
+                })
+                ->first();
+
+            if (!$activeContract) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tiene contrato activo vigente',
+                    'errors' => [
+                        'contract' => ['El usuario no tiene un contrato activo o ha expirado. Contacte a RRHH.']
+                    ]
+                ], 403);
             }
 
             // Verificar contraseña
