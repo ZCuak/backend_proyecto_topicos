@@ -3,6 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use Database\Seeders\Programacion\TurnoSeeder;
+use Database\Seeders\Programacion\ZonasCoordsSeeder;
+use Database\Seeders\Programacion\ZonasSeeder;
+use Database\Seeders\Users\ContractsSeeder;
 use Database\Seeders\Users\UserSeeder;
 use Database\Seeders\Users\UserTypeSeeder;
 use Database\Seeders\Vehicles\BrandModelSeeder;
@@ -26,7 +30,12 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
-            // GeographicDataSeeder::class,
+            GeographicDataSeeder::class,
+            SectorSeeder::class,
+
+            TurnoSeeder::class,
+            ZonasSeeder::class,
+            ZonasCoordsSeeder::class,
 
             UserTypeSeeder::class,
             UserSeeder::class,
@@ -35,6 +44,8 @@ class DatabaseSeeder extends Seeder
             ColorSeeder::class,
             BrandSeeder::class,
             BrandModelSeeder::class,  
+
+            ContractsSeeder::class,
         ]);
     }
 }
