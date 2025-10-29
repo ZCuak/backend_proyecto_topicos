@@ -26,9 +26,9 @@ class ContractsSeeder extends Seeder
 
         foreach ($users as $index => $user) {
             $contractType = match ($index % 3) {
-                0 => 'NOMBRADO',
-                1 => 'PERMANENTE',
-                2 => 'EVENTUAL',
+                0 => 'nombrado',
+                1 => 'permanente',
+                2 => 'eventual',
             };
 
             
@@ -40,21 +40,21 @@ class ContractsSeeder extends Seeder
             $terminationReason = null;
 
             switch ($contractType) {
-                case 'NOMBRADO':
+                case 'nombrado':
                     // Contrato indefinido
                     $dateEnd = null;
                     $vacationDays = 30;
                     $probationMonths = 0;
                     break;
 
-                case 'PERMANENTE':
+                case 'permanente':
                     // Contrato a largo plazo
                     $dateEnd = $dateStart->copy()->addYears(2);
                     $vacationDays = 30;
                     $probationMonths = 3;
                     break;
 
-                case 'EVENTUAL':
+                case 'eventual':
                     // Contrato temporal (2 meses)
                     $dateEnd = $dateStart->copy()->addMonths(2);
                     $vacationDays = 0; // No tienen vacaciones
@@ -87,7 +87,7 @@ class ContractsSeeder extends Seeder
                 'user_id' => $user->id,
                 'salary' => $salary,
                 'position_id' => $user->usertype_id, // Usando usertype como position
-                'department_id' => 1, // Departamento genérico (ajustar según tu estructura)
+                'department_id' => 15, // Departamento genérico (ajustar según tu estructura)
                 'probation_period_months' => $probationMonths,
                 'termination_reason' => $terminationReason,
                 'created_at' => now(),
@@ -101,9 +101,9 @@ class ContractsSeeder extends Seeder
         }
 
         $this->command->info('✅ Se crearon ' . count($contracts) . ' contratos.');
-        $this->command->info('   - NOMBRADOS: ' . collect($contracts)->where('type', 'NOMBRADO')->count());
-        $this->command->info('   - PERMANENTES: ' . collect($contracts)->where('type', 'PERMANENTE')->count());
-        $this->command->info('   - EVENTUALES: ' . collect($contracts)->where('type', 'EVENTUAL')->count());
+        $this->command->info('   - NOMBRADOS: ' . collect($contracts)->where('type', 'nombrado')->count());
+        $this->command->info('   - PERMANENTES: ' . collect($contracts)->where('type', 'permanente')->count());
+        $this->command->info('   - EVENTUALES: ' . collect($contracts)->where('type', 'eventual')->count());
         $this->command->info('   - Activos: ' . collect($contracts)->where('is_active', true)->count());
         $this->command->info('   - Inactivos: ' . collect($contracts)->where('is_active', false)->count());
     }

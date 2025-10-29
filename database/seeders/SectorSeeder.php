@@ -28,7 +28,6 @@ class SectorSeeder extends Seeder
         }
 
         $data = $response->json();
-        print_r($data);
 
         if (! isset($data['features'])) {
             $this->command->error("⚠️ La respuesta no contiene 'features'");
