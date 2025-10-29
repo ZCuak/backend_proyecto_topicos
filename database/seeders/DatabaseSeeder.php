@@ -5,8 +5,10 @@ namespace Database\Seeders;
 use App\Models\User;
 use Database\Seeders\Users\UserSeeder;
 use Database\Seeders\Users\UserTypeSeeder;
+use Database\Seeders\Vehicles\BrandModelSeeder;
+use Database\Seeders\Vehicles\BrandSeeder;
+use Database\Seeders\Vehicles\ColorSeeder;
 use Database\Seeders\Vehicles\VehicleTypeSeeder;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -24,9 +26,15 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
-            VehicleTypeSeeder::class,
+            // GeographicDataSeeder::class,
+
             UserTypeSeeder::class,
             UserSeeder::class,
+
+            VehicleTypeSeeder::class,
+            ColorSeeder::class,
+            BrandSeeder::class,
+            BrandModelSeeder::class,  
         ]);
     }
 }
