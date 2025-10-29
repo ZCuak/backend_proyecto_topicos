@@ -22,6 +22,7 @@ class Scheduling extends Model
         'end_date',
         'status',
         'notes',
+        'days',
     ];
 
     protected $dates = [
@@ -156,5 +157,59 @@ class Scheduling extends Model
     public function scopeSingleDaySchedulings($query)
     {
         return $query->whereNull('start_date')->whereNull('end_date');
+    }
+
+    /**
+     * Obtener los días seleccionados como array
+     */
+    public function getDaysArrayAttribute()
+    {
+        if (empty($this->days)) {
+            return [];
+        }
+
+        return is_array($this->days) ? $this->days : json_decode($this->days, true);
+    }
+
+    /**
+     * Establecer los días desde un array
+     */
+    public function setDaysAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['days'] = json_encode($value);
+        } else {
+            $this->attributes['days'] = $value;
+        }
+    }
+
+    /**
+     * Verificar si un día específico está seleccionado
+     */
+    public function hasDay($day)
+    {
+        $days = $this->getDaysArrayAttribute();
+        return in_array($day, $days);
+    }
+
+    /**
+     * Obtener los nombres de los días en español
+     */
+    public function getDaysNamesAttribute()
+    {
+        $daysMap = [
+            'lunes' => 'Lunes',
+            'martes' => 'Martes',
+            'miercoles' => 'Miércoles',
+            'jueves' => 'Jueves',
+            'viernes' => 'Viernes',
+            'sabado' => 'Sábado',
+            'domingo' => 'Domingo',
+        ];
+
+        $selectedDays = $this->getDaysArrayAttribute();
+        return array_map(function($day) use ($daysMap) {
+            return $daysMap[$day] ?? $day;
+        }, $selectedDays);
     }
 }

@@ -16,13 +16,13 @@
                class="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
                <i class="fa-solid fa-table"></i> Vista de Tabla
             </a>
-            
+
             <a href="{{ route('schedulings.create') }}"
                data-turbo-frame="modal-frame"
                class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
                <i class="fa-solid fa-plus"></i> Nueva Programación
             </a>
-            
+
             <a href="{{ route('schedulings.create-massive') }}"
                data-turbo-frame="modal-frame"
                class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
@@ -38,25 +38,25 @@
                 <h2 class="text-2xl font-bold text-slate-800">
                     {{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}
                 </h2>
-                
+
                 <div class="flex gap-2">
                     <a href="{{ route('schedulings.calendar', ['year' => $month == 1 ? $year - 1 : $year, 'month' => $month == 1 ? 12 : $month - 1]) }}"
                        class="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition">
                         <i class="fa-solid fa-chevron-left"></i>
                     </a>
-                    
+
                     <a href="{{ route('schedulings.calendar', ['year' => now()->year, 'month' => now()->month]) }}"
                        class="px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition">
                         Hoy
                     </a>
-                    
+
                     <a href="{{ route('schedulings.calendar', ['year' => $month == 12 ? $year + 1 : $year, 'month' => $month == 12 ? 1 : $month + 1]) }}"
                        class="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition">
                         <i class="fa-solid fa-chevron-right"></i>
                     </a>
                 </div>
             </div>
-            
+
             {{-- LEYENDA DE TURNOS --}}
             <div class="flex items-center gap-4 text-sm">
                 <div class="flex items-center gap-2">
@@ -94,7 +94,7 @@
                         <span class="text-sm font-medium {{ $day['isCurrentMonth'] ? 'text-slate-700' : 'text-slate-400' }} {{ $day['isToday'] ? 'text-emerald-700 font-bold' : '' }}">
                             {{ $day['date']->format('j') }}
                         </span>
-                        
+
                         @if($day['isCurrentMonth'] && $day['date']->isToday())
                             <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
                         @endif
@@ -106,19 +106,24 @@
                             @php
                                 $morningSchedules = [];
                                 $afternoonSchedules = [];
-                                
+
                                 foreach($day['schedulings'] as $scheduleId => $schedulings) {
                                     $schedule = $schedulings[0]->schedule;
                                     $timeStart = \Carbon\Carbon::parse($schedule->time_start);
-                                    
-                                    if ($timeStart->hour < 12) {
+
+                                    // Lógica simplificada:
+                                    // Turno mañana: inicio antes de las 13:00 (1:00 PM)
+                                    // Turno tarde: inicio a las 13:00 o después
+                                    $isMorning = $timeStart->hour < 13;
+
+                                    if ($isMorning) {
                                         $morningSchedules[$scheduleId] = $schedulings;
                                     } else {
                                         $afternoonSchedules[$scheduleId] = $schedulings;
                                     }
                                 }
                             @endphp
-                            
+
                             {{-- TURNO MAÑANA --}}
                             @if(!empty($morningSchedules))
                                 <div class="bg-orange-100 border border-orange-200 rounded p-1">
@@ -144,7 +149,7 @@
                                     @endforeach
                                 </div>
                             @endif
-                            
+
                             {{-- TURNO TARDE --}}
                             @if(!empty($afternoonSchedules))
                                 <div class="bg-blue-100 border border-blue-200 rounded p-1">
@@ -188,7 +193,7 @@
                             <i class="fa-solid fa-times text-xl"></i>
                         </button>
                     </div>
-                    
+
                     <div id="schedulingDetails">
                         {{-- Contenido cargado dinámicamente --}}
                     </div>
@@ -202,7 +207,7 @@
 function showSchedulingDetails(schedulingId) {
     // Mostrar modal
     document.getElementById('schedulingModal').classList.remove('hidden');
-    
+
     // Mostrar loading
     document.getElementById('schedulingDetails').innerHTML = `
         <div class="text-center py-8">
@@ -210,7 +215,7 @@ function showSchedulingDetails(schedulingId) {
             <p class="text-slate-500">Cargando detalles...</p>
         </div>
     `;
-    
+
     // Cargar detalles desde el servidor
     fetch(`/schedulings/${schedulingId}/details`)
         .then(response => response.json())
