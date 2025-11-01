@@ -137,7 +137,6 @@ trait HistoryChanges
             'auditable_type' => $this->getAuditTypeName($model), // Nombre legible del modelo
             'auditable_id' => $model->id,
             'campo_modificado' => 'registro_eliminado', // Marcador de acción
-            // Guardamos todos los datos (incluyendo IDs) como JSON para el historial
             'valor_anterior' => json_encode($model->getOriginal()),
             'valor_nuevo' => 'ELIMINADO',
             'user_name' => $userName,

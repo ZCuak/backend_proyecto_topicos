@@ -2,9 +2,6 @@
     Este componente se incluye en cualquier vista de detalle para mostrar
     el historial de cambios de un registro específico.
     
-    Variables requeridas:
-    - $audits: Collection de cambios obtenida desde el controlador
-    
     Ejemplo de uso en un controlador:
     
     public function show($id)
@@ -14,7 +11,7 @@
         return view('attendances.show', compact('attendance', 'audits'));
     }
     
-    Ejemplo de uso en una vista:
+    Ejemplo de uso en una vista show:
     
     @include('audits._history_table', ['audits' => $audits])
 --}}
@@ -73,10 +70,6 @@
                             </th>
                             <th
                                 class="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">
-                                Campo
-                            </th>
-                            <th
-                                class="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">
                                 Valor Anterior
                             </th>
                             <th
@@ -84,12 +77,8 @@
                                 Valor Nuevo
                             </th>
                             <th
-                                class="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">
-                                Usuario
-                            </th>
-                            <th
                                 class="px-4 py-3 text-center font-semibold text-slate-600 uppercase tracking-wider text-xs">
-                                Nota
+                                Motivo
                             </th>
                         </tr>
                     </thead>
@@ -112,17 +101,6 @@
                                 </td>
 
                                 {{-- ========================================
-                                     CAMPO MODIFICADO
-                                ======================================== --}}
-                                <td class="px-4 py-3">
-                                    <span
-                                        class="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                        {{ $audit->campo_modificado }}
-                                    </span>
-                                </td>
-
-                                {{-- ========================================
                                      VALOR ANTERIOR
                                 ======================================== --}}
                                 <td class="px-4 py-3">
@@ -135,6 +113,7 @@
                                             <div class="bg-red-50 border border-red-200 rounded-md px-3 py-2">
                                                 <p class="text-xs text-red-700 font-mono break-words"
                                                     title="{{ $audit->valor_anterior }}">
+                                                    {{ $audit->campo_modificado }}:
                                                     {{ Str::limit($audit->valor_anterior ?? '—', 50) }}
                                                 </p>
                                             </div>
@@ -157,6 +136,7 @@
                                             <div class="bg-green-50 border border-green-200 rounded-md px-3 py-2">
                                                 <p class="text-xs text-green-700 font-mono break-words"
                                                     title="{{ $audit->valor_nuevo }}">
+                                                    {{ $audit->campo_modificado }}:
                                                     {{ Str::limit($audit->valor_nuevo ?? '—', 50) }}
                                                 </p>
                                             </div>
@@ -165,54 +145,11 @@
                                 </td>
 
                                 {{-- ========================================
-                                     USUARIO
-                                ======================================== --}}
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="flex items-center gap-2">
-                                        <div
-                                            class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                            <i class="fa-solid fa-user text-emerald-600 text-xs"></i>
-                                        </div>
-                                        <span class="text-slate-600 text-xs font-medium">
-                                            {{ $audit->user_name }}
-                                        </span>
-                                    </div>
-                                </td>
-
-                                {{-- ========================================
                                      NOTA ADICIONAL
                                 ======================================== --}}
-                                <td class="px-4 py-3 text-center">
+                                <td class="px-4 py-3 text-slate-700 font-medium">
                                     @if ($audit->nota_adicional)
-                                        <button type="button" onclick="showAuditNote{{ $audit->id }}()"
-                                            class="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-md hover:bg-amber-100 transition text-xs">
-                                            <i class="fa-solid fa-note-sticky"></i>
-                                            Ver nota
-                                        </button>
-
-                                        {{-- Script único para cada nota --}}
-                                        <script>
-                                            function showAuditNote{{ $audit->id }}() {
-                                                Swal.fire({
-                                                    title: '📝 Nota del Cambio',
-                                                    html: `
-                                                    <div class="text-left space-y-3">
-                                                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                                            <p class="text-xs text-slate-500 mb-1">Fecha del cambio:</p>
-                                                            <p class="text-sm font-semibold text-slate-700">{{ $audit->created_at->format('d/m/Y H:i:s') }}</p>
-                                                        </div>
-                                                        <div class="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                                                            <p class="text-sm text-slate-700 whitespace-pre-wrap">{{ $audit->nota_adicional }}</p>
-                                                        </div>
-                                                    </div>
-                                                `,
-                                                    icon: 'info',
-                                                    confirmButtonText: 'Cerrar',
-                                                    confirmButtonColor: '#10b981',
-                                                    width: '500px'
-                                                });
-                                            }
-                                        </script>
+                                        {{ $audit->nota_adicional }}
                                     @else
                                         <span class="text-slate-400 text-xs italic">Sin nota</span>
                                     @endif

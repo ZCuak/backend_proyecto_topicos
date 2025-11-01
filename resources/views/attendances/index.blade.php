@@ -89,9 +89,7 @@
             </div>
         </div>
 
-        {{-- ========================================
-         BARRA DE BÚSQUEDA CON BOTÓN DE FILTROS
-        ======================================== --}}
+        {{-- BARRA DE BÚSQUEDA CON BOTÓN DE FILTROS --}}
         <div class="flex flex-col sm:flex-row gap-3">
             {{-- Buscador general --}}
             <form method="GET" action="{{ route('attendances.index') }}"
@@ -330,28 +328,6 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeFiltersModal();
         });
-
-        function clearFilters() {
-            window.location.href = '{{ route('attendances.index') }}';
-        }
-        document.addEventListener('DOMContentLoaded', function() {
-            const startDateInput = document.getElementById('start_date');
-            const endDateInput = document.getElementById('end_date');
-
-            const validateDateRange = () => {
-                const startDateValue = startDateInput.value;
-                const endDateValue = endDateInput.value;
-
-                endDateInput.min = startDateValue;
-
-                if (startDateValue && endDateValue && endDateValue < startDateValue) {
-                    endDateInput.value = startDateValue;
-                }
-            };
-
-            startDateInput.addEventListener('change', validateDateRange);
-
-            validateDateRange();
-        });
+        
     </script>
 @endsection

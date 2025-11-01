@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\HistoryController;
 use App\Models\Attendace;
 use App\Models\Contract;
 use App\Models\User;
@@ -249,26 +250,11 @@ class AttendaceController extends Controller
     public function show(string $id)
     {
         try {
-            $attendance = Attendace::with('user:id,name,dni')->find($id);
-
-            if (!$attendance) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Asistencia no encontrada'
-                ], 404);
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $attendance,
-                'message' => 'Asistencia obtenida exitosamente'
-            ], 200);
+            $attendance = Attendace::findOrFail($id);
+            $audits = HistoryController::getHistory('ASISTENCIA DE PERSONAL', $id);
+            return view('attendances.show', compact('attendance', 'audits'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener la asistencia',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Error al mostrar detalle de asistencia: ' . $e->getMessage());
         }
     }
 
