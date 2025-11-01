@@ -10,6 +10,17 @@ class Attendace extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public static $auditName = 'ASISTENCIA DE PERSONAL';
+
+    public static $auditFieldNames = [
+        'user_id'    => 'Personal',
+        'date'       => 'Fecha',
+        'check_in'   => 'Hora de Entrada',
+        'check_out'  => 'Hora de Salida',
+        'status'     => 'Estado',
+        'notes'      => 'Notas (Manuales)',
+    ];
+
     protected $table = 'attendances';
 
     protected $fillable = [
@@ -88,7 +99,7 @@ class Attendace extends Model
     {
         return $query->where('user_id', $userId);
     }
-    
+
     /**
      * Scope: Filtrar por tipo
      */

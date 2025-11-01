@@ -113,7 +113,7 @@
             </summary>
             <div class="pl-14 mt-1 space-y-1">
                 <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-clipboard-list mr-2"></i>Motivos</a>
-                <a href="#" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-retweet mr-2"></i>Cambios</a>
+                <a href="{{ route('history.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-retweet mr-2"></i>Cambios</a>
             </div>
         </details>
 

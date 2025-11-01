@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\HistoryController;
 use App\Models\Scheduling;
 use App\Models\EmployeeGroup;
 use App\Models\Schedule;
@@ -335,7 +336,8 @@ class SchedulingController extends Controller
     public function show(Scheduling $scheduling)
     {
         $scheduling->load(['group', 'schedule', 'vehicle', 'zone']);
-        return view('schedulings.show', compact('scheduling'));
+        $audits = HistoryController::getHistory('PROGRAMACION', $scheduling->id);
+        return view('schedulings.show', compact('scheduling','audits'));
     }
 
     /**

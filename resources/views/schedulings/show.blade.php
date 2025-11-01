@@ -178,6 +178,11 @@
                 @endif
             </div>
         </div>
+
     </div>
+    {{-- Historial de cambios --}}
+    @if (isset($audits))        
+        @include('history._history_table', ['audits' => $audits])
+    @endif
 </div>
 @endsection

@@ -12,11 +12,6 @@
             </div>
 
             <div class="flex gap-2">
-                {{-- BOTÓN PARA FILTROS --}}
-                {{-- <a href="{{ route('attendances.filters.modal') }}" data-turbo-frame="modal-frame"
-                    class="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">
-                    <i class="fa-solid fa-filter"></i> Filtros Avanzados
-                </a> --}}
                 {{-- Botón para página de marcado rápido --}}
                 <a href="{{ route('attendance.mark.view') }}" target="_blank"
                     class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
@@ -94,117 +89,49 @@
             </div>
         </div>
 
-        {{-- PANEL DE FILTROS AVANZADOS --}}
-        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-6">
-            <form method="GET" action="{{ route('attendances.index') }}" id="filterForm">
+        {{-- ========================================
+         BARRA DE BÚSQUEDA CON BOTÓN DE FILTROS
+        ======================================== --}}
+        <div class="flex flex-col sm:flex-row gap-3">
+            {{-- Buscador general --}}
+            <form method="GET" action="{{ route('attendances.index') }}"
+                class="flex-1 flex items-center gap-3 bg-white p-4 rounded-xl shadow-md border border-slate-100">
 
-                {{-- Título del panel --}}
-                <div class="flex items-center justify-between mb-5">
-                    <h3 class="text-lg font-semibold text-slate-700 flex items-center gap-2">
-                        <i class="fa-solid fa-filter text-emerald-600"></i>
-                        Filtros de Búsqueda
-                    </h3>
-                    <button type="button" onclick="clearFilters()"
-                        class="text-sm text-slate-500 hover:text-emerald-600 transition flex items-center gap-1">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        Limpiar Filtros
-                    </button>
-                </div>
+                {{-- Mantener otros filtros activos --}}
+                @if (request('start_date'))
+                    <input type="hidden" name="start_date" value="{{ request('start_date') }}">
+                @endif
+                @if (request('end_date'))
+                    <input type="hidden" name="end_date" value="{{ request('end_date') }}">
+                @endif
+                @if (request('type'))
+                    <input type="hidden" name="type" value="{{ request('type') }}">
+                @endif
+                @if (request('status'))
+                    <input type="hidden" name="status" value="{{ request('status') }}">
+                @endif
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                    {{-- BÚSQUEDA POR NOMBRE/DNI --}}
-                    <div class="col-span-full">
-                        <label class="block text-sm font-medium text-slate-700 mb-2">
-                            <i class="fa-solid fa-magnifying-glass mr-1 text-emerald-600"></i>
-                            Buscar por Nombre o DNI
-                        </label>
-                        <input type="text" name="search" value="{{ request('search') }}"
-                            placeholder="Buscar por nombre, apellido o DNI..."
-                            class="w-full px-4 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
-                    </div>
-
-                    {{-- FILTRO POR RANGO DE FECHAS - INICIO --}}
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">
-                            <i class="fa-solid fa-calendar-week mr-1 text-emerald-600"></i>
-                            Desde
-                        </label>
-                        <input type="date" id="start_date" name="start_date" value="{{ request('start_date') }}"
-                            class="w-full px-4 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
-                        <small class="text-slate-400 text-xs">Fecha inicial del rango</small>
-                    </div>
-
-                    {{-- FILTRO POR RANGO DE FECHAS --}}
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">
-                            <i class="fa-solid fa-calendar-week mr-1 text-emerald-600"></i>
-                            Hasta
-                        </label>
-                        <input type="date" id="end_date" name="end_date" value="{{ request('end_date') }}"
-                            class="w-full px-4 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
-                        <small class="text-slate-400 text-xs">Fecha final del rango</small>
-                        @error('end_date')
-                            <p class="text-red-500 text-xs mt-1">
-                                <i class="fa-solid fa-circle-exclamation mr-1"></i> {{ $message }}
-                            </p>
-                        @enderror
-                    </div>
-
-                    {{-- FILTRO POR TIPO (ENTRADA/SALIDA) --}}
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">
-                            <i class="fa-solid fa-arrows-left-right mr-1 text-emerald-600"></i>
-                            Tipo de Marcación
-                        </label>
-                        <select name="type"
-                            class="w-full px-4 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
-                            <option value="">Todos los tipos</option>
-                            <option value="ENTRADA" {{ request('type') == 'ENTRADA' ? 'selected' : '' }}>
-                                🟢 ENTRADA
-                            </option>
-                            <option value="SALIDA" {{ request('type') == 'SALIDA' ? 'selected' : '' }}>
-                                🔴 SALIDA
-                            </option>
-                        </select>
-                    </div>
-
-                    {{-- FILTRO POR ESTADO --}}
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">
-                            <i class="fa-solid fa-circle-check mr-1 text-emerald-600"></i>
-                            Estado
-                        </label>
-                        <select name="status"
-                            class="w-full px-4 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
-                            <option value="">Todos los estados</option>
-                            <option value="PRESENTE" {{ request('status') == 'PRESENTE' ? 'selected' : '' }}>
-                                ✅ PRESENTE
-                            </option>
-                            <option value="TARDANZA" {{ request('status') == 'TARDANZA' ? 'selected' : '' }}>
-                                ⚠️ TARDANZA
-                            </option>
-                            <option value="AUSENTE" {{ request('status') == 'AUSENTE' ? 'selected' : '' }}>
-                                ❌ AUSENTE
-                            </option>
-                        </select>
-                    </div>
-                </div>
-
-                {{-- Botones de acción --}}
-                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200">
-                    <button type="button" onclick="clearFilters()"
-                        class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
-                        <i class="fa-solid fa-rotate-left mr-1"></i>
-                        Limpiar
-                    </button>
-                    <button type="submit"
-                        class="px-5 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-md">
-                        <i class="fa-solid fa-search mr-1"></i>
-                        Buscar
-                    </button>
-                </div>
+                <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+                <input type="text" name="search" placeholder="Buscar por nombre, apellido o DNI..."
+                    value="{{ request('search') }}"
+                    class="flex-1 border-none focus:ring-0 text-slate-700 placeholder-slate-400 p-0">
+                <button type="submit"
+                    class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+                    <i class="fa-solid fa-search"></i>
+                </button>
             </form>
+
+            {{-- Botón para abrir modal de filtros --}}
+            <button type="button" onclick="openFiltersModal()"
+                class="flex items-center gap-2 px-5 py-4 bg-white border-2 border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:border-emerald-500 transition shadow-md">
+                <i class="fa-solid fa-filter text-emerald-600"></i>
+                <span class="font-medium">Filtros Avanzados</span>
+                @if (request()->hasAny(['start_date', 'type', 'status']))
+                    <span class="px-2 py-0.5 bg-emerald-600 text-white text-xs rounded-full">
+                        {{ count(array_filter([request('start_date'), request('type'), request('status')])) }}
+                    </span>
+                @endif
+            </button>
         </div>
 
         {{--  FILTROS ACTIVOS (BADGES) --}}
@@ -375,39 +302,56 @@
                                     <p>No hay asistencias registradas el día de hoy.</p>
                                 </td>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            {{-- PAGINACIÓN --}}
-            <div class="mt-4">
-                {{ $attendances->links() }}
-            </div>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
 
-        <script>
-            function clearFilters() {
-                window.location.href = '{{ route('attendances.index') }}';
-            }
-            document.addEventListener('DOMContentLoaded', function() {
-                const startDateInput = document.getElementById('start_date');
-                const endDateInput = document.getElementById('end_date');
+        {{-- PAGINACIÓN --}}
+        <div class="mt-4">
+            {{ $attendances->links() }}
+        </div>
+    </div>
+    @include('attendances._filter')
+    <script>
+        function openFiltersModal() {
+            document.getElementById('filtersModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
 
-                const validateDateRange = () => {
-                    const startDateValue = startDateInput.value;
-                    const endDateValue = endDateInput.value;
+        function closeFiltersModal() {
+            document.getElementById('filtersModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+        document.getElementById('filtersModal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeFiltersModal();
+        });
 
-                    endDateInput.min = startDateValue;
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeFiltersModal();
+        });
 
-                    if (startDateValue && endDateValue && endDateValue < startDateValue) {
-                        endDateInput.value = startDateValue;
-                    }
-                };
+        function clearFilters() {
+            window.location.href = '{{ route('attendances.index') }}';
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const startDateInput = document.getElementById('start_date');
+            const endDateInput = document.getElementById('end_date');
 
-                startDateInput.addEventListener('change', validateDateRange);
+            const validateDateRange = () => {
+                const startDateValue = startDateInput.value;
+                const endDateValue = endDateInput.value;
 
-                validateDateRange();
-            });
-        </script>
-    @endsection
+                endDateInput.min = startDateValue;
+
+                if (startDateValue && endDateValue && endDateValue < startDateValue) {
+                    endDateInput.value = startDateValue;
+                }
+            };
+
+            startDateInput.addEventListener('change', validateDateRange);
+
+            validateDateRange();
+        });
+    </script>
+@endsection

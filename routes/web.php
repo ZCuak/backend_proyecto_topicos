@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Schedule\ScheduleController; //turnos o shifts
 use App\Http\Controllers\Api\User\UserTypeController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
 use App\Http\Controllers\Api\Schedule\EmployeeGroupController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Web\ContractController;
 use App\Http\Controllers\Web\VacationController;
 use App\Http\Controllers\Web\ZoneController;
@@ -76,4 +77,5 @@ Route::middleware('auth')->group(function () {
     Route::resource('schedules', ScheduleController::class);
     Route::resource('attendances', AttendaceController::class);
     Route::resource('groups', EmployeeGroupController::class);
+    Route::get('historyChanges/', [HistoryController::class, 'index'])->name('history.index');
 });

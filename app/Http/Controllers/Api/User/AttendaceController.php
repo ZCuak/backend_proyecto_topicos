@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendace;
 use App\Models\Contract;
 use App\Models\User;
+use App\Traits\HistoryChanges;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,9 @@ use Illuminate\Support\Facades\Validator;
 
 class AttendaceController extends Controller
 {
+
+    use HistoryChanges;
+
     /**
      * Lista las asistencias (por defecto del día actual).
      * 
@@ -99,7 +103,7 @@ class AttendaceController extends Controller
             })
             ->orderBy('firstname')
             ->get();
-        
+
         // dd($usuarios);
 
 
@@ -281,7 +285,7 @@ class AttendaceController extends Controller
                     ->whereDate('date_start', '<=', now())
                     ->where(function ($q) {
                         $q->whereNull('date_end')
-                          ->orWhereDate('date_end', '>=', now());
+                            ->orWhereDate('date_end', '>=', now());
                     });
             })
             ->orderBy('firstname')
@@ -311,6 +315,8 @@ class AttendaceController extends Controller
                 }
                 return back()->with('error', 'Asistencia no encontrada.');
             }
+
+            $originalData = $attendance->getOriginal();
 
             $validator = Validator::make($request->all(), [
                 'user_id' => 'required|exists:users,id',
@@ -347,6 +353,9 @@ class AttendaceController extends Controller
             ]);
 
             $attendance->update($request->all());
+            $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'type'];
+
+            $this->registrarCambios($attendance,  $originalData, $request->input('notes'), $exceptFields);
 
             $mensaje = 'Asistencia actualizada exitosamente como ' . $attendance->type . '.';
 
