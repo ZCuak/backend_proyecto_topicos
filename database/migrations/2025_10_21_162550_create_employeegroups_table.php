@@ -22,7 +22,7 @@ return new class extends Migration
             $table->foreignId('vehicle_id')->constrained('vehicles')->onDelete('cascade');
 
             $table->string('days', 255);
-            $table->integer('status');
+            $table->string('status', 100)->default('ACTIVO');
 
             $table->timestamps();
             $table->softDeletes();
