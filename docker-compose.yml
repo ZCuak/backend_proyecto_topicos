@@ -49,10 +49,11 @@ services:
       - laravel_net
 
 
-
-
 networks:
   laravel_net:
 
 volumes:
   db_data:
+
+
+#docker compose up -d
