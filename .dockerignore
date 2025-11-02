@@ -1,0 +1,14 @@
+# .dockerignore
+
+# Dependencias locales que se instalan dentro del contenedor
+node_modules
+vendor
+
+# Archivos del sistema de control de versiones
+.git
+.gitignore
+
+# Archivos de configuración local
+.env
+docker-compose.yml
+

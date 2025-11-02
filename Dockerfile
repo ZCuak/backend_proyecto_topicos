@@ -1,57 +1,35 @@
-# Dockerfile para Laravel
+# Imagen base oficial de PHP con FPM
 FROM php:8.2-fpm
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema y extensiones PHP necesarias
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    nodejs \
-    npm \
-    postgresql-client \
-    libpq-dev
+    git curl zip unzip libpng-dev libonig-dev libxml2-dev libpq-dev netcat-traditional \
+    nodejs npm \
+ && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Limpiar cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+# Instalar Composer desde la imagen oficial
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Instalar extensiones de PHP
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
-
-# Instalar Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Establecer directorio de trabajo
+# Establecer el directorio de trabajo
 WORKDIR /var/www
 
-# Copiar archivos de composer
-COPY composer.json composer.lock ./
+# Copiar archivos de dependencias primero para aprovechar cache
+COPY composer.json composer.lock package.json package-lock.json* ./
 
-# Instalar dependencias de PHP (sin scripts post-install)
-RUN composer install --no-dev --optimize-autoloader --no-scripts
-
-# Copiar el resto de la aplicación
+# Copiar todo el proyecto antes
 COPY . .
 
-# Ejecutar scripts de Composer después de copiar todos los archivos
-RUN composer dump-autoload --optimize
+# Instalar dependencias PHP y JS
+RUN composer install --no-dev --optimize-autoloader --prefer-dist \
+ && npm install && npm run build
 
-# Instalar dependencias de Node.js
-RUN npm install
-
-# Crear directorio de base de datos
-RUN mkdir -p database
-
-# Configurar permisos
+# Ajustar permisos
 RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage \
-    && chmod -R 755 /var/www/bootstrap/cache
+ && chmod -R 755 /var/www/storage /var/www/bootstrap/cache
 
-# Exponer puerto
-EXPOSE 8000
+# Exponer el puerto FPM
+EXPOSE 9000
 
 # Comando por defecto
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["php-fpm"]
