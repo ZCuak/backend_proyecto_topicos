@@ -531,7 +531,10 @@ class SchedulingController extends Controller
         Log::info('Is Turbo: ' . ($isTurbo ? 'YES' : 'NO'));
 
         $validator = Validator::make($request->all(), [
-            'group_id' => 'required|exists:employeegroups,id',
+            // group_id can be omitted when scheduling for all groups; keep exists when provided
+            'group_id' => 'nullable|exists:employeegroups,id',
+            'all_groups' => 'nullable|boolean',
+            'validate_only' => 'nullable|boolean',
             'schedule_id' => 'required|exists:schedules,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'zone_id' => 'nullable|exists:zones,id',
@@ -544,7 +547,6 @@ class SchedulingController extends Controller
             'days' => 'nullable|array',
             'days.*' => 'in:lunes,martes,miercoles,jueves,viernes,sabado,domingo'
         ], [
-            'group_id.required' => 'El grupo de empleados es obligatorio',
             'group_id.exists' => 'El grupo seleccionado no es válido',
             'schedule_id.required' => 'El horario es obligatorio',
             'schedule_id.exists' => 'El horario seleccionado no es válido',
@@ -572,21 +574,24 @@ class SchedulingController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
-        // Validación adicional: Verificar contratos activos con position_id correcto y fechas
+
+        // If a single group is provided, we will validate that group prior to iterating below.
         $programmingDates = [
             'start' => $request->start_date,
             'end' => $request->end_date
         ];
 
-        $contractValidation = $this->validateGroupContractsForProgramming($request->group_id, $programmingDates, $isTurbo);
-        if ($contractValidation) {
-            return $contractValidation;
-        }
+        // Note: when scheduling for all groups, per-group validations will be executed inside the loop.
+        if ($request->filled('group_id')) {
+            $contractValidation = $this->validateGroupContractsForProgramming($request->group_id, $programmingDates, $isTurbo);
+            if ($contractValidation) {
+                return $contractValidation;
+            }
 
-        // Validación adicional: Verificar conflictos de vacaciones para el rango completo
-        $vacationValidation = $this->validateVacationConflictsForRange($request->group_id, $request->start_date, $request->end_date, $request->days ?? [], $isTurbo);
-        if ($vacationValidation) {
-            return $vacationValidation;
+            $vacationValidation = $this->validateVacationConflictsForRange($request->group_id, $request->start_date, $request->end_date, $request->days ?? [], $isTurbo);
+            if ($vacationValidation) {
+                return $vacationValidation;
+            }
         }
 
         DB::beginTransaction();
@@ -602,130 +607,151 @@ class SchedulingController extends Controller
             $endDate = \Carbon\Carbon::parse($data['end_date']);
             $excludeWeekends = $data['exclude_weekends'] ?? false;
             $excludeSpecificDates = isset($data['exclude_specific_dates']) && $data['exclude_specific_dates']
-                ? explode(',', $data['exclude_specific_dates'])
+                ? array_map('trim', explode(',', $data['exclude_specific_dates']))
                 : [];
 
-            $createdCount = 0;
-            $conflictDates = [];
-            $groupConflicts = [];
-            $vehicleConflicts = [];
-            $currentDate = $startDate->copy();
+            // Decide groups to process: single or all
+            if (!empty($data['all_groups']) && $data['all_groups']) {
+                $groups = EmployeeGroup::orderBy('name')->get();
+            } elseif (!empty($data['group_id'])) {
+                $groups = EmployeeGroup::where('id', $data['group_id'])->get();
+            } else {
+                // If no group specified and all_groups not set, return error
+                DB::rollBack();
+                $errorMessage = 'Debe especificar un grupo o marcar programación para todos los grupos.';
+                if ($isTurbo) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 422);
+                }
+                return back()->withErrors(['group_id' => $errorMessage])->withInput();
+            }
 
-            while ($currentDate->lte($endDate)) {
-                // Excluir fines de semana si está marcado
-                if ($excludeWeekends && $currentDate->isWeekend()) {
-                    $currentDate->addDay();
+            $results = [];
+            $totalCreated = 0;
+
+            foreach ($groups as $group) {
+                $groupResult = [
+                    'group_id' => $group->id,
+                    'group_name' => $group->name,
+                    'inconsistencies' => [],
+                    'created' => 0
+                ];
+
+                // Per-group validations
+                $contractValidation = $this->validateGroupContractsForProgramming($group->id, $programmingDates, true);
+                if ($contractValidation) {
+                    // Extract message
+                    $groupResult['inconsistencies'][] = $contractValidation->original['message'] ?? 'Problema con contratos activos';
+                    $groupResult['ok'] = false;
+                    $results[] = $groupResult;
                     continue;
                 }
 
-                // Excluir fechas específicas
-                $dateString = $currentDate->format('Y-m-d');
-                if (in_array($dateString, $excludeSpecificDates)) {
-                    $currentDate->addDay();
+                $vacationValidation = $this->validateVacationConflictsForRange($group->id, $data['start_date'], $data['end_date'], $data['days'] ?? [], true);
+                if ($vacationValidation) {
+                    $groupResult['inconsistencies'][] = $vacationValidation->original['message'] ?? 'Conflictos de vacaciones';
+                    $groupResult['ok'] = false;
+                    $results[] = $groupResult;
                     continue;
                 }
 
-                // Verificar si el día actual está en los días seleccionados
-                $selectedDays = $data['days'] ?? [];
-                if (!empty($selectedDays)) {
-                    $dayOfWeek = $currentDate->dayOfWeek; // 0=domingo, 1=lunes, ..., 6=sábado
-                    $dayMap = [
-                        1 => 'lunes',    // Monday
-                        2 => 'martes',   // Tuesday
-                        3 => 'miercoles', // Wednesday
-                        4 => 'jueves',   // Thursday
-                        5 => 'viernes',  // Friday
-                        6 => 'sabado',   // Saturday
-                        0 => 'domingo'   // Sunday
-                    ];
+                // If validate_only is requested, we will not create records but still compute inconsistencies
+                $validateOnly = !empty($data['validate_only']);
 
-                    $dayInSpanish = $dayMap[$dayOfWeek] ?? '';
-                    if (!in_array($dayInSpanish, $selectedDays)) {
+                // Iterate dates and check scheduling/vehicle conflicts
+                $currentDate = $startDate->copy();
+                while ($currentDate->lte($endDate)) {
+                    // Exclude weekends
+                    if ($excludeWeekends && $currentDate->isWeekend()) {
                         $currentDate->addDay();
                         continue;
                     }
-                }
 
-                // Verificar si ya existe una programación para esta fecha, grupo y horario
-                $existingScheduling = Scheduling::where('date', $dateString)
-                    ->where('group_id', $data['group_id'])
-                    ->where('schedule_id', $data['schedule_id'])
-                    ->first();
+                    $dateString = $currentDate->format('Y-m-d');
+                    if (in_array($dateString, $excludeSpecificDates)) {
+                        $currentDate->addDay();
+                        continue;
+                    }
 
-                // Verificar también si hay conflictos con vehículo en la misma fecha y horario
-                $vehicleConflict = null;
-                if ($data['vehicle_id']) {
-                    $vehicleConflict = Scheduling::where('date', $dateString)
-                        ->where('vehicle_id', $data['vehicle_id'])
+                    // Check selected days filter
+                    $selectedDays = $data['days'] ?? [];
+                    if (!empty($selectedDays)) {
+                        $dayOfWeek = $currentDate->dayOfWeek; // 0=domingo
+                        $dayMap = [1=>'lunes',2=>'martes',3=>'miercoles',4=>'jueves',5=>'viernes',6=>'sabado',0=>'domingo'];
+                        $dayInSpanish = $dayMap[$dayOfWeek] ?? '';
+                        if (!in_array($dayInSpanish, $selectedDays)) {
+                            $currentDate->addDay();
+                            continue;
+                        }
+                    }
+
+                    // Existing scheduling conflict for this group/date/schedule
+                    $existingScheduling = Scheduling::where('date', $dateString)
+                        ->where('group_id', $group->id)
                         ->where('schedule_id', $data['schedule_id'])
-                        ->where('id', '!=', $existingScheduling?->id)
                         ->first();
+
+                    if ($existingScheduling) {
+                        $groupResult['inconsistencies'][] = "Ya existe programación para {$dateString} (turno id {$data['schedule_id']}).";
+                        $currentDate->addDay();
+                        continue;
+                    }
+
+                    // Vehicle conflict
+                    if (!empty($data['vehicle_id'])) {
+                        $vehicleConflict = Scheduling::where('date', $dateString)
+                            ->where('vehicle_id', $data['vehicle_id'])
+                            ->where('schedule_id', $data['schedule_id'])
+                            ->first();
+
+                        if ($vehicleConflict) {
+                            $groupResult['inconsistencies'][] = "El vehículo está ocupado el {$dateString} (turno id {$data['schedule_id']}).";
+                            $currentDate->addDay();
+                            continue;
+                        }
+                    }
+
+                    // If no inconsistencies for this date, create scheduling (unless validate_only)
+                    if (!$validateOnly) {
+                        $scheduling = Scheduling::create([
+                            'group_id' => $group->id,
+                            'schedule_id' => $data['schedule_id'],
+                            'vehicle_id' => $data['vehicle_id'] ?? null,
+                            'zone_id' => $data['zone_id'] ?? null,
+                            'date' => $dateString,
+                            'status' => $data['status'] ?? 0,
+                            'notes' => $data['notes'] ?? null,
+                            'days' => $data['days'] ?? null
+                        ]);
+
+                        $this->createSchedulingDetails($scheduling->id, $group->id);
+                        $groupResult['created']++;
+                        $totalCreated++;
+                    }
+
+                    $currentDate->addDay();
                 }
 
-                if ($existingScheduling) {
-                    $groupConflicts[] = $dateString;
-                } elseif ($vehicleConflict) {
-                    $vehicleConflicts[] = $dateString;
-                } else {
-                    $scheduling = Scheduling::create([
-                        'group_id' => $data['group_id'],
-                        'schedule_id' => $data['schedule_id'],
-                        'vehicle_id' => $data['vehicle_id'],
-                        'zone_id' => $data['zone_id'],
-                        'date' => $dateString,
-                        'status' => $data['status'],
-                        'notes' => $data['notes'],
-                        'days' => $data['days'] ?? null
-                    ]);
-
-                    // Crear detalles de programación
-                    $this->createSchedulingDetails($scheduling->id, $data['group_id']);
-
-                    $createdCount++;
-                }
-
-                $currentDate->addDay();
+                $groupResult['ok'] = empty($groupResult['inconsistencies']);
+                $results[] = $groupResult;
             }
-
-            // Si hay conflictos, mostrar error agrupado
-            if (!empty($groupConflicts) || !empty($vehicleConflicts)) {
-                $errorMessages = [];
-
-                if (!empty($groupConflicts)) {
-                    $formattedDates = $this->formatConflictDates($groupConflicts);
-                    $errorMessages[] = "Ya existe una programación para el grupo y horario en las fechas: {$formattedDates}";
-                }
-
-                if (!empty($vehicleConflicts)) {
-                    $formattedDates = $this->formatConflictDates($vehicleConflicts);
-                    $errorMessages[] = "El vehículo ya está programado en las fechas: {$formattedDates}";
-                }
-
-                $errorMessage = implode('. ', $errorMessages) . '.';
-
-                if ($isTurbo) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => $errorMessage,
-                        'errors' => ['start_date' => [$errorMessage]],
-                    ], 422);
-                }
-                return back()->withErrors(['start_date' => $errorMessage])->withInput();
-            }
-
-            Log::info("Massive scheduling created: {$createdCount} schedulings");
 
             DB::commit();
+
+            Log::info("Massive scheduling processed. Total created: {$totalCreated}");
 
             if ($isTurbo) {
                 return response()->json([
                     'success' => true,
-                    'message' => "Se crearon {$createdCount} programaciones exitosamente.",
-                ], 201);
+                    'message' => "Procesamiento finalizado.",
+                    'total_created' => $totalCreated,
+                    'groups' => $results
+                ], 200);
             }
 
+            // For non-AJAX requests, redirect back with a flash summary
             return redirect()->route('schedulings.index')
-                ->with('success', "Se crearon {$createdCount} programaciones exitosamente");
+                ->with('success', "Procesamiento finalizado. Se crearon {$totalCreated} programaciones.")
+                ->with('massive_results', $results);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error creating massive scheduling: ' . $e->getMessage());
@@ -740,6 +766,124 @@ class SchedulingController extends Controller
                 ->withInput()
                 ->with('error', 'Error al registrar programaciones masivas: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Validar programación masiva sin crear registros.
+     * Retorna por grupo las inconsistencias encontradas y un flag ok.
+     */
+    public function validateMassive(Request $request)
+    {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
+        $validator = Validator::make($request->all(), [
+            'group_id' => 'nullable|exists:employeegroups,id',
+            'all_groups' => 'nullable|boolean',
+            'schedule_id' => 'required|exists:schedules,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'start_date' => 'required|date|after_or_equal:today',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'exclude_weekends' => 'nullable|boolean',
+            'exclude_specific_dates' => 'nullable|string',
+            'days' => 'nullable|array',
+            'days.*' => 'in:lunes,martes,miercoles,jueves,viernes,sabado,domingo'
+        ]);
+
+        if ($validator->fails()) {
+            if ($isTurbo) {
+                return response()->json(['success' => false, 'message' => 'Errores de validación.', 'errors' => $validator->errors()], 422);
+            }
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $data = $validator->validated();
+        $startDate = \Carbon\Carbon::parse($data['start_date']);
+        $endDate = \Carbon\Carbon::parse($data['end_date']);
+        $excludeWeekends = $data['exclude_weekends'] ?? false;
+        $excludeSpecificDates = isset($data['exclude_specific_dates']) && $data['exclude_specific_dates']
+            ? array_map('trim', explode(',', $data['exclude_specific_dates']))
+            : [];
+
+        if (!empty($data['all_groups']) && $data['all_groups']) {
+            $groups = EmployeeGroup::orderBy('name')->get();
+        } elseif (!empty($data['group_id'])) {
+            $groups = EmployeeGroup::where('id', $data['group_id'])->get();
+        } else {
+            $errorMessage = 'Debe especificar un grupo o marcar programación para todos los grupos.';
+            if ($isTurbo) {
+                return response()->json(['success' => false, 'message' => $errorMessage], 422);
+            }
+            return back()->withErrors(['group_id' => $errorMessage])->withInput();
+        }
+
+        $results = [];
+
+        $programmingDates = ['start' => $data['start_date'], 'end' => $data['end_date']];
+
+        foreach ($groups as $group) {
+            $groupResult = ['group_id' => $group->id, 'group_name' => $group->name, 'inconsistencies' => [], 'created' => 0];
+
+            $contractValidation = $this->validateGroupContractsForProgramming($group->id, $programmingDates, true);
+            if ($contractValidation) {
+                $groupResult['inconsistencies'][] = $contractValidation->original['message'] ?? 'Problema con contratos activos';
+                $groupResult['ok'] = false;
+                $results[] = $groupResult;
+                continue;
+            }
+
+            $vacationValidation = $this->validateVacationConflictsForRange($group->id, $data['start_date'], $data['end_date'], $data['days'] ?? [], true);
+            if ($vacationValidation) {
+                $groupResult['inconsistencies'][] = $vacationValidation->original['message'] ?? 'Conflictos de vacaciones';
+                $groupResult['ok'] = false;
+                $results[] = $groupResult;
+                continue;
+            }
+
+            $currentDate = $startDate->copy();
+            while ($currentDate->lte($endDate)) {
+                if ($excludeWeekends && $currentDate->isWeekend()) { $currentDate->addDay(); continue; }
+                $dateString = $currentDate->format('Y-m-d');
+                if (in_array($dateString, $excludeSpecificDates)) { $currentDate->addDay(); continue; }
+
+                $selectedDays = $data['days'] ?? [];
+                if (!empty($selectedDays)) {
+                    $dayOfWeek = $currentDate->dayOfWeek;
+                    $dayMap = [1=>'lunes',2=>'martes',3=>'miercoles',4=>'jueves',5=>'viernes',6=>'sabado',0=>'domingo'];
+                    $dayInSpanish = $dayMap[$dayOfWeek] ?? '';
+                    if (!in_array($dayInSpanish, $selectedDays)) { $currentDate->addDay(); continue; }
+                }
+
+                $existingScheduling = Scheduling::where('date', $dateString)
+                    ->where('group_id', $group->id)
+                    ->where('schedule_id', $data['schedule_id'])
+                    ->first();
+
+                if ($existingScheduling) {
+                    $groupResult['inconsistencies'][] = "Ya existe programación para {$dateString} (turno id {$data['schedule_id']}).";
+                    $currentDate->addDay();
+                    continue;
+                }
+
+                if (!empty($data['vehicle_id'])) {
+                    $vehicleConflict = Scheduling::where('date', $dateString)
+                        ->where('vehicle_id', $data['vehicle_id'])
+                        ->where('schedule_id', $data['schedule_id'])
+                        ->first();
+                    if ($vehicleConflict) {
+                        $groupResult['inconsistencies'][] = "El vehículo está ocupado el {$dateString} (turno id {$data['schedule_id']}).";
+                        $currentDate->addDay();
+                        continue;
+                    }
+                }
+
+                $currentDate->addDay();
+            }
+
+            $groupResult['ok'] = empty($groupResult['inconsistencies']);
+            $results[] = $groupResult;
+        }
+
+        return response()->json(['success' => true, 'groups' => $results], 200);
     }
 
     /**

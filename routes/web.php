@@ -56,6 +56,8 @@ Route::middleware('auth')->group(function () {
     Route::get('schedulings/{id}/details', [SchedulingController::class, 'getSchedulingDetails'])->name('schedulings.details');
     Route::get('schedulings/create-massive', [SchedulingController::class, 'createMassive'])->name('schedulings.create-massive');
     Route::post('schedulings/store-massive', [SchedulingController::class, 'storeMassive'])->name('schedulings.store-massive');
+    // Endpoint separado para validar programación masiva sin crear registros
+    Route::post('schedulings/validate-massive', [SchedulingController::class, 'validateMassive'])->name('schedulings.validate-massive');
 
     Route::resource('schedulings', SchedulingController::class);
 

@@ -37,169 +37,73 @@
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Fin <span class="text-red-500">*</span></label>
-                <div class="relative">
-                    <i class="fa-solid fa-calendar-check absolute left-3 top-2.5 text-slate-400"></i>
-                    <input type="date" name="end_date"
-                        value="{{ old('end_date', date('Y-m-d', strtotime('+7 days'))) }}"
-                        class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('end_date') border-red-500 @enderror"
-                        min="{{ date('Y-m-d') }}">
+                <div class="flex items-center gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-calendar-check absolute left-3 top-2.5 text-slate-400"></i>
+                        <input type="date" name="end_date"
+                            value="{{ old('end_date', date('Y-m-d', strtotime('+7 days'))) }}"
+                            class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('end_date') border-red-500 @enderror"
+                            min="{{ date('Y-m-d') }}">
+                    </div>
+
+                    <div class="shrink-0">
+                        <button type="button" id="validate_availability"
+                                class="px-4 py-2 rounded-lg border border-emerald-300 text-emerald-700 bg-white hover:bg-emerald-50 transition flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-check text-emerald-600"></i>
+                            Validar Disponibilidad
+                        </button>
+                    </div>
                 </div>
+
                 @error('end_date')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
         </div>
 
-        {{-- Estado --}}
-        <div class="mt-3">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
-            <div class="relative">
-                <i class="fa-solid fa-circle-check absolute left-3 top-2.5 text-slate-400"></i>
-                <select name="status"
-                        class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('status') border-red-500 @enderror">
-                    <option value="">Seleccionar estado...</option>
-                    <option value="0" {{ old('status', '0') == '0' ? 'selected' : '' }}>Pendiente</option>
-                    <option value="1" {{ old('status') == '1' ? 'selected' : '' }}>En Proceso</option>
-                    <option value="2" {{ old('status') == '2' ? 'selected' : '' }}>Completado</option>
-                    <option value="3" {{ old('status') == '3' ? 'selected' : '' }}>Cancelado</option>
-                </select>
-            </div>
-            @error('status')
-                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-            @enderror
-        </div>
+    {{-- (Se eliminaron Estado, Notas y Días de la semana para ajustarse al diseño) --}}
+        
+        {{-- ===========================
+             📋 Grupos existentes (lista debajo de las fechas)
+        ============================ --}}
+        <div class="mt-6">
+            <label class="block text-sm font-medium text-slate-700 mb-2">Grupos registrados</label>
 
-        {{-- Notas --}}
-        <div class="mt-3">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Notas</label>
-            <textarea name="notes" rows="3"
-                class="w-full py-2 px-3 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Notas adicionales para todas las programaciones...">{{ old('notes') }}</textarea>
-        </div>
+            @if($groups->isEmpty())
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600">No hay grupos registrados aún.</div>
+            @else
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    @foreach($groups as $group)
+                        <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm">
+                            <div class="flex items-start justify-between">
+                                <h4 class="text-sm font-semibold uppercase text-slate-700">{{ $group->name }}</h4>
+                                <button type="button" class="text-red-600 bg-red-50 rounded px-2 py-1 text-xs">Eliminar</button>
+                            </div>
 
-        {{-- Días de la semana --}}
-        <div class="mt-4">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Días de la semana</label>
-            <div class="flex gap-3 flex-wrap">
-                @php
-                    $days = [
-                        'lunes' => 'Lun',
-                        'martes' => 'Mar',
-                        'miercoles' => 'Mié',
-                        'jueves' => 'Jue',
-                        'viernes' => 'Vie',
-                        'sabado' => 'Sáb',
-                        'domingo' => 'Dom',
-                    ];
-                    $selectedDays = old('days', []);
-                @endphp
-                @foreach($days as $key => $label)
-                    <label class="inline-flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" name="days[]" value="{{ $key }}"
-                            class="h-7 w-7 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 transition"
-                            {{ in_array($key, $selectedDays) ? 'checked' : '' }}>
-                        <span class="text-slate-700 text-sm">{{ $label }}</span>
-                    </label>
-                @endforeach
-            </div>
-            <p class="text-xs text-slate-500 mt-2">Selecciona los días de la semana para las programaciones. Si no seleccionas ningún día, se aplicará a todos los días del rango.</p>
+                            <div class="mt-3 text-xs text-slate-600 space-y-1">
+                                <div><strong>Zona:</strong> {{ optional($group->zone)->name ?? '-' }}</div>
+                                <div><strong>Horario:</strong> {{ optional($group->schedule)->name ?? '-' }}</div>
+                                <div><strong>Miembros:</strong> {{ $group->employees->count() ?? ($group->employees_count ?? '-') }}</div>
+                            </div>
+
+                            <div class="mt-3">
+                                <div class="flex items-center justify-between">
+                                    <button type="button" data-group-id="{{ $group->id }}" class="select-group-btn px-3 py-1 bg-emerald-600 text-white rounded text-sm">
+                                        Seleccionar
+                                    </button>
+                                    <div class="group-status text-sm text-slate-600 ml-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+            {{-- Contenedor para mostrar resultados de validación masiva --}}
+            <div id="massive_validation_results" class="mt-4"></div>
         </div>
     </fieldset>
 
-    {{-- ===========================
-         👥 ASIGNACIONES
-    ============================ --}}
-    <fieldset class="border border-slate-200 rounded-xl p-5 bg-white hover:shadow-sm transition">
-        <legend class="px-2 text-sm font-semibold text-slate-600 flex items-center gap-2">
-            <i class="fa-solid fa-users text-emerald-600"></i> Asignaciones
-        </legend>
-
-        {{-- Grupo y Horario en una fila --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Grupo de Empleados <span class="text-red-500">*</span></label>
-                <div class="relative">
-                    <i class="fa-solid fa-users absolute left-3 top-2.5 text-slate-400"></i>
-                    <select name="group_id"
-                            class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('group_id') border-red-500 @enderror">
-                        <option value="">Seleccionar grupo...</option>
-                        @foreach($groups as $group)
-                            <option value="{{ $group->id }}"
-                                {{ old('group_id') == $group->id ? 'selected' : '' }}>
-                                {{ $group->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                @error('group_id')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Horario <span class="text-red-500">*</span></label>
-                <div class="relative">
-                    <i class="fa-solid fa-clock absolute left-3 top-2.5 text-slate-400"></i>
-                    <select name="schedule_id"
-                            class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('schedule_id') border-red-500 @enderror">
-                        <option value="">Seleccionar horario...</option>
-                        @foreach($schedules as $schedule)
-                            <option value="{{ $schedule->id }}"
-                                {{ old('schedule_id') == $schedule->id ? 'selected' : '' }}>
-                                {{ $schedule->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                @error('schedule_id')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-
-        {{-- Vehículo y Zona en una fila --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Vehículo</label>
-                <div class="relative">
-                    <i class="fa-solid fa-truck absolute left-3 top-2.5 text-slate-400"></i>
-                    <select name="vehicle_id"
-                            class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('vehicle_id') border-red-500 @enderror">
-                        <option value="">Seleccionar vehículo...</option>
-                        @foreach($vehicles as $vehicle)
-                            <option value="{{ $vehicle->id }}"
-                                {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
-                                {{ $vehicle->name }} ({{ $vehicle->plate }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                @error('vehicle_id')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Zona</label>
-                <div class="relative">
-                    <i class="fa-solid fa-map-marker-alt absolute left-3 top-2.5 text-slate-400"></i>
-                    <select name="zone_id"
-                            class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('zone_id') border-red-500 @enderror">
-                        <option value="">Seleccionar zona...</option>
-                        @foreach($zones as $zone)
-                            <option value="{{ $zone->id }}"
-                                {{ old('zone_id') == $zone->id ? 'selected' : '' }}>
-                                {{ $zone->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                @error('zone_id')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-    </fieldset>
+    {{-- (Se eliminó el bloque de Asignaciones; la selección y asignaciones se realizan dentro de cada tarjeta de grupo en la sección superior) --}}
 </div>
 
 {{-- BOTONES --}}
@@ -383,6 +287,150 @@
                 }
             });
         }
+    });
+
+    // --- Selección de grupos y validación previa (AJAX) ---
+    const selectedGroupIds = new Set();
+
+    document.querySelectorAll('.select-group-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const groupId = this.getAttribute('data-group-id');
+            const card = this.closest('.border');
+
+            if (selectedGroupIds.has(groupId)) {
+                selectedGroupIds.delete(groupId);
+                this.textContent = 'Seleccionar';
+                card.classList.remove('ring-2', 'ring-emerald-300');
+            } else {
+                selectedGroupIds.add(groupId);
+                this.textContent = 'Seleccionado';
+                card.classList.add('ring-2', 'ring-emerald-300');
+            }
+        });
+    });
+
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        const input = document.querySelector('input[name="_token"]');
+        return input ? input.value : '';
+    }
+
+    function renderValidationResults(groups) {
+        // Clear previous statuses
+        document.querySelectorAll('.group-status').forEach(el => { el.textContent = ''; el.className = 'group-status text-sm text-slate-600 ml-3'; });
+
+        const container = document.getElementById('massive_validation_results');
+        container.innerHTML = '';
+
+        const list = document.createElement('div');
+        list.className = 'space-y-3';
+
+        groups.forEach(g => {
+            // Update card status
+            const btn = document.querySelector(`.select-group-btn[data-group-id="${g.group_id}"]`);
+            const statusEl = btn ? btn.closest('.border').querySelector('.group-status') : null;
+
+            const cardStatus = document.createElement('span');
+            if (g.ok) {
+                cardStatus.textContent = 'OK';
+                cardStatus.className = 'text-green-600';
+            } else {
+                cardStatus.textContent = 'Problemas';
+                cardStatus.className = 'text-red-600';
+            }
+            if (statusEl) { statusEl.innerHTML = ''; statusEl.appendChild(cardStatus); }
+
+            // Build result entry
+            const entry = document.createElement('div');
+            entry.className = 'p-3 border border-slate-200 rounded-lg bg-white';
+
+            const title = document.createElement('div');
+            title.className = 'flex items-center justify-between';
+            title.innerHTML = `<strong class="text-sm">${g.group_name}</strong>`;
+            const state = document.createElement('div');
+            state.className = g.ok ? 'text-sm text-green-600' : 'text-sm text-red-600';
+            state.textContent = g.ok ? 'OK' : 'Problemas';
+            title.appendChild(state);
+
+            entry.appendChild(title);
+
+            if (!g.ok && g.inconsistencies && g.inconsistencies.length) {
+                const ul = document.createElement('ul');
+                ul.className = 'mt-2 list-disc list-inside text-sm text-red-600 space-y-1';
+                g.inconsistencies.forEach(msg => {
+                    const li = document.createElement('li');
+                    li.textContent = msg;
+                    ul.appendChild(li);
+                });
+                entry.appendChild(ul);
+            } else {
+                const p = document.createElement('div');
+                p.className = 'mt-2 text-sm text-slate-600';
+                p.textContent = g.ok ? 'No se encontraron inconsistencias.' : '';
+                entry.appendChild(p);
+            }
+
+            list.appendChild(entry);
+        });
+
+        container.appendChild(list);
+        container.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    document.getElementById('validate_availability').addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const btn = this;
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando...';
+
+        const start_date = document.querySelector('[name="start_date"]').value;
+        const end_date = document.querySelector('[name="end_date"]').value;
+        const scheduleInput = document.querySelector('[name="schedule_id"]');
+        const schedule_id = scheduleInput ? scheduleInput.value : null;
+        const vehicleInput = document.querySelector('[name="vehicle_id"]');
+        const vehicle_id = vehicleInput ? vehicleInput.value : null;
+
+        const payload = { start_date, end_date, schedule_id };
+
+        // Determine groups to validate: none selected -> all_groups, one selected -> group_id, multiple -> all_groups
+        if (selectedGroupIds.size === 1) {
+            payload.group_id = Array.from(selectedGroupIds)[0];
+        } else {
+            payload.all_groups = 1;
+        }
+
+        if (vehicle_id) payload.vehicle_id = vehicle_id;
+
+        const token = getCsrfToken();
+
+    fetch("{{ route('schedulings.validate-massive') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if (!data || !data.groups) {
+                alert('Respuesta inválida del servidor.');
+                return;
+            }
+
+            renderValidationResults(data.groups);
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Error al validar disponibilidad. Revisa la consola.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
     });
 })();
 </script>
