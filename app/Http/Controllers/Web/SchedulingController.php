@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use App\Models\User;
+use App\Models\ConfigGroup;
 
 class SchedulingController extends Controller
 {
@@ -511,12 +513,24 @@ class SchedulingController extends Controller
      */
     public function createMassive()
     {
-        $groups = EmployeeGroup::orderBy('name')->get();
+        $groups = EmployeeGroup::with(['vehicle','schedule','configgroups.user'])->orderBy('name')->get();
         $schedules = Schedule::orderBy('name')->get();
         $vehicles = Vehicle::where('status', 'DISPONIBLE')->orderBy('name')->get();
         $zones = Zone::orderBy('name')->get();
+        $users = User::orderBy('firstname')->get();
 
-        return view('schedulings.massive._modal_create', compact('groups', 'schedules', 'vehicles', 'zones'));
+        // Normalize group data for the view: decode days and extract driver/ayudantes from configgroups
+        foreach ($groups as $group) {
+            $group->days_array = is_array($group->days) ? $group->days : (empty($group->days) ? [] : json_decode($group->days, true));
+
+            // configgroups are saved in order: driver first, then ayudantes
+            $config = $group->configgroups->sortBy('id')->values();
+            $group->driver = $config->get(0)?->user ?? null;
+            $group->helper1 = $config->get(1)?->user ?? null;
+            $group->helper2 = $config->get(2)?->user ?? null;
+        }
+
+        return view('schedulings.massive._modal_create', compact('groups', 'schedules', 'vehicles', 'zones', 'users'));
     }
 
     /**
@@ -534,6 +548,7 @@ class SchedulingController extends Controller
             // group_id can be omitted when scheduling for all groups; keep exists when provided
             'group_id' => 'nullable|exists:employeegroups,id',
             'all_groups' => 'nullable|boolean',
+            'filter_schedule' => 'nullable|exists:schedules,id',
             'validate_only' => 'nullable|boolean',
             'schedule_id' => 'required|exists:schedules,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
@@ -548,6 +563,7 @@ class SchedulingController extends Controller
             'days.*' => 'in:lunes,martes,miercoles,jueves,viernes,sabado,domingo'
         ], [
             'group_id.exists' => 'El grupo seleccionado no es válido',
+            'filter_schedule.exists' => 'El horario de filtro no es válido',
             'schedule_id.required' => 'El horario es obligatorio',
             'schedule_id.exists' => 'El horario seleccionado no es válido',
             'vehicle_id.exists' => 'El vehículo seleccionado no es válido',
@@ -610,8 +626,11 @@ class SchedulingController extends Controller
                 ? array_map('trim', explode(',', $data['exclude_specific_dates']))
                 : [];
 
-            // Decide groups to process: single or all
-            if (!empty($data['all_groups']) && $data['all_groups']) {
+            // Decide groups to process: by filter_schedule, single group, or all groups
+            if (isset($data['filter_schedule']) && $data['filter_schedule'] !== '') {
+                // Filter groups by schedule
+                $groups = EmployeeGroup::where('schedule_id', $data['filter_schedule'])->orderBy('name')->get();
+            } elseif (!empty($data['all_groups']) && $data['all_groups']) {
                 $groups = EmployeeGroup::orderBy('name')->get();
             } elseif (!empty($data['group_id'])) {
                 $groups = EmployeeGroup::where('id', $data['group_id'])->get();
@@ -779,6 +798,7 @@ class SchedulingController extends Controller
         $validator = Validator::make($request->all(), [
             'group_id' => 'nullable|exists:employeegroups,id',
             'all_groups' => 'nullable|boolean',
+            'filter_schedule' => 'nullable|exists:schedules,id',
             'schedule_id' => 'required|exists:schedules,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'start_date' => 'required|date|after_or_equal:today',
@@ -804,7 +824,10 @@ class SchedulingController extends Controller
             ? array_map('trim', explode(',', $data['exclude_specific_dates']))
             : [];
 
-        if (!empty($data['all_groups']) && $data['all_groups']) {
+        // Allow filtering groups by schedule (filter_schedule) or by group_id / all_groups
+        if (isset($data['filter_schedule']) && $data['filter_schedule'] !== '') {
+            $groups = EmployeeGroup::where('schedule_id', $data['filter_schedule'])->orderBy('name')->get();
+        } elseif (!empty($data['all_groups']) && $data['all_groups']) {
             $groups = EmployeeGroup::orderBy('name')->get();
         } elseif (!empty($data['group_id'])) {
             $groups = EmployeeGroup::where('id', $data['group_id'])->get();
@@ -884,6 +907,81 @@ class SchedulingController extends Controller
         }
 
         return response()->json(['success' => true, 'groups' => $results], 200);
+    }
+
+    /**
+     * Actualizar configuración de un grupo desde la UI de validación masiva.
+     * Campos: group_id, driver_id, user1_id, user2_id, vehicle_id, days[]
+     */
+    public function updateGroupFromValidation(Request $request)
+    {
+        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+
+        $validator = Validator::make($request->all(), [
+            'group_id' => 'required|exists:employeegroups,id',
+            'driver_id' => 'required|exists:users,id',
+            'user1_id' => 'nullable|exists:users,id|different:driver_id',
+            'user2_id' => 'nullable|exists:users,id|different:driver_id|different:user1_id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'days' => 'nullable|array',
+            'days.*' => 'in:lunes,martes,miercoles,jueves,viernes,sabado,domingo'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Errores de validación', 'errors' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
+
+        DB::beginTransaction();
+        try {
+            $group = EmployeeGroup::findOrFail($data['group_id']);
+
+            // Update simple fields
+            $group->vehicle_id = $data['vehicle_id'] ?? null;
+            if (isset($data['days'])) {
+                $group->days = json_encode($data['days']);
+            }
+            $group->save();
+
+            // Replace configgroups (driver + helpers) in order
+            ConfigGroup::where('group_id', $group->id)->delete();
+
+            $order = [];
+            $order[] = $data['driver_id'];
+            if (!empty($data['user1_id'])) $order[] = $data['user1_id'];
+            if (!empty($data['user2_id'])) $order[] = $data['user2_id'];
+
+            foreach ($order as $userId) {
+                ConfigGroup::create([ 'group_id' => $group->id, 'user_id' => $userId ]);
+            }
+
+            DB::commit();
+
+            // Return updated info
+            $group->load(['vehicle','configgroups.user']);
+            $config = $group->configgroups->sortBy('id')->values();
+            $driver = $config->get(0)?->user ?? null;
+            $helper1 = $config->get(1)?->user ?? null;
+            $helper2 = $config->get(2)?->user ?? null;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Grupo actualizado',
+                'group' => [
+                    'id' => $group->id,
+                    'vehicle' => $group->vehicle ? $group->vehicle->name : null,
+                    'driver' => $driver ? ($driver->firstname . ' ' . $driver->lastname) : null,
+                    'helper1' => $helper1 ? ($helper1->firstname . ' ' . $helper1->lastname) : null,
+                    'helper2' => $helper2 ? ($helper2->firstname . ' ' . $helper2->lastname) : null,
+                    'days' => is_array($group->days) ? $group->days : (empty($group->days) ? [] : json_decode($group->days, true))
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating group from validation: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al actualizar grupo: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

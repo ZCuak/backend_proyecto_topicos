@@ -58,6 +58,8 @@ Route::middleware('auth')->group(function () {
     Route::post('schedulings/store-massive', [SchedulingController::class, 'storeMassive'])->name('schedulings.store-massive');
     // Endpoint separado para validar programación masiva sin crear registros
     Route::post('schedulings/validate-massive', [SchedulingController::class, 'validateMassive'])->name('schedulings.validate-massive');
+    // Endpoint para actualizar configuración de un grupo desde la validación masiva
+    Route::post('schedulings/update-group', [SchedulingController::class, 'updateGroupFromValidation'])->name('schedulings.update-group');
 
     Route::resource('schedulings', SchedulingController::class);
 

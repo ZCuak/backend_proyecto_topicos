@@ -11,6 +11,19 @@
 @endif
 
 <div class="space-y-6">
+    {{-- Selector para filtrar por turno colocado arriba del rango de fechas --}}
+    <div class="mb-3">
+        <label class="block text-sm text-slate-600 mb-1">Seleccionar turno/horario <span class="text-red-500">*</span></label>
+    <select id="filter_schedule_select_top" name="schedule_id" required class="w-full md:w-1/3 pl-3 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('schedule_id') border-red-500 @enderror">
+            <option value="">-- Seleccione un turno --</option>
+            @foreach($schedules as $s)
+                <option value="{{ $s->id }}" {{ old('schedule_id') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
+            @endforeach
+        </select>
+        @error('schedule_id')
+            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+        @enderror
+    </div>
     {{-- ===========================
          📅 RANGO DE FECHAS
     ============================ --}}
@@ -68,13 +81,21 @@
         ============================ --}}
         <div class="mt-6">
             <label class="block text-sm font-medium text-slate-700 mb-2">Grupos registrados</label>
+            {{-- (El selector de turno está arriba del rango de fechas) --}}
 
             @if($groups->isEmpty())
                 <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600">No hay grupos registrados aún.</div>
             @else
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     @foreach($groups as $group)
-                        <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm">
+                        @php
+                            $driverId = $group->driver?->id ?? '';
+                            $helper1Id = $group->helper1?->id ?? '';
+                            $helper2Id = $group->helper2?->id ?? '';
+                            $vehicleId = optional($group->vehicle)->id ?? '';
+                            $daysJson = json_encode($group->days_array ?: []);
+                        @endphp
+                        <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm" data-schedule-id="{{ optional($group->schedule)->id }}" data-group-id="{{ $group->id }}" data-driver-id="{{ $driverId }}" data-helper1-id="{{ $helper1Id }}" data-helper2-id="{{ $helper2Id }}" data-vehicle-id="{{ $vehicleId }}" data-days='@json($group->days_array ?? [])'>
                             <div class="flex items-start justify-between">
                                 <h4 class="text-sm font-semibold uppercase text-slate-700">{{ $group->name }}</h4>
                                 <button type="button" class="text-red-600 bg-red-50 rounded px-2 py-1 text-xs">Eliminar</button>
@@ -83,15 +104,30 @@
                             <div class="mt-3 text-xs text-slate-600 space-y-1">
                                 <div><strong>Zona:</strong> {{ optional($group->zone)->name ?? '-' }}</div>
                                 <div><strong>Horario:</strong> {{ optional($group->schedule)->name ?? '-' }}</div>
-                                <div><strong>Miembros:</strong> {{ $group->employees->count() ?? ($group->employees_count ?? '-') }}</div>
+                                <div><strong>Días:</strong>
+                                    @php
+                                        $daysArr = $group->days_array ?? (is_array($group->days) ? $group->days : (empty($group->days) ? [] : json_decode($group->days, true)));
+                                        $daysMap = ['lunes'=>'Lun','martes'=>'Mar','miercoles'=>'Mié','jueves'=>'Jue','viernes'=>'Vie','sabado'=>'Sáb','domingo'=>'Dom'];
+                                        $daysNames = array_map(fn($d) => $daysMap[$d] ?? $d, $daysArr ?: []);
+                                    @endphp
+                                    {{ $daysNames ? implode(', ', $daysNames) : '-' }}</div>
+                                <div><strong>Vehículo:</strong> {{ optional($group->vehicle)->name ?? '-' }}</div>
+                                <div><strong>Conductor:</strong> {{ optional($group->driver)->firstname ? optional($group->driver)->firstname . ' ' . optional($group->driver)->lastname : '-' }}</div>
+                                <div><strong>Ayudantes:</strong>
+                                    @php
+                                        $h1 = optional($group->helper1);
+                                        $h2 = optional($group->helper2);
+                                        $helpers = [];
+                                        if ($h1 && $h1->id) $helpers[] = $h1->firstname . ' ' . $h1->lastname;
+                                        if ($h2 && $h2->id) $helpers[] = $h2->firstname . ' ' . $h2->lastname;
+                                    @endphp
+                                    {{ count($helpers) ? implode(', ', $helpers) : '-' }}</div>
                             </div>
 
-                            <div class="mt-3">
+                                <div class="mt-3">
                                 <div class="flex items-center justify-between">
-                                    <button type="button" data-group-id="{{ $group->id }}" class="select-group-btn px-3 py-1 bg-emerald-600 text-white rounded text-sm">
-                                        Seleccionar
-                                    </button>
                                     <div class="group-status text-sm text-slate-600 ml-3"></div>
+                                    <button type="button" class="edit-group-btn text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded" data-group-id="{{ $group->id }}">Editar</button>
                                 </div>
                             </div>
                         </div>
@@ -119,196 +155,23 @@
     </button>
 </div>
 
+{{-- Campo oculto para indicar programación para todos los grupos (filtrados por horario) --}}
+<input type="hidden" name="all_groups" value="1">
+<input type="hidden" name="filter_schedule" id="filter_schedule_hidden">
+
 {{-- Scripts para validaciones --}}
 <script>
 (function() {
     'use strict';
 
-    // Validación del formulario antes de enviar
-    document.querySelector('form').addEventListener('submit', function(e) {
-        const requiredFields = [
-            { name: 'start_date', label: 'Fecha de inicio' },
-            { name: 'end_date', label: 'Fecha de fin' },
-            { name: 'group_id', label: 'Grupo de empleados' },
-            { name: 'schedule_id', label: 'Horario' }
-        ];
-
-        let hasErrors = false;
-        let errorMessages = [];
-
-        // Limpiar errores anteriores
-        document.querySelectorAll('.field-error').forEach(el => el.remove());
-        document.querySelectorAll('.border-red-500').forEach(el => {
-            el.classList.remove('border-red-500');
-            el.classList.add('border-slate-300');
+    function parseResponseJson(resp){
+        return resp.text().then(text => {
+            try { return JSON.parse(text); }
+            catch(e){ throw new Error('Respuesta inválida (no JSON): ' + (text ? text.substring(0,200) : '<vacío>')); }
         });
+    }
 
-        // Validar cada campo obligatorio
-        requiredFields.forEach(field => {
-            const element = document.querySelector(`[name="${field.name}"]`);
-            if (element) {
-                const value = element.value.trim();
-
-                if (!value || value === '') {
-                    hasErrors = true;
-                    errorMessages.push(`${field.label} es obligatorio`);
-
-                    // Marcar campo con error
-                    element.classList.add('border-red-500');
-                    element.classList.remove('border-slate-300');
-
-                    // Agregar mensaje de error
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'field-error text-red-500 text-xs mt-1';
-                    errorDiv.textContent = `${field.label} es obligatorio`;
-                    element.parentNode.appendChild(errorDiv);
-                }
-            }
-        });
-
-        // Validar que la fecha de fin sea posterior a la fecha de inicio
-        const startDate = document.querySelector('[name="start_date"]').value;
-        const endDate = document.querySelector('[name="end_date"]').value;
-
-        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
-            hasErrors = true;
-            errorMessages.push('La fecha de fin debe ser posterior a la fecha de inicio');
-
-            const endDateElement = document.querySelector('[name="end_date"]');
-            endDateElement.classList.add('border-red-500');
-            endDateElement.classList.remove('border-slate-300');
-        }
-
-        // Si hay errores, prevenir envío
-        if (hasErrors) {
-            e.preventDefault();
-
-            // Mostrar mensaje general
-            const generalError = document.createElement('div');
-            generalError.className = 'mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg';
-            generalError.innerHTML = `
-                <h4 class="font-semibold mb-2">Por favor completa todos los campos obligatorios:</h4>
-                <ul class="list-disc list-inside space-y-1">
-                    ${errorMessages.map(msg => `<li class="text-sm">${msg}</li>`).join('')}
-                </ul>
-            `;
-
-            // Insertar mensaje al inicio del formulario
-            const form = document.querySelector('form');
-            form.insertBefore(generalError, form.firstChild);
-
-            // Scroll al mensaje de error
-            generalError.scrollIntoView({ behavior: 'smooth' });
-
-            return false;
-        }
-    });
-
-    // Validación de fechas en tiempo real
-    document.querySelector('input[name="start_date"]').addEventListener('change', function(e) {
-        const endDateInput = document.querySelector('input[name="end_date"]');
-        const startDate = new Date(e.target.value);
-        const endDate = new Date(endDateInput.value);
-
-        if (endDate < startDate) {
-            endDateInput.setCustomValidity('La fecha de fin debe ser posterior a la fecha de inicio');
-            endDateInput.classList.add('border-red-500');
-            endDateInput.classList.remove('border-slate-300');
-        } else {
-            endDateInput.setCustomValidity('');
-            endDateInput.classList.remove('border-red-500');
-            endDateInput.classList.add('border-slate-300');
-        }
-    });
-
-    document.querySelector('input[name="end_date"]').addEventListener('change', function(e) {
-        const startDateInput = document.querySelector('input[name="start_date"]');
-        const startDate = new Date(startDateInput.value);
-        const endDate = new Date(e.target.value);
-
-        if (endDate < startDate) {
-            e.target.setCustomValidity('La fecha de fin debe ser posterior a la fecha de inicio');
-            e.target.classList.add('border-red-500');
-            e.target.classList.remove('border-slate-300');
-        } else {
-            e.target.setCustomValidity('');
-            e.target.classList.remove('border-red-500');
-            e.target.classList.add('border-slate-300');
-        }
-    });
-
-    // Validación en tiempo real para campos obligatorios
-    const requiredFields = ['start_date', 'end_date', 'group_id', 'schedule_id'];
-
-    requiredFields.forEach(fieldName => {
-        const element = document.querySelector(`[name="${fieldName}"]`);
-        if (element) {
-            element.addEventListener('input', function(e) {
-                const value = e.target.value.trim();
-
-                // Remover mensajes de error anteriores
-                const existingError = e.target.parentNode.querySelector('.field-error');
-                if (existingError) {
-                    existingError.remove();
-                }
-
-                if (value && value !== '') {
-                    // Campo válido
-                    e.target.classList.remove('border-red-500');
-                    e.target.classList.add('border-slate-300');
-                    e.target.setCustomValidity('');
-                } else {
-                    // Campo vacío
-                    e.target.classList.add('border-red-500');
-                    e.target.classList.remove('border-slate-300');
-                    e.target.setCustomValidity('Este campo es obligatorio');
-                }
-            });
-
-            element.addEventListener('change', function(e) {
-                const value = e.target.value.trim();
-
-                // Remover mensajes de error anteriores
-                const existingError = e.target.parentNode.querySelector('.field-error');
-                if (existingError) {
-                    existingError.remove();
-                }
-
-                if (value && value !== '') {
-                    // Campo válido
-                    e.target.classList.remove('border-red-500');
-                    e.target.classList.add('border-slate-300');
-                    e.target.setCustomValidity('');
-                } else {
-                    // Campo vacío
-                    e.target.classList.add('border-red-500');
-                    e.target.classList.remove('border-slate-300');
-                    e.target.setCustomValidity('Este campo es obligatorio');
-                }
-            });
-        }
-    });
-
-    // --- Selección de grupos y validación previa (AJAX) ---
-    const selectedGroupIds = new Set();
-
-    document.querySelectorAll('.select-group-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            const groupId = this.getAttribute('data-group-id');
-            const card = this.closest('.border');
-
-            if (selectedGroupIds.has(groupId)) {
-                selectedGroupIds.delete(groupId);
-                this.textContent = 'Seleccionar';
-                card.classList.remove('ring-2', 'ring-emerald-300');
-            } else {
-                selectedGroupIds.add(groupId);
-                this.textContent = 'Seleccionado';
-                card.classList.add('ring-2', 'ring-emerald-300');
-            }
-        });
-    });
-
+    // Helper to get CSRF token
     function getCsrfToken() {
         const meta = document.querySelector('meta[name="csrf-token"]');
         if (meta) return meta.getAttribute('content');
@@ -316,60 +179,185 @@
         return input ? input.value : '';
     }
 
+    // Safe DOM helpers
+    const formEl = document.querySelector('form');
+    if (formEl) {
+        formEl.addEventListener('submit', function(e) {
+            const requiredFields = [
+                { name: 'start_date', label: 'Fecha de inicio' },
+                { name: 'end_date', label: 'Fecha de fin' },
+                { name: 'group_id', label: 'Grupo de empleados' },
+                { name: 'schedule_id', label: 'Horario' }
+            ];
+
+            let hasErrors = false;
+            let errorMessages = [];
+
+            // Limpiar errores anteriores
+            document.querySelectorAll('.field-error').forEach(el => el.remove());
+            document.querySelectorAll('.border-red-500').forEach(el => {
+                el.classList.remove('border-red-500');
+                el.classList.add('border-slate-300');
+            });
+
+            // Validar cada campo obligatorio
+            requiredFields.forEach(field => {
+                const element = document.querySelector(`[name="${field.name}"]`);
+                if (element) {
+                    const value = (element.value || '').toString().trim();
+                    if (!value) {
+                        hasErrors = true;
+                        errorMessages.push(`${field.label} es obligatorio`);
+                        element.classList.add('border-red-500');
+                        element.classList.remove('border-slate-300');
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'field-error text-red-500 text-xs mt-1';
+                        errorDiv.textContent = `${field.label} es obligatorio`;
+                        element.parentNode.appendChild(errorDiv);
+                    }
+                }
+            });
+
+            // Validar que la fecha de fin sea posterior a la fecha de inicio
+            const startInput = document.querySelector('[name="start_date"]');
+            const endInput = document.querySelector('[name="end_date"]');
+            const startDate = startInput ? startInput.value : null;
+            const endDate = endInput ? endInput.value : null;
+
+            if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+                hasErrors = true;
+                errorMessages.push('La fecha de fin debe ser posterior a la fecha de inicio');
+                if (endInput) { endInput.classList.add('border-red-500'); endInput.classList.remove('border-slate-300'); }
+            }
+
+            if (hasErrors) {
+                e.preventDefault();
+                const generalError = document.createElement('div');
+                generalError.className = 'mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg';
+                generalError.innerHTML = `
+                    <h4 class="font-semibold mb-2">Por favor completa todos los campos obligatorios:</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        ${errorMessages.map(msg => `<li class="text-sm">${msg}</li>`).join('')}
+                    </ul>
+                `;
+                formEl.insertBefore(generalError, formEl.firstChild);
+                generalError.scrollIntoView({ behavior: 'smooth' });
+                return false;
+            }
+        });
+    }
+
+    // Date inputs listeners (guarded)
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    if (startDateInput && endDateInput) {
+        startDateInput.addEventListener('change', function(e) {
+            const startDate = new Date(e.target.value);
+            const endDate = new Date(endDateInput.value);
+            if (endDate < startDate) {
+                endDateInput.setCustomValidity('La fecha de fin debe ser posterior a la fecha de inicio');
+                endDateInput.classList.add('border-red-500');
+                endDateInput.classList.remove('border-slate-300');
+            } else {
+                endDateInput.setCustomValidity('');
+                endDateInput.classList.remove('border-red-500');
+                endDateInput.classList.add('border-slate-300');
+            }
+        });
+
+        endDateInput.addEventListener('change', function(e) {
+            const startDate = new Date(startDateInput.value);
+            const endDate = new Date(e.target.value);
+            if (endDate < startDate) {
+                e.target.setCustomValidity('La fecha de fin debe ser posterior a la fecha de inicio');
+                e.target.classList.add('border-red-500');
+                e.target.classList.remove('border-slate-300');
+            } else {
+                e.target.setCustomValidity('');
+                e.target.classList.remove('border-red-500');
+                e.target.classList.add('border-slate-300');
+            }
+        });
+    }
+
+    // --- Filtrado de grupos por turno/horario ---
+    const filterSelect = document.getElementById('filter_schedule_select_top');
+    const filterScheduleHidden = document.getElementById('filter_schedule_hidden');
+    
+    function applyScheduleFilter() {
+        const val = filterSelect ? filterSelect.value : '';
+        const cards = document.querySelectorAll('[data-schedule-id]');
+        let visibleCount = 0;
+        
+        // Actualizar campo oculto para envío del formulario
+        if (filterScheduleHidden && val) {
+            filterScheduleHidden.value = val;
+        }
+        
+        cards.forEach(card => {
+            const cardSchedule = card.getAttribute('data-schedule-id') || '';
+            // Si hay un horario seleccionado, mostrar solo los grupos de ese horario
+            // Si no hay horario seleccionado, mostrar todos
+            if (!val || val === '' || cardSchedule === val) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Mostrar mensaje si no hay grupos visibles
+        const container = document.querySelector('.grid.grid-cols-1.sm\\:grid-cols-2.md\\:grid-cols-3');
+        if (container) {
+            let noGroupsMsg = container.querySelector('.no-groups-message');
+            if (visibleCount === 0) {
+                if (!noGroupsMsg) {
+                    noGroupsMsg = document.createElement('div');
+                    noGroupsMsg.className = 'no-groups-message col-span-full p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700';
+                    noGroupsMsg.textContent = 'No hay grupos registrados para este horario. Seleccione otro horario o cree grupos primero.';
+                    container.appendChild(noGroupsMsg);
+                }
+            } else {
+                if (noGroupsMsg) noGroupsMsg.remove();
+            }
+        }
+    }
+    if (filterSelect) { 
+        filterSelect.addEventListener('change', applyScheduleFilter); 
+        applyScheduleFilter(); 
+    }
+
     function renderValidationResults(groups) {
         // Clear previous statuses
         document.querySelectorAll('.group-status').forEach(el => { el.textContent = ''; el.className = 'group-status text-sm text-slate-600 ml-3'; });
-
         const container = document.getElementById('massive_validation_results');
+        if (!container) return;
         container.innerHTML = '';
-
-        const list = document.createElement('div');
-        list.className = 'space-y-3';
+        const list = document.createElement('div'); list.className = 'space-y-3';
 
         groups.forEach(g => {
-            // Update card status
-            const btn = document.querySelector(`.select-group-btn[data-group-id="${g.group_id}"]`);
-            const statusEl = btn ? btn.closest('.border').querySelector('.group-status') : null;
-
+            const card = document.querySelector(`[data-group-id="${g.group_id}"]`);
+            const statusEl = card ? card.querySelector('.group-status') : null;
             const cardStatus = document.createElement('span');
-            if (g.ok) {
-                cardStatus.textContent = 'OK';
-                cardStatus.className = 'text-green-600';
-            } else {
-                cardStatus.textContent = 'Problemas';
-                cardStatus.className = 'text-red-600';
-            }
+            if (g.ok) { cardStatus.textContent = 'OK'; cardStatus.className = 'text-green-600'; }
+            else { cardStatus.textContent = 'Problemas'; cardStatus.className = 'text-red-600'; }
             if (statusEl) { statusEl.innerHTML = ''; statusEl.appendChild(cardStatus); }
 
-            // Build result entry
-            const entry = document.createElement('div');
-            entry.className = 'p-3 border border-slate-200 rounded-lg bg-white';
-
-            const title = document.createElement('div');
-            title.className = 'flex items-center justify-between';
+            const entry = document.createElement('div'); entry.className = 'p-3 border border-slate-200 rounded-lg bg-white';
+            const title = document.createElement('div'); title.className = 'flex items-center justify-between';
             title.innerHTML = `<strong class="text-sm">${g.group_name}</strong>`;
-            const state = document.createElement('div');
-            state.className = g.ok ? 'text-sm text-green-600' : 'text-sm text-red-600';
-            state.textContent = g.ok ? 'OK' : 'Problemas';
+            const state = document.createElement('div'); state.className = g.ok ? 'text-sm text-green-600' : 'text-sm text-red-600'; state.textContent = g.ok ? 'OK' : 'Problemas';
+            if (!g.ok) {
+                const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.className = 'edit-group-btn text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded'; editBtn.setAttribute('data-group-id', g.group_id); editBtn.textContent = 'Editar'; title.appendChild(editBtn);
+            }
             title.appendChild(state);
-
             entry.appendChild(title);
 
             if (!g.ok && g.inconsistencies && g.inconsistencies.length) {
-                const ul = document.createElement('ul');
-                ul.className = 'mt-2 list-disc list-inside text-sm text-red-600 space-y-1';
-                g.inconsistencies.forEach(msg => {
-                    const li = document.createElement('li');
-                    li.textContent = msg;
-                    ul.appendChild(li);
-                });
+                const ul = document.createElement('ul'); ul.className = 'mt-2 list-disc list-inside text-sm text-red-600 space-y-1';
+                g.inconsistencies.forEach(msg => { const li = document.createElement('li'); li.textContent = msg; ul.appendChild(li); });
                 entry.appendChild(ul);
-            } else {
-                const p = document.createElement('div');
-                p.className = 'mt-2 text-sm text-slate-600';
-                p.textContent = g.ok ? 'No se encontraron inconsistencias.' : '';
-                entry.appendChild(p);
-            }
+            } else { const p = document.createElement('div'); p.className = 'mt-2 text-sm text-slate-600'; p.textContent = g.ok ? 'No se encontraron inconsistencias.' : ''; entry.appendChild(p); }
 
             list.appendChild(entry);
         });
@@ -378,59 +366,257 @@
         container.scrollIntoView({ behavior: 'smooth' });
     }
 
-    document.getElementById('validate_availability').addEventListener('click', function(e) {
-        e.preventDefault();
+    // Validate availability button
+    const validateBtn = document.getElementById('validate_availability');
+    if (validateBtn) {
+        validateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const btn = this; btn.disabled = true; const originalText = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando...';
 
-        const btn = this;
-        btn.disabled = true;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando...';
+            const start_date = (document.querySelector('[name="start_date"]') || {}).value || '';
+            const end_date = (document.querySelector('[name="end_date"]') || {}).value || '';
+            const scheduleInput = document.querySelector('[name="schedule_id"]');
+            const schedule_id = scheduleInput ? scheduleInput.value : null;
+            const vehicleInput = document.querySelector('[name="vehicle_id"]');
+            const vehicle_id = vehicleInput ? vehicleInput.value : null;
 
+            const payload = { start_date, end_date, schedule_id };
+            const filterVal = (filterSelect && filterSelect.value) ? filterSelect.value : '';
+            if (filterVal && filterVal !== '') payload.filter_schedule = filterVal; else payload.all_groups = 1;
+            if (vehicle_id) payload.vehicle_id = vehicle_id;
+
+            const token = getCsrfToken();
+
+            fetch("{{ route('schedulings.validate-massive') }}", {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify(payload)
+            }).then(resp => {
+                // parse response safely
+                if (!resp.ok) return parseResponseJson(resp).then(json => { throw new Error(json.message || JSON.stringify(json)); });
+                return parseResponseJson(resp);
+            }).then(data => {
+                if (!data || !data.groups) { alert('Respuesta inválida del servidor.'); return; }
+                renderValidationResults(data.groups);
+            }).catch(err => { console.error(err); alert('Error al validar disponibilidad: ' + (err.message || err)); })
+            .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
+        });
+    }
+
+})();
+</script>
+
+<!-- Modal para editar configuración del grupo -->
+<div id="groupEditModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
+    <div class="bg-white rounded-lg w-full max-w-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">Editar Grupo <span id="editModalGroupName" class="text-sm text-slate-600"></span></h3>
+            <button type="button" id="editModalClose" class="text-slate-500">✕</button>
+        </div>
+
+        <form id="editGroupForm">
+            <input type="hidden" name="group_id" id="edit_group_id">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm text-slate-600 mb-1">Conductor</label>
+                    <select name="driver_id" id="edit_driver_id" class="w-full rounded border-slate-300 p-2"></select>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-600 mb-1">Ayudante 1</label>
+                    <select name="user1_id" id="edit_user1_id" class="w-full rounded border-slate-300 p-2"></select>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-600 mb-1">Ayudante 2</label>
+                    <select name="user2_id" id="edit_user2_id" class="w-full rounded border-slate-300 p-2"></select>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-600 mb-1">Vehículo</label>
+                    <select name="vehicle_id" id="edit_vehicle_id" class="w-full rounded border-slate-300 p-2">
+                        <option value="">-- Ninguno --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <label class="block text-sm text-slate-600 mb-1">Días</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm" id="edit_days_container">
+                    @php $days = ['lunes'=>'Lun','martes'=>'Mar','miercoles'=>'Mié','jueves'=>'Jue','viernes'=>'Vie','sabado'=>'Sáb','domingo'=>'Dom']; @endphp
+                    @foreach($days as $key => $label)
+                        <label class="inline-flex items-center gap-2"><input type="checkbox" name="days[]" value="{{ $key }}"> {{ $label }}</label>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="mt-4 flex justify-end gap-2">
+                <button type="button" id="editCancel" class="px-3 py-2 rounded bg-slate-100 text-slate-700">Cancelar</button>
+                <button type="submit" id="editSave" class="px-4 py-2 rounded bg-emerald-600 text-white">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <!-- JSON blobs for users and vehicles to avoid inline JS injection -->
+    <script type="application/json" id="massive-users-json">@json($users ?? [])</script>
+    <script type="application/json" id="massive-vehicles-json">@json($vehicles ?? [])</script>
+
+    <script>
+    // Extras para manejo del modal y edición de grupo
+    (function(){
+        // Parse users/vehicles from JSON script tags
+        const usersJsonEl = document.getElementById('massive-users-json');
+        const vehiclesJsonEl = document.getElementById('massive-vehicles-json');
+        const usersList = usersJsonEl ? JSON.parse(usersJsonEl.textContent || '[]') : [];
+        const vehiclesList = vehiclesJsonEl ? JSON.parse(vehiclesJsonEl.textContent || '[]') : [];
+
+        function parseResponseJson(resp){
+            return resp.text().then(text => {
+                try { return JSON.parse(text); }
+                catch(e){ throw new Error('Respuesta inválida (no JSON): ' + (text ? text.substring(0,200) : '<vacío>')); }
+            });
+        }
+
+    function buildSelectOptions(selectEl, items, selectedId, labelField = 'firstname'){
+        selectEl.innerHTML = '';
+        const empty = document.createElement('option');
+        empty.value = '';
+        empty.textContent = '-- Ninguno --';
+        selectEl.appendChild(empty);
+
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            if (item.firstname && item.lastname) opt.textContent = item.firstname + ' ' + item.lastname;
+            else opt.textContent = item.name || (item.firstname || '') + ' ' + (item.lastname || '');
+            if (String(item.id) === String(selectedId)) opt.selected = true;
+            selectEl.appendChild(opt);
+        });
+    }
+
+    function openEditModalForGroup(groupId){
+        const card = document.querySelector(`[data-group-id="${groupId}"]`);
+        if (!card) return alert('No se encontró la tarjeta del grupo.');
+
+        const driverId = card.getAttribute('data-driver-id') || '';
+        const helper1Id = card.getAttribute('data-helper1-id') || '';
+        const helper2Id = card.getAttribute('data-helper2-id') || '';
+        const vehicleId = card.getAttribute('data-vehicle-id') || '';
+        const days = (() => { try { return JSON.parse(card.getAttribute('data-days') || '[]'); } catch(e){ return []; } })();
+
+        document.getElementById('edit_group_id').value = groupId;
+        document.getElementById('editModalGroupName').textContent = ' - ' + (card.querySelector('h4') ? card.querySelector('h4').textContent.trim() : '');
+
+        // Build selects
+        buildSelectOptions(document.getElementById('edit_driver_id'), usersList, driverId);
+        buildSelectOptions(document.getElementById('edit_user1_id'), usersList, helper1Id);
+        buildSelectOptions(document.getElementById('edit_user2_id'), usersList, helper2Id);
+        buildSelectOptions(document.getElementById('edit_vehicle_id'), vehiclesList, vehicleId, 'name');
+
+        // Days checkboxes
+        const daysContainer = document.getElementById('edit_days_container');
+        daysContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = days.includes(cb.value));
+
+        // Show modal
+        const modal = document.getElementById('groupEditModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeEditModal(){
+        const modal = document.getElementById('groupEditModal');
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }
+
+
+    // Attach events to dynamic edit buttons in cards
+    document.addEventListener('click', function(e){
+        if (e.target && e.target.matches('.edit-group-btn')){
+            const id = e.target.getAttribute('data-group-id');
+            openEditModalForGroup(id);
+        }
+    });
+
+    const editModalClose = document.getElementById('editModalClose');
+    if (editModalClose) editModalClose.addEventListener('click', closeEditModal);
+    const editCancel = document.getElementById('editCancel');
+    if (editCancel) editCancel.addEventListener('click', closeEditModal);
+
+    const editForm = document.getElementById('editGroupForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e){
+            e.preventDefault();
+            const form = e.target;
+            const payload = { group_id: form.group_id.value };
+            payload.driver_id = form.driver_id.value || null;
+            payload.user1_id = form.user1_id.value || null;
+            payload.user2_id = form.user2_id.value || null;
+            payload.vehicle_id = form.vehicle_id.value || null;
+            payload.days = Array.from(form.querySelectorAll('input[name="days[]"]:checked')).map(i => i.value);
+
+            const token = (function(){ const m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : (document.querySelector('input[name="_token"]') ? document.querySelector('input[name="_token"]').value : ''); })();
+
+            const saveBtn = document.getElementById('editSave');
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando...'; }
+
+            fetch("{{ route('schedulings.update-group') }}", {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify(payload)
+            }).then(resp => {
+                if (!resp.ok) return parseResponseJson(resp).then(json => { throw new Error(json.message || JSON.stringify(json)); });
+                return parseResponseJson(resp);
+            }).then(data => {
+                if (!data || !data.success){ alert(data?.message || 'Error al guardar'); return; }
+
+                const g = data.group;
+                const card = document.querySelector(`[data-group-id="${payload.group_id}"]`);
+                if (card) {
+                    card.setAttribute('data-driver-id', payload.driver_id || '');
+                    card.setAttribute('data-helper1-id', payload.user1_id || '');
+                    card.setAttribute('data-helper2-id', payload.user2_id || '');
+                    card.setAttribute('data-vehicle-id', payload.vehicle_id || '');
+                    card.setAttribute('data-days', JSON.stringify(g.days || payload.days || []));
+
+                    card.querySelectorAll('div').forEach(d => {
+                        if (d.textContent && d.textContent.trim().startsWith('Conductor:')) {
+                            d.innerHTML = '<strong>Conductor:</strong> ' + (g.driver ?? '-');
+                        }
+                        if (d.textContent && d.textContent.trim().startsWith('Ayudantes:')) {
+                            const helpers = [g.helper1, g.helper2].filter(Boolean).join(', ');
+                            d.innerHTML = '<strong>Ayudantes:</strong> ' + (helpers || '-');
+                        }
+                        if (d.textContent && d.textContent.trim().startsWith('Vehículo:')) {
+                            d.innerHTML = '<strong>Vehículo:</strong> ' + (g.vehicle ?? '-');
+                        }
+                        if (d.textContent && d.textContent.trim().startsWith('Días:')) {
+                            const map = { 'lunes':'Lun','martes':'Mar','miercoles':'Mié','jueves':'Jue','viernes':'Vie','sabado':'Sáb','domingo':'Dom' };
+                            const daysArr = g.days && g.days.length ? g.days : (payload.days || []);
+                            const names = (daysArr || []).map(x => map[x] || x);
+                            d.innerHTML = '<strong>Días:</strong> ' + (names.length ? names.join(', ') : '-');
+                        }
+                    });
+                }
+
+                closeEditModal();
+                revalidateGroup(payload.group_id);
+            }).catch(err => { console.error(err); alert('Error al guardar: ' + (err.message || err)); })
+            .finally(() => { if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar'; } });
+        });
+    }
+
+    function revalidateGroup(groupId){
         const start_date = document.querySelector('[name="start_date"]').value;
         const end_date = document.querySelector('[name="end_date"]').value;
         const scheduleInput = document.querySelector('[name="schedule_id"]');
         const schedule_id = scheduleInput ? scheduleInput.value : null;
-        const vehicleInput = document.querySelector('[name="vehicle_id"]');
-        const vehicle_id = vehicleInput ? vehicleInput.value : null;
 
-        const payload = { start_date, end_date, schedule_id };
+        const token = (function(){ const m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : (document.querySelector('input[name="_token"]') ? document.querySelector('input[name="_token"]').value : ''); })();
 
-        // Determine groups to validate: none selected -> all_groups, one selected -> group_id, multiple -> all_groups
-        if (selectedGroupIds.size === 1) {
-            payload.group_id = Array.from(selectedGroupIds)[0];
-        } else {
-            payload.all_groups = 1;
-        }
+        const payload = { start_date, end_date, schedule_id, group_id: groupId };
 
-        if (vehicle_id) payload.vehicle_id = vehicle_id;
-
-        const token = getCsrfToken();
-
-    fetch("{{ route('schedulings.validate-massive') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': token
-            },
-            body: JSON.stringify(payload)
-        })
-        .then(resp => resp.json())
-        .then(data => {
-            if (!data || !data.groups) {
-                alert('Respuesta inválida del servidor.');
-                return;
-            }
-
-            renderValidationResults(data.groups);
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Error al validar disponibilidad. Revisa la consola.');
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        });
-    });
+        fetch("{{ route('schedulings.validate-massive') }}", {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify(payload)
+        }).then(resp => {
+            if (!resp.ok) return parseResponseJson(resp).then(json => { throw new Error(json.message || JSON.stringify(json)); });
+            return parseResponseJson(resp);
+        }).then(data => { if (data && data.groups) renderValidationResults(data.groups); })
+        .catch(err => { console.error(err); });
+    }
 })();
 </script>
