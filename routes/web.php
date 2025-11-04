@@ -60,6 +60,13 @@ Route::middleware('auth')->group(function () {
     Route::post('schedulings/validate-massive', [SchedulingController::class, 'validateMassive'])->name('schedulings.validate-massive');
     // Endpoint para actualizar configuración de un grupo desde la validación masiva
     Route::post('schedulings/update-group', [SchedulingController::class, 'updateGroupFromValidation'])->name('schedulings.update-group');
+// Rutas para edición masiva
+Route::get('schedulings/edit-massive', [SchedulingController::class, 'editMassive'])
+    ->name('schedulings.edit-massive');
+Route::post('schedulings/update-massive', [SchedulingController::class, 'updateMassive'])
+    ->name('schedulings.update-massive');
+Route::post('/schedulings/fetch-massive', [SchedulingController::class, 'fetchMassive'])
+    ->name('schedulings.fetch-massive');
 
     Route::resource('schedulings', SchedulingController::class);
 

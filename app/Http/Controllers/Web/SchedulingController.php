@@ -1411,6 +1411,113 @@ class SchedulingController extends Controller
 
         return null; // No hay conflictos
     }
+/**
+ * Mostrar formulario de edición masiva.
+ */
+public function editMassive(Request $request)
+{
+    $schedules = Schedule::orderBy('name')->get();
+    $groups = EmployeeGroup::with(['vehicle','schedule','configgroups.user','zone'])
+        ->orderBy('name')->get();
+    $users = User::orderBy('firstname')->get();
+    $vehicles = Vehicle::orderBy('name')->get();
+    $zones = Zone::orderBy('name')->get();
+
+    $programaciones = collect();
+
+    if ($request->filled(['schedule_id','start_date','end_date'])) {
+        $programaciones = Scheduling::with(['group','schedule','vehicle','zone'])
+            ->where('schedule_id', $request->schedule_id)
+            ->whereBetween('date', [$request->start_date, $request->end_date])
+            ->orderBy('date')
+            ->get();
+    }
+
+    return view('schedulings.massive._modal_edit', compact(
+        'schedules','groups','users','vehicles','zones','programaciones'
+    ));
+}
+
+
+/**
+ * Endpoint AJAX: cargar programaciones existentes según rango y turno
+ */
+public function fetchMassive(Request $request)
+{
+    $request->validate([
+        'schedule_id' => 'required|exists:schedules,id',
+        'start_date' => 'required|date',
+        'end_date' => 'required|date|after_or_equal:start_date',
+    ]);
+
+    $scheduleId = $request->schedule_id;
+    $start = \Carbon\Carbon::parse($request->start_date);
+    $end = \Carbon\Carbon::parse($request->end_date);
+
+    $schedulings = Scheduling::with(['group.vehicle','group.zone','group.configgroups.user','schedule'])
+        ->where('schedule_id', $scheduleId)
+        ->whereBetween('date', [$start, $end])
+        ->get()
+        ->groupBy('group_id');
+
+    $data = $schedulings->map(function($groupSchedulings, $groupId) {
+        $group = $groupSchedulings->first()->group;
+
+        // normalizar usuarios
+        $config = $group->configgroups->sortBy('id')->values();
+        $driver = $config->get(0)?->user;
+        $helper1 = $config->get(1)?->user;
+        $helper2 = $config->get(2)?->user;
+
+        return [
+            'group_id' => $group->id,
+            'group_name' => $group->name,
+            'zone' => optional($group->zone)->name,
+            'vehicle' => optional($group->vehicle)->name,
+            'driver' => $driver ? $driver->firstname.' '.$driver->lastname : null,
+            'helper1' => $helper1 ? $helper1->firstname.' '.$helper1->lastname : null,
+            'helper2' => $helper2 ? $helper2->firstname.' '.$helper2->lastname : null,
+            'days' => is_array($group->days) ? $group->days : (empty($group->days)?[]:json_decode($group->days,true)),
+            'schedulings' => $groupSchedulings->map(fn($s) => [
+                'id' => $s->id,
+                'date' => $s->date,
+                'status' => $s->status,
+                'notes' => $s->notes
+            ])->values()
+        ];
+    })->values();
+
+    return response()->json(['success' => true, 'groups' => $data]);
+}
+
+/**
+ * Actualizar en lote los registros editados.
+ */
+public function updateMassive(Request $request)
+{
+    $request->validate([
+        'ids' => 'required|array',
+        'status' => 'nullable|integer|in:0,1,2,3',
+        'notes' => 'nullable|string|max:500',
+        'zone_id' => 'nullable|exists:zones,id',
+        'vehicle_id' => 'nullable|exists:vehicles,id',
+    ]);
+
+    $changes = array_filter([
+        'status' => $request->status,
+        'notes'  => $request->notes,
+        'zone_id'    => $request->zone_id,
+        'vehicle_id' => $request->vehicle_id,
+    ], fn($v) => !is_null($v) && $v !== '');
+
+    Scheduling::whereIn('id', $request->ids)->update($changes);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Programaciones actualizadas correctamente'
+    ]);
+}
+
 
     /**
      * Formatear mensajes de error de conflictos de vacaciones agrupados

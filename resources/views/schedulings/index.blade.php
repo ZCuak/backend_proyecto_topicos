@@ -28,6 +28,11 @@
                class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                <i class="fa-solid fa-calendar-plus"></i> Programación Masiva
             </a>
+                <a href="{{ route('schedulings.edit-massive') }}"
+                    data-turbo-frame="modal-frame"
+                    class="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
+                    <i class="fa-solid fa-edit"></i> Editar Masivo
+                </a>
         </div>
     </div>
 
