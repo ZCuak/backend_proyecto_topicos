@@ -7,14 +7,14 @@
 
         <!-- Modal centrado -->
         <div id="massiveModal"
-             class="flyonui-modal fixed inset-0 flex items-center justify-center z-[9999]"
+             class="flyonui-modal fixed inset-0 flex items-center justify-center z-[9999] overflow-y-auto"
              data-flyonui
              role="dialog"
              aria-modal="true">
 
             <!-- 🧩 Ancho flexible y acoplable -->
             <div class="flyonui-dialog relative bg-white rounded-2xl shadow-2xl w-full
-                        max-w-4xl sm:mx-4 overflow-hidden
+                        max-w-4xl sm:mx-4 
                         animate-[flyonui-fade-in_0.3s_ease-out]">
 
                 <!-- Header -->

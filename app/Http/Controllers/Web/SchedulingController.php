@@ -15,9 +15,11 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\ConfigGroup;
+use App\Traits\HistoryChanges;
 
 class SchedulingController extends Controller
 {
+    use HistoryChanges;
     /**
      * Listar programaciones (Web) - Vista de tabla
      */
@@ -33,11 +35,11 @@ class SchedulingController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('notes', 'ILIKE', "%{$search}%")
-                  ->orWhere('date', 'ILIKE', "%{$search}%")
-                  ->orWhereHas('group', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"))
-                  ->orWhereHas('schedule', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"))
-                  ->orWhereHas('vehicle', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"))
-                  ->orWhereHas('zone', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"));
+                    ->orWhere('date', 'ILIKE', "%{$search}%")
+                    ->orWhereHas('group', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"))
+                    ->orWhereHas('schedule', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"))
+                    ->orWhereHas('vehicle', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"))
+                    ->orWhereHas('zone', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"));
             });
         }
 
@@ -72,7 +74,7 @@ class SchedulingController extends Controller
             ->orderBy('date')
             ->orderBy('schedule_id')
             ->get()
-            ->map(function($scheduling) {
+            ->map(function ($scheduling) {
                 // Asegurar que date sea un objeto Carbon
                 if (is_string($scheduling->date)) {
                     $scheduling->date = \Carbon\Carbon::parse($scheduling->date);
@@ -339,7 +341,7 @@ class SchedulingController extends Controller
     {
         $scheduling->load(['group', 'schedule', 'vehicle', 'zone']);
         $audits = HistoryController::getHistory('PROGRAMACION', $scheduling->id);
-        return view('schedulings.show', compact('scheduling','audits'));
+        return view('schedulings.show', compact('scheduling', 'audits'));
     }
 
     /**
@@ -461,8 +463,12 @@ class SchedulingController extends Controller
                     return back()->withErrors(['vehicle_id' => $errorMessage])->withInput();
                 }
             }
+            $originalData = $scheduling->getOriginal();
 
             $scheduling->update($data);
+            $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'type'];
+
+            $this->registrarCambios($scheduling,  $originalData, $request->input('add_notes'), $exceptFields);
 
             Log::info('Scheduling updated successfully');
 
@@ -513,7 +519,7 @@ class SchedulingController extends Controller
      */
     public function createMassive()
     {
-        $groups = EmployeeGroup::with(['vehicle','schedule','configgroups.user'])->orderBy('name')->get();
+        $groups = EmployeeGroup::with(['vehicle', 'schedule', 'configgroups.user'])->orderBy('name')->get();
         $schedules = Schedule::orderBy('name')->get();
         $vehicles = Vehicle::where('status', 'DISPONIBLE')->orderBy('name')->get();
         $zones = Zone::orderBy('name')->get();
@@ -695,7 +701,7 @@ class SchedulingController extends Controller
                     $selectedDays = $data['days'] ?? [];
                     if (!empty($selectedDays)) {
                         $dayOfWeek = $currentDate->dayOfWeek; // 0=domingo
-                        $dayMap = [1=>'lunes',2=>'martes',3=>'miercoles',4=>'jueves',5=>'viernes',6=>'sabado',0=>'domingo'];
+                        $dayMap = [1 => 'lunes', 2 => 'martes', 3 => 'miercoles', 4 => 'jueves', 5 => 'viernes', 6 => 'sabado', 0 => 'domingo'];
                         $dayInSpanish = $dayMap[$dayOfWeek] ?? '';
                         if (!in_array($dayInSpanish, $selectedDays)) {
                             $currentDate->addDay();
@@ -734,8 +740,8 @@ class SchedulingController extends Controller
                         $scheduling = Scheduling::create([
                             'group_id' => $group->id,
                             'schedule_id' => $data['schedule_id'],
-                            'vehicle_id' => $data['vehicle_id'] ?? null,
-                            'zone_id' => $data['zone_id'] ?? null,
+                            'vehicle_id' => $group->vehicle_id ?? null,
+                            'zone_id' => $group->zone_id ?? null,
                             'date' => $dateString,
                             'status' => $data['status'] ?? 0,
                             'notes' => $data['notes'] ?? null,
@@ -799,7 +805,7 @@ class SchedulingController extends Controller
             'group_id' => 'nullable|exists:employeegroups,id',
             'all_groups' => 'nullable|boolean',
             'filter_schedule' => 'nullable|exists:schedules,id',
-            'schedule_id' => 'required|exists:schedules,id',
+            'schedule_id' => 'nullable|exists:schedules,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after_or_equal:start_date',
@@ -864,16 +870,25 @@ class SchedulingController extends Controller
 
             $currentDate = $startDate->copy();
             while ($currentDate->lte($endDate)) {
-                if ($excludeWeekends && $currentDate->isWeekend()) { $currentDate->addDay(); continue; }
+                if ($excludeWeekends && $currentDate->isWeekend()) {
+                    $currentDate->addDay();
+                    continue;
+                }
                 $dateString = $currentDate->format('Y-m-d');
-                if (in_array($dateString, $excludeSpecificDates)) { $currentDate->addDay(); continue; }
+                if (in_array($dateString, $excludeSpecificDates)) {
+                    $currentDate->addDay();
+                    continue;
+                }
 
                 $selectedDays = $data['days'] ?? [];
                 if (!empty($selectedDays)) {
                     $dayOfWeek = $currentDate->dayOfWeek;
-                    $dayMap = [1=>'lunes',2=>'martes',3=>'miercoles',4=>'jueves',5=>'viernes',6=>'sabado',0=>'domingo'];
+                    $dayMap = [1 => 'lunes', 2 => 'martes', 3 => 'miercoles', 4 => 'jueves', 5 => 'viernes', 6 => 'sabado', 0 => 'domingo'];
                     $dayInSpanish = $dayMap[$dayOfWeek] ?? '';
-                    if (!in_array($dayInSpanish, $selectedDays)) { $currentDate->addDay(); continue; }
+                    if (!in_array($dayInSpanish, $selectedDays)) {
+                        $currentDate->addDay();
+                        continue;
+                    }
                 }
 
                 $existingScheduling = Scheduling::where('date', $dateString)
@@ -953,13 +968,13 @@ class SchedulingController extends Controller
             if (!empty($data['user2_id'])) $order[] = $data['user2_id'];
 
             foreach ($order as $userId) {
-                ConfigGroup::create([ 'group_id' => $group->id, 'user_id' => $userId ]);
+                ConfigGroup::create(['group_id' => $group->id, 'user_id' => $userId]);
             }
 
             DB::commit();
 
             // Return updated info
-            $group->load(['vehicle','configgroups.user']);
+            $group->load(['vehicle', 'configgroups.user']);
             $config = $group->configgroups->sortBy('id')->values();
             $driver = $config->get(0)?->user ?? null;
             $helper1 = $config->get(1)?->user ?? null;
@@ -990,11 +1005,11 @@ class SchedulingController extends Controller
     private function getGroupUsersWithActiveContracts($groupId)
     {
         return \App\Models\ConfigGroup::where('group_id', $groupId)
-            ->with(['user.contracts' => function($query) {
+            ->with(['user.contracts' => function ($query) {
                 $query->where('is_active', true);
             }])
             ->get()
-            ->filter(function($configGroup) {
+            ->filter(function ($configGroup) {
                 return $configGroup->user->contracts->isNotEmpty();
             });
     }
@@ -1027,7 +1042,7 @@ class SchedulingController extends Controller
     private function validateGroupContractsForProgramming($groupId, $programmingDates, $isTurbo = false)
     {
         $groupUsers = \App\Models\ConfigGroup::where('group_id', $groupId)
-            ->with(['user.contracts' => function($query) {
+            ->with(['user.contracts' => function ($query) {
                 $query->where('is_active', true);
             }])
             ->get();
@@ -1411,112 +1426,117 @@ class SchedulingController extends Controller
 
         return null; // No hay conflictos
     }
-/**
- * Mostrar formulario de edición masiva.
- */
-public function editMassive(Request $request)
-{
-    $schedules = Schedule::orderBy('name')->get();
-    $groups = EmployeeGroup::with(['vehicle','schedule','configgroups.user','zone'])
-        ->orderBy('name')->get();
-    $users = User::orderBy('firstname')->get();
-    $vehicles = Vehicle::orderBy('name')->get();
-    $zones = Zone::orderBy('name')->get();
+    /**
+     * Mostrar formulario de edición masiva.
+     */
+    public function editMassive(Request $request)
+    {
+        $schedules = Schedule::orderBy('name')->get();
+        $groups = EmployeeGroup::with(['vehicle', 'schedule', 'configgroups.user', 'zone'])
+            ->orderBy('name')->get();
+        $users = User::orderBy('firstname')->get();
+        $vehicles = Vehicle::orderBy('name')->get();
+        $zones = Zone::orderBy('name')->get();
 
-    $programaciones = collect();
+        $programaciones = collect();
 
-    if ($request->filled(['schedule_id','start_date','end_date'])) {
-        $programaciones = Scheduling::with(['group','schedule','vehicle','zone'])
-            ->where('schedule_id', $request->schedule_id)
-            ->whereBetween('date', [$request->start_date, $request->end_date])
-            ->orderBy('date')
-            ->get();
+        if ($request->filled(['schedule_id', 'start_date', 'end_date'])) {
+            $programaciones = Scheduling::with(['group', 'schedule', 'vehicle', 'zone'])
+                ->where('schedule_id', $request->schedule_id)
+                ->whereBetween('date', [$request->start_date, $request->end_date])
+                ->orderBy('date')
+                ->get();
+        }
+
+        return view('schedulings.massive._modal_edit', compact(
+            'schedules',
+            'groups',
+            'users',
+            'vehicles',
+            'zones',
+            'programaciones'
+        ));
     }
 
-    return view('schedulings.massive._modal_edit', compact(
-        'schedules','groups','users','vehicles','zones','programaciones'
-    ));
-}
 
+    /**
+     * Endpoint AJAX: cargar programaciones existentes según rango y turno
+     */
+    public function fetchMassive(Request $request)
+    {
+        $request->validate([
+            'schedule_id' => 'required|exists:schedules,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
 
-/**
- * Endpoint AJAX: cargar programaciones existentes según rango y turno
- */
-public function fetchMassive(Request $request)
-{
-    $request->validate([
-        'schedule_id' => 'required|exists:schedules,id',
-        'start_date' => 'required|date',
-        'end_date' => 'required|date|after_or_equal:start_date',
-    ]);
+        $scheduleId = $request->schedule_id;
+        $start = \Carbon\Carbon::parse($request->start_date);
+        $end = \Carbon\Carbon::parse($request->end_date);
 
-    $scheduleId = $request->schedule_id;
-    $start = \Carbon\Carbon::parse($request->start_date);
-    $end = \Carbon\Carbon::parse($request->end_date);
+        $schedulings = Scheduling::with(['group.vehicle', 'group.zone', 'group.configgroups.user', 'schedule'])
+            ->where('schedule_id', $scheduleId)
+            ->whereBetween('date', [$start, $end])
+            ->get()
+            ->groupBy('group_id');
 
-    $schedulings = Scheduling::with(['group.vehicle','group.zone','group.configgroups.user','schedule'])
-        ->where('schedule_id', $scheduleId)
-        ->whereBetween('date', [$start, $end])
-        ->get()
-        ->groupBy('group_id');
+        $data = $schedulings->map(function ($groupSchedulings, $groupId) {
+            $group = $groupSchedulings->first()->group;
 
-    $data = $schedulings->map(function($groupSchedulings, $groupId) {
-        $group = $groupSchedulings->first()->group;
+            // normalizar usuarios
+            $config = $group->configgroups->sortBy('id')->values();
+            $driver = $config->get(0)?->user;
+            $helper1 = $config->get(1)?->user;
+            $helper2 = $config->get(2)?->user;
 
-        // normalizar usuarios
-        $config = $group->configgroups->sortBy('id')->values();
-        $driver = $config->get(0)?->user;
-        $helper1 = $config->get(1)?->user;
-        $helper2 = $config->get(2)?->user;
+            return [
+                'group_id' => $group->id,
+                'group_name' => $group->name,
+                'zone' => optional($group->zone)->name,
+                'vehicle' => optional($group->vehicle)->name,
+                'driver' => $driver ? $driver->firstname . ' ' . $driver->lastname : null,
+                'helper1' => $helper1 ? $helper1->firstname . ' ' . $helper1->lastname : null,
+                'helper2' => $helper2 ? $helper2->firstname . ' ' . $helper2->lastname : null,
+                'days' => is_array($group->days) ? $group->days : (empty($group->days) ? [] : json_decode($group->days, true)),
+                'schedulings' => $groupSchedulings->map(fn($s) => [
+                    'id' => $s->id,
+                    'date' => $s->date,
+                    'status' => $s->status,
+                    'notes' => $s->notes
+                ])->values()
+            ];
+        })->values();
 
-        return [
-            'group_id' => $group->id,
-            'group_name' => $group->name,
-            'zone' => optional($group->zone)->name,
-            'vehicle' => optional($group->vehicle)->name,
-            'driver' => $driver ? $driver->firstname.' '.$driver->lastname : null,
-            'helper1' => $helper1 ? $helper1->firstname.' '.$helper1->lastname : null,
-            'helper2' => $helper2 ? $helper2->firstname.' '.$helper2->lastname : null,
-            'days' => is_array($group->days) ? $group->days : (empty($group->days)?[]:json_decode($group->days,true)),
-            'schedulings' => $groupSchedulings->map(fn($s) => [
-                'id' => $s->id,
-                'date' => $s->date,
-                'status' => $s->status,
-                'notes' => $s->notes
-            ])->values()
-        ];
-    })->values();
+        return response()->json(['success' => true, 'groups' => $data]);
+    }
 
-    return response()->json(['success' => true, 'groups' => $data]);
-}
+    /**
+     * Actualizar en lote los registros editados.
+     */
+    public function updateMassive(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'status' => 'nullable|integer|in:0,1,2,3',
+            'notes' => 'nullable|string|max:500',
+            'zone_id' => 'nullable|exists:zones,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+        ]);
 
-/**
- * Actualizar en lote los registros editados.
- */
-public function updateMassive(Request $request)
-{
-    $request->validate([
-        'ids' => 'required|array',
-        'status' => 'nullable|integer|in:0,1,2,3',
-        'notes' => 'nullable|string|max:500',
-        'zone_id' => 'nullable|exists:zones,id',
-        'vehicle_id' => 'nullable|exists:vehicles,id',
-    ]);
+        $changes = array_filter([
+            'status' => $request->status,
+            'notes'  => $request->notes,
+            'zone_id'    => $request->zone_id,
+            'vehicle_id' => $request->vehicle_id,
+        ], fn($v) => !is_null($v) && $v !== '');
 
-    $changes = array_filter([
-        'status' => $request->status,
-        'notes'  => $request->notes,
-        'zone_id'    => $request->zone_id,
-        'vehicle_id' => $request->vehicle_id,
-    ], fn($v) => !is_null($v) && $v !== '');
+        Scheduling::whereIn('id', $request->ids)->update($changes);
 
-    Scheduling::whereIn('id', $request->ids)->update($changes);
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Programaciones actualizadas correctamente'
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'message' => 'Programaciones actualizadas correctamente'
+        ]);
+    }
 
 
     /**

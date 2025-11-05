@@ -15,7 +15,6 @@
     <div class="mb-3">
         <label class="block text-sm text-slate-600 mb-1">Seleccionar turno/horario <span class="text-red-500">*</span></label>
     <select id="filter_schedule_select_top" name="schedule_id" required class="w-full md:w-1/3 pl-3 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('schedule_id') border-red-500 @enderror">
-            <option value="">-- Seleccione un turno --</option>
             @foreach($schedules as $s)
                 <option value="{{ $s->id }}" {{ old('schedule_id') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
             @endforeach

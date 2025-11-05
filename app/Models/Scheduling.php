@@ -11,6 +11,16 @@ class Scheduling extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'schedulings';
+    public static $auditName = 'PROGRAMACION';
+
+    public static $auditFieldNames = [
+        'group_id'     => 'Grupo',
+        'schedule_id'  => 'Turno',
+        'vehicle_id'   => 'Vehiculo',
+        'date'   => 'Fecha',
+        'zone_id'  => 'Zona',
+        'status'  => 'Estado',
+    ];
 
     protected $fillable = [
         'group_id',
