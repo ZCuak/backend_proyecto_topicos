@@ -68,13 +68,21 @@ trait HistoryChanges
      * Registra los cambios detectados en la tabla de auditoría.
      * @param Model $model El modelo actualizado.
      * @param array $originalData Los atributos del modelo ANTES de la actualización.
-     * @param string|null $nota Nota opcional del usuario.
+     * @param array|null $notas Nota opcionales por campo ['campo' => 'nota'].
      * @param array $exceptFields Campos a ignorar (e.g., timestamps, id).
+     * 
+     * @example
+     * $this->registrarCambios($model, $original, [
+     *    'shift_id' => 'Cambio de turno por enfermedad',
+     *    'vehicle_id' => 'Cambio de vehículo por mantenimiento',
+     *    'date' => null  // Este campo no tendrá nota
+     * ]);
+     * 
      */
     protected function registrarCambios(
         Model $model,
         array $originalData,
-        ?string $nota = null,
+        ?array $notas = [],
         array $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at']
     ): void {
         $changes = [];
@@ -100,10 +108,12 @@ trait HistoryChanges
                 }
                 $campo = $this->getFieldNameForAudit($model, $field);
 
+                $notaCampo = $notas[$field] ?? null;
                 $changes[] = [
                     'campo_modificado' => $campo,
                     'valor_anterior' => $valorAnteriorTexto,
                     'valor_nuevo' => $valorNuevoTexto,
+                    'nota' => $notaCampo,
                 ];
             }
         }
@@ -118,7 +128,7 @@ trait HistoryChanges
                     'valor_anterior' => $change['valor_anterior'],
                     'valor_nuevo' => $change['valor_nuevo'],
                     'user_name' => $userName,
-                    'nota_adicional' => $nota,
+                    'nota_adicional' => $change['nota'],
                 ]);
             }
         }
