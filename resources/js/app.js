@@ -27,11 +27,7 @@ const fixSweetAlertZIndex = () => {
 
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.addEventListener('DOMNodeInserted', (event) => {
-        if (event.target.classList?.contains('swal2-container')) fixSweetAlertZIndex();
-    });
-});
+
 
 /* =======================================================
  FlyonUI + Turbo: manejo universal de modales

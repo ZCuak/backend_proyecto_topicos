@@ -1,3 +1,8 @@
+@php
+    use Illuminate\Support\Facades\Auth;
+    $user = Auth::user();
+@endphp
+
 <!-- NAV SUPERIOR -->
 <nav class="fixed md:static inset-x-0 top-0 h-16 md:h-0 z-40 bg-white md:bg-transparent border-b md:border-0 border-slate-200 flex items-center md:hidden px-4">
     <button id="menuToggle" class="mr-3 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600">
@@ -7,7 +12,11 @@
         <img src="{{ asset('img/logo_rsu.png') }}" alt="RSU" class="h-8 w-auto">
         <span class="font-bold text-slate-800">RSU Reciclaje</span>
     </div>
-    <span class="ml-auto text-xs font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg">ADMIN</span>
+    @if($user)
+        <span class="ml-auto text-xs font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg uppercase">
+            {{ $user->usertype->name ?? 'Usuario' }}
+        </span>
+    @endif
 </nav>
 
 <!-- SIDEBAR -->
@@ -21,12 +30,26 @@
             <img src="{{ asset('img/logo_rsu.png') }}" alt="RSU" class="h-9 w-auto">
             <span class="font-bold text-slate-800">RSU Reciclaje</span>
         </div>
-        <span class="text-xs font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg">ADMIN</span>
+        @if($user)
+            <span class="text-xs font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg uppercase">
+                {{ $user->usertype->name ?? 'Usuario' }}
+            </span>
+        @endif
     </div>
 
     <!-- Perfil -->
-    <div class="px-5 py-4 border-b border-slate-200">
-        <p class="text-sm font-semibold text-slate-700">Administrador</p>
+    <div class="px-5 py-4 border-b border-slate-200 flex items-center gap-3">
+        @if($user && $user->profile_photo_path)
+            <img src="{{ asset('storage/'.$user->profile_photo_path) }}" class="w-10 h-10 rounded-full border border-slate-200 object-cover">
+        @else
+            <div class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                <i class="fa-solid fa-user"></i>
+            </div>
+        @endif
+        <div>
+            <p class="text-sm font-semibold text-slate-700">{{ $user->firstname ?? 'Usuario' }} {{ $user->lastname ?? '' }}</p>
+            <p class="text-xs text-slate-500">{{ $user->email ?? '' }}</p>
+        </div>
     </div>
 
     <!-- MENÚ PRINCIPAL -->
@@ -130,6 +153,8 @@
             </button>
         </div>
     </nav>
+
+    
 </aside>
 
 <!-- OVERLAY -->
@@ -143,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleBtn = document.getElementById('menuToggle');
     const logoutBtn = document.getElementById('logoutBtn');
     const profileBtn = document.getElementById('userProfileBtnMovil');
+    const logoutForm = document.getElementById('logoutForm');
 
     const openMenu = () => {
         sidebar.classList.remove('-translate-x-full');
@@ -156,22 +182,26 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBtn?.addEventListener('click', openMenu);
     overlay?.addEventListener('click', closeMenu);
 
+    // Perfil del usuario logueado
     profileBtn?.addEventListener('click', () => {
         Swal.fire({
             icon: 'info',
-            title: 'Perfil del Usuario',
+            title: '👤 Perfil del Usuario',
             html: `
-                <ul class="text-left leading-7">
-                    <li><b>Rol:</b> Administrador</li>
-                    <li><b>Nombre:</b> Usuario de Prueba</li>
-                    <li><b>Correo:</b> admin@rsu.com</li>
-                    <li><b>Dirección:</b> Chiclayo - Perú</li>
-                </ul>`,
+                <div class="text-left leading-7">
+                    <p><b>Nombre:</b> {{ $user->firstname ?? '' }} {{ $user->lastname ?? '' }}</p>
+                    <p><b>DNI:</b> {{ $user->dni ?? '-' }}</p>
+                    <p><b>Rol:</b> {{ $user->usertype->name ?? 'Usuario' }}</p>
+                    <p><b>Correo:</b> {{ $user->email ?? '' }}</p>
+                    <p><b>Teléfono:</b> {{ $user->phone ?? '-' }}</p>
+                    <p><b>Dirección:</b> {{ $user->address ?? '-' }}</p>
+                </div>`,
             confirmButtonText: 'Cerrar',
             confirmButtonColor: '#10b981'
         });
     });
 
+    // Confirmación de cierre de sesión
     logoutBtn?.addEventListener('click', () => {
         Swal.fire({
             icon: 'question',
@@ -180,6 +210,8 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmButtonText: 'Sí, cerrar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#ef4444'
+        }).then((result) => {
+            if (result.isConfirmed) logoutForm.submit();
         });
     });
 });

@@ -42,7 +42,7 @@
 
             <div class="flex items-center gap-3">
 
-                <span class="hidden sm:inline-block font-medium bg-white/15 px-3 py-1 rounded-xl">Invitado</span>
+                <span class="hidden sm:inline-block font-medium bg-white/15 px-3 py-1 rounded-xl">{{ Auth::user()->username  }}</span>
 
                 <form action="{{ route('logout') }}" method="POST" class="m-0">
                     @csrf
