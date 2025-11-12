@@ -250,3 +250,5 @@ class UserSeeder extends Seeder
         }
     }
 }
+
+//admin@example.com 123456

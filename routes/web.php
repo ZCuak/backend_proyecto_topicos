@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Vehicle\VehicleController;
 use App\Http\Controllers\Api\Schedule\EmployeeGroupController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Web\ContractController;
+use App\Http\Controllers\Web\MaintenanceController;
 use App\Http\Controllers\Web\VacationController;
 use App\Http\Controllers\Web\ZoneController;
 use App\Models\EmployeeGroup;
@@ -45,6 +46,7 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
 
+    Route::resource('maintenances', MaintenanceController::class);
     Route::resource('personal', UserController::class);
     Route::resource('vehiclecolors', VehicleColorController::class);
     Route::resource('brand-models', BrandModelController::class);
