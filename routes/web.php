@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Schedule\EmployeeGroupController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Web\ContractController;
 use App\Http\Controllers\Web\MaintenanceController;
+use App\Http\Controllers\Web\MaintenanceScheduleController;
 use App\Http\Controllers\Web\VacationController;
 use App\Http\Controllers\Web\ZoneController;
 use App\Models\EmployeeGroup;
@@ -47,6 +48,7 @@ Route::middleware('auth')->group(function () {
 
 
     Route::resource('maintenances', MaintenanceController::class);
+    Route::resource('maintenance-schedules', MaintenanceScheduleController::class);
     Route::resource('personal', UserController::class);
     Route::resource('vehiclecolors', VehicleColorController::class);
     Route::resource('brand-models', BrandModelController::class);
