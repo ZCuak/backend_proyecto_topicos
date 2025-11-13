@@ -337,25 +337,47 @@ class SchedulingController extends Controller
     /**
      * Mostrar programación específica (Web)
      */
-    public function show(Scheduling $scheduling)
-    {
-        $scheduling->load(['group', 'schedule', 'vehicle', 'zone']);
-        $audits = HistoryController::getHistory('PROGRAMACION', $scheduling->id);
-        return view('schedulings.show', compact('scheduling', 'audits'));
-    }
+public function show(Scheduling $scheduling)
+{
+    // Cargamos relaciones principales
+    $scheduling->load(['group', 'schedule', 'vehicle', 'zone']);
+
+    // 🔹 Cargamos los detalles de los empleados asignados a esta programación
+    $details = \App\Models\SchedulingDetail::with(['user', 'userType'])
+        ->where('scheduling_id', $scheduling->id)
+        ->orderBy('position_order')
+        ->get();
+
+    // 🔹 Historial de cambios
+    $audits = HistoryController::getHistory('PROGRAMACION', $scheduling->id);
+
+    return view('schedulings.show', compact('scheduling', 'details', 'audits'));
+}
 
     /**
      * Mostrar formulario de edición (Web)
      */
-    public function edit(Scheduling $scheduling)
-    {
-        $groups = EmployeeGroup::orderBy('name')->get();
-        $schedules = Schedule::orderBy('name')->get();
-        $vehicles = Vehicle::orderBy('name')->get();
-        $zones = Zone::orderBy('name')->get();
+public function edit(Scheduling $scheduling)
+{
+    $groups = EmployeeGroup::orderBy('name')->get();
+    $schedules = Schedule::orderBy('name')->get();
+    $vehicles = Vehicle::orderBy('name')->get();
+    $zones = Zone::orderBy('name')->get();
 
-        return view('schedulings._modal_edit', compact('scheduling', 'groups', 'schedules', 'vehicles', 'zones'));
-    }
+    // 🔹 Empleados asignados
+    $assigned = \App\Models\SchedulingDetail::with('user')
+        ->where('scheduling_id', $scheduling->id)
+        ->orderBy('position_order')
+        ->get();
+
+    // 🔹 Todos los empleados que existen
+    $allEmployees = \App\Models\User::orderBy('firstname')->get();
+
+    return view('schedulings._modal_edit', compact(
+        'scheduling', 'groups', 'schedules', 'vehicles', 'zones', 'assigned', 'allEmployees'
+    ));
+}
+
 
     /**
      * Actualizar programación (Web)
@@ -371,7 +393,8 @@ public function update(Request $request, Scheduling $scheduling)
         'zone_id' => 'nullable|exists:zones,id',
         'date' => 'required|date',
         'status' => 'nullable|integer|in:0,1,2,3',
-        'add_notes' => 'nullable|string|max:500',
+        'add_notes' => 'nullable|string|max:2000',
+        'assigned_json' => 'nullable|string',
         'days' => 'nullable|array',
         'days.*' => 'in:lunes,martes,miercoles,jueves,viernes,sabado,domingo'
     ]);
@@ -386,10 +409,8 @@ public function update(Request $request, Scheduling $scheduling)
         $data = $validator->validated();
 
         // =============================
-        // 🔹 SI EN EL FORM SE CAMBIÓ EL TURNO, VEHÍCULO O PERSONAL, SE ACTUALIZA NORMALMENTE
+        // 🔹 Defaults
         // =============================
-
-        // Por defecto si está vacío
         if (!isset($data['date']) || empty($data['date'])) {
             $data['date'] = now()->format('Y-m-d');
         }
@@ -397,33 +418,41 @@ public function update(Request $request, Scheduling $scheduling)
             $data['status'] = 0;
         }
 
-        // Validar conflictos de vacaciones
+        // =============================
+        // 🔹 Validar conflicto de vacaciones
+        // =============================
         $vacationValidation = $this->validateVacationConflicts($data['group_id'], [$data['date']], $isTurbo);
         if ($vacationValidation) return $vacationValidation;
 
-        // Verificar duplicados de grupo+turno
-        $existingScheduling = Scheduling::where('date', $data['date'])
+        // =============================
+        // 🔹 Validar duplicados
+        // =============================
+        $exists = Scheduling::where('date', $data['date'])
             ->where('group_id', $data['group_id'])
             ->where('schedule_id', $data['schedule_id'])
             ->where('id', '!=', $scheduling->id)
             ->first();
 
-        if ($existingScheduling) {
+        if ($exists) {
             $msg = 'Ya existe una programación para este grupo y horario en esta fecha.';
             return $isTurbo
                 ? response()->json(['success' => false, 'message' => $msg, 'errors' => ['date' => [$msg]]], 422)
                 : back()->withErrors(['date' => $msg])->withInput();
         }
-       
-        // Validar conflicto de vehículo
+
+        // =============================
+        // 🔹 Validar conflicto vehículo
+        // =============================
         if ($data['vehicle_id']) {
+
             $vehicleConflict = Scheduling::where('date', $data['date'])
                 ->where('vehicle_id', $data['vehicle_id'])
                 ->where('schedule_id', $data['schedule_id'])
                 ->where('id', '!=', $scheduling->id)
                 ->first();
+
             if ($vehicleConflict) {
-                $msg = 'El vehículo seleccionado ya está programado para esa fecha y horario.';
+                $msg = 'El vehículo seleccionado ya está programado en esta fecha y horario.';
                 return $isTurbo
                     ? response()->json(['success' => false, 'message' => $msg, 'errors' => ['vehicle_id' => [$msg]]], 422)
                     : back()->withErrors(['vehicle_id' => $msg])->withInput();
@@ -431,13 +460,40 @@ public function update(Request $request, Scheduling $scheduling)
         }
 
         // =============================
-        // 🔹 Registrar los cambios en historial
+        // 🔹 GUARDAR CAMBIOS PRINCIPALES
         // =============================
         $originalData = $scheduling->getOriginal();
         $scheduling->update($data);
 
+        // =============================
+        // 🔥 🔥 🔥 ACTUALIZAR PERSONAL (scheduling_details)
+        // =============================
+        if ($request->filled('assigned_json')) {
+
+            $assigned = json_decode($request->assigned_json, true);
+
+            if (is_array($assigned)) {
+
+                foreach ($assigned as $detail) {
+
+                    $detailId = $detail['detail_id'] ?? null;
+                    $newUserId = $detail['user_id'] ?? null;
+
+                    if ($detailId && $newUserId) {
+                        \App\Models\SchedulingDetail::where('id', $detailId)
+                            ->update([
+                                'user_id' => $newUserId
+                            ]);
+                    }
+                }
+            }
+        }
+
+        // =============================
+        // 🔹 Registrar historial
+        // =============================
         $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'type'];
-        $this->registrarCambios($scheduling, $originalData, $request->input('add_notes'), $exceptFields);
+        $this->registrarCambios($scheduling, $originalData, $request->add_notes, $exceptFields);
 
         return $isTurbo
             ? response()->json(['success' => true, 'message' => 'Programación actualizada exitosamente.'], 200)

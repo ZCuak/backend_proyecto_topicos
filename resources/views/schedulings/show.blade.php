@@ -26,7 +26,6 @@
 
     {{-- INFORMACIÓN GENERAL --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {{-- Datos básicos --}}
         <div class="lg:col-span-1">
             <div class="bg-white rounded-xl shadow-md border border-slate-100 p-6">
@@ -106,7 +105,7 @@
                             @if($scheduling->vehicle)
                                 <div class="flex items-center gap-2 mt-1">
                                     <i class="fa-solid fa-truck text-purple-600"></i>
-                                    <span class="text-slate-800">{{ $scheduling->vehicle->name }}</span>
+                                    <span class="text-slate-800">{{ $scheduling->vehicle->plate }} - {{ $scheduling->vehicle->name }}</span>
                                 </div>
                             @else
                                 <span class="text-slate-400">No asignado</span>
@@ -130,58 +129,60 @@
         </div>
     </div>
 
-    {{-- INFORMACIÓN ADICIONAL --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {{-- Fechas --}}
-        <div class="bg-white rounded-xl shadow-md border border-slate-100 p-6">
-            <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-calendar text-emerald-600"></i>
-                Fechas de Registro
-            </h3>
-            
-            <div class="space-y-3">
-                <div>
-                    <label class="text-sm font-medium text-slate-500">Creado</label>
-                    <p class="text-slate-800">{{ $scheduling->created_at->format('d/m/Y H:i') }}</p>
-                </div>
-                
-                <div>
-                    <label class="text-sm font-medium text-slate-500">Última actualización</label>
-                    <p class="text-slate-800">{{ $scheduling->updated_at->format('d/m/Y H:i') }}</p>
-                </div>
-            </div>
-        </div>
+    {{-- 🔹 EMPLEADOS ASIGNADOS --}}
+    <div class="bg-white rounded-xl shadow-md border border-slate-100 p-6">
+        <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-users text-emerald-600"></i>
+            Empleados Asignados a la Programación
+        </h3>
 
-        {{-- Estadísticas --}}
-        <div class="bg-white rounded-xl shadow-md border border-slate-100 p-6">
-            <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-chart-bar text-emerald-600"></i>
-                Información Adicional
-            </h3>
-            
-            <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-500">ID de Programación</span>
-                    <span class="text-slate-800 font-medium">#{{ $scheduling->id }}</span>
-                </div>
-                
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-500">Estado actual</span>
-                    <span class="text-slate-800 font-medium">{{ $config['text'] }}</span>
-                </div>
-                
-                @if($scheduling->vehicle)
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-500">Vehículo asignado</span>
-                    <span class="text-slate-800 font-medium">{{ $scheduling->vehicle->name }}</span>
-                </div>
-                @endif
+        @if($details->isEmpty())
+            <p class="text-slate-500">No hay empleados asignados a esta programación.</p>
+        @else
+            <div class="overflow-x-auto">
+                <table class="min-w-full border border-slate-200 text-sm text-slate-700">
+                    <thead class="bg-slate-100 text-slate-600">
+                        <tr>
+                            <th class="px-4 py-2 border text-left">#</th>
+                            <th class="px-4 py-2 border text-left">Nombre</th>
+                            <th class="px-4 py-2 border text-left">DNI</th>
+                            <th class="px-4 py-2 border text-left">Rol</th>
+                            <th class="px-4 py-2 border text-left">Estado Asistencia</th>
+                            <th class="px-4 py-2 border text-left">Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($details as $index => $detail)
+                            <tr class="{{ $loop->even ? 'bg-slate-50' : '' }}">
+                                <td class="px-4 py-2 border">{{ $index + 1 }}</td>
+                                <td class="px-4 py-2 border">{{ $detail->user->firstname ?? '' }} {{ $detail->user->lastname ?? '' }}</td>
+                                <td class="px-4 py-2 border">{{ $detail->user->dni ?? '—' }}</td>
+                                <td class="px-4 py-2 border">{{ $detail->role_name }}</td>
+                                <td class="px-4 py-2 border">
+                                    @php
+                                        $statusColors = [
+                                            'pendiente' => 'bg-yellow-100 text-yellow-800',
+                                            'presente' => 'bg-green-100 text-green-800',
+                                            'ausente' => 'bg-red-100 text-red-800',
+                                            'justificado' => 'bg-blue-100 text-blue-800',
+                                        ];
+                                        $color = $statusColors[$detail->attendance_status] ?? 'bg-slate-100 text-slate-700';
+                                    @endphp
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium {{ $color }}">
+                                        {{ $detail->attendance_status_name }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 border">{{ $detail->notes ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        </div>
-
+        @endif
     </div>
-    {{-- Historial de cambios --}}
-    @if (isset($audits))        
+
+    {{-- HISTORIAL DE CAMBIOS --}}
+    @if (isset($audits))
         @include('history._history_table', ['audits' => $audits])
     @endif
 </div>

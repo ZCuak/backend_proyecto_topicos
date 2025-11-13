@@ -22,36 +22,51 @@
                 @csrf
                 @method('PUT')
 
+                <!-- hidden -->
                 <input type="hidden" name="group_id" value="{{ $scheduling->group_id }}">
                 <input type="hidden" name="zone_id" value="{{ $scheduling->zone_id }}">
                 <input type="hidden" name="date" value="{{ $scheduling->date }}">
                 <input type="hidden" name="status" value="{{ $scheduling->status }}">
-                <input type="hidden" name="notes" id="add_notes"> 
+                <input type="hidden" name="notes" id="add_notes">
 
+             <input type="hidden" id="assigned_json" name="assigned_json"
+                    value='{{ $assigned->map(fn($d)=>[
+                            "detail_id"=>$d->id,
+                            "user_id"=>$d->user_id,
+                            "usertype"=>$d->usertype_id,
+                        ])->toJson() }}'>
+
+                <!-- ============================= -->
                 <!-- 🔹 CAMBIO DE TURNO -->
+                <!-- ============================= -->
                 <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/60">
                     <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
                         <i class="fa-solid fa-clock text-emerald-600"></i> Cambio de Turno
                     </h4>
+
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="text-sm font-medium text-slate-600">Turno Actual</label>
-                            <input type="text" value="{{ $scheduling->schedule->name ?? '' }}" readonly
-                                class="w-full bg-slate-100 border-slate-200 rounded-lg py-2 px-3">
+                            <input type="text" value="{{ $scheduling->schedule->name }}" readonly
+                                   class="w-full bg-slate-100 border-slate-200 rounded-lg py-2 px-3">
                         </div>
+
                         <div>
                             <label class="text-sm font-medium text-slate-600">Nuevo Turno</label>
-                            <select name="schedule_id" id="newSchedule" class="w-full border-slate-300 rounded-lg py-2 px-3">
+                            <select name="schedule_id" id="newSchedule"
+                                class="w-full border-slate-300 rounded-lg py-2 px-3">
                                 @foreach($schedules as $schedule)
-                                    <option value="{{ $schedule->id }}" {{ $scheduling->schedule_id == $schedule->id ? 'selected' : '' }}>
+                                    <option value="{{ $schedule->id }}"
+                                        {{ $schedule->id == $scheduling->schedule_id ? 'selected':'' }}>
                                         {{ $schedule->name }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
+
                         <div class="flex items-end">
                             <button type="button"
-                                class="add-change-btn flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                                class="add-change-btn bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
                                 data-tipo="Turno">
                                 <i class="fa-solid fa-plus"></i>
                             </button>
@@ -59,84 +74,129 @@
                     </div>
                 </div>
 
+
+                <!-- ============================= -->
                 <!-- 🔹 CAMBIO DE VEHÍCULO -->
+                <!-- ============================= -->
                 <div class="border border-slate-200 rounded-xl p-5 bg-white">
                     <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
                         <i class="fa-solid fa-truck text-emerald-600"></i> Cambio de Vehículo
                     </h4>
+
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
                         <div>
                             <label class="text-sm font-medium text-slate-600">Vehículo Actual</label>
-                            <input type="text" value="{{ $scheduling->vehicle->plate ?? 'Sin asignar' }}" readonly
-                                class="w-full bg-slate-100 border-slate-200 rounded-lg py-2 px-3">
+                            <input type="text" readonly
+                                  value="{{ $scheduling->vehicle->plate ?? 'Sin asignar' }}"
+                                  class="w-full bg-slate-100 border-slate-200 rounded-lg py-2 px-3">
                         </div>
+
                         <div>
                             <label class="text-sm font-medium text-slate-600">Nuevo Vehículo</label>
-                            <select name="vehicle_id" id="newVehicle" class="w-full border-slate-300 rounded-lg py-2 px-3">
+                            <select name="vehicle_id" id="newVehicle"
+                                class="w-full border-slate-300 rounded-lg py-2 px-3">
                                 <option value="">Seleccione un vehículo</option>
                                 @foreach($vehicles as $vehicle)
-                                    <option value="{{ $vehicle->id }}" {{ $scheduling->vehicle_id == $vehicle->id ? 'selected' : '' }}>
+                                    <option value="{{ $vehicle->id }}"
+                                        {{ $vehicle->id == $scheduling->vehicle_id ? 'selected':'' }}>
                                         {{ $vehicle->plate }} - {{ $vehicle->name }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
+
                         <div class="flex items-end">
                             <button type="button"
-                                class="add-change-btn flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                                class="add-change-btn bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
                                 data-tipo="Vehículo">
                                 <i class="fa-solid fa-plus"></i>
                             </button>
                         </div>
+
                     </div>
                 </div>
 
-                <!-- 🔹 CAMBIO DE PERSONAL -->
-                <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/60">
+
+                <!-- ============================= -->
+                <!-- 🔹 REEMPLAZO DE PERSONAL -->
+                <!-- ============================= -->
+                <div class="border border-slate-200 rounded-xl p-5 bg-white">
                     <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-users text-emerald-600"></i> Cambio de Personal
+                        <i class="fa-solid fa-user-switch text-blue-600"></i> Reemplazo de Personal Asignado
                     </h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="text-sm font-medium text-slate-600">Personal Actual</label>
-                            <select id="oldEmployee" class="w-full border-slate-300 rounded-lg py-2 px-3">
-                                @foreach($scheduling->group->employees ?? [] as $emp)
-                                    <option value="{{ $emp->id }}">{{ $emp->firstname }} {{ $emp->lastname }}</option>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full border border-slate-200 text-sm text-slate-700">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="border px-4 py-2">Actual</th>
+                                    <th class="border px-4 py-2">Rol</th>
+                                    <th class="border px-4 py-2">Reemplazar Por</th>
+                                    <th class="border px-4 py-2 text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                @foreach($assigned as $detail)
+                                <tr>
+                                    <td class="border px-4 py-2">
+                                        {{ $detail->user->firstname }} {{ $detail->user->lastname }}
+                                    </td>
+
+                                    <td class="border px-4 py-2">
+                                        {{ $detail->role_name }}
+                                    </td>
+
+                                    <td class="border px-4 py-2">
+                                        <select class="newReplaceSelect w-full border-slate-300 rounded-lg py-1 px-2"
+                                            data-detail="{{ $detail->id }}">
+                                            <option value="">Seleccione...</option>
+                                            @foreach($allEmployees as $emp)
+                                                <option value="{{ $emp->id }}">
+                                                    {{ $emp->firstname }} {{ $emp->lastname }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+
+                                    <td class="border px-4 py-2 text-center">
+                                        <button type="button"
+                                            class="replace-btn bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700"
+                                            data-detail="{{ $detail->id }}"
+                                            data-current="{{ $detail->user_id }}"
+                                            data-current-name="{{ $detail->user->firstname }} {{ $detail->user->lastname }}">
+                                            <i class="fa-solid fa-right-left"></i> Reemplazar
+                                        </button>
+                                    </td>
+
+                                </tr>
                                 @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-slate-600">Nuevo Personal</label>
-                            <select id="newEmployee" class="w-full border-slate-300 rounded-lg py-2 px-3">
-                                @foreach($scheduling->group->employees ?? [] as $emp)
-                                    <option value="{{ $emp->id }}">{{ $emp->firstname }} {{ $emp->lastname }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="flex items-end">
-                            <button type="button"
-                                class="add-change-btn flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-                                data-tipo="Personal">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
-                        </div>
+
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- 🔹 CAMBIOS REGISTRADOS -->
+
+                <!-- ============================= -->
+                <!-- 🔹 TABLA DE CAMBIOS REGISTRADOS -->
+                <!-- ============================= -->
                 <div class="border border-slate-200 rounded-xl p-5 bg-white">
                     <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
                         <i class="fa-solid fa-list text-emerald-600"></i> Cambios Registrados
                     </h4>
+
                     <div class="overflow-x-auto">
-                        <table id="changesTable" class="min-w-full border border-slate-200 text-sm text-slate-700">
-                            <thead class="bg-slate-100 text-slate-600">
+                        <table id="changesTable"
+                               class="min-w-full border border-slate-200 text-sm text-slate-700">
+                            <thead class="bg-slate-100">
                                 <tr>
-                                    <th class="px-4 py-2 border">Tipo</th>
-                                    <th class="px-4 py-2 border">Anterior</th>
-                                    <th class="px-4 py-2 border">Nuevo</th>
-                                    <th class="px-4 py-2 border">Notas</th>
-                                    <th class="px-4 py-2 border text-center">Acción</th>
+                                    <th class="border px-4 py-2">Tipo</th>
+                                    <th class="border px-4 py-2">Anterior</th>
+                                    <th class="border px-4 py-2">Nuevo</th>
+                                    <th class="border px-4 py-2">Notas</th>
+                                    <th class="border px-4 py-2 text-center">Acción</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -144,71 +204,138 @@
                     </div>
                 </div>
 
+                <!-- ============================= -->
                 <!-- BOTONES -->
+                <!-- ============================= -->
                 <div class="flex justify-end gap-3 pt-5 border-t border-slate-200">
                     <button type="button" onclick="Turbo.visit(window.location.href)"
                         class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">
                         <i class="fa-solid fa-xmark mr-1"></i> Cancelar
                     </button>
+
                     <button type="submit"
                         class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-2">
                         <i class="fa-solid fa-save"></i> Guardar Cambios
                     </button>
                 </div>
+
             </form>
         </div>
     </div>
 </div>
 
+
+<!-- ===================================== -->
+<!-- 🔥 SCRIPT -->
+<!-- ===================================== -->
 <script>
-document.addEventListener("turbo:frame-load", () => setupSchedulingModal());
+document.addEventListener("turbo:frame-load", setupSchedulingModal);
 
 function setupSchedulingModal() {
-    const tbody = document.querySelector("#changesTable tbody");
-    const inputHidden = document.querySelector("#add_notes");
-    const buttons = document.querySelectorAll(".add-change-btn");
-    let cambios = [];
 
-    buttons.forEach(btn => {
+    const tbody = document.querySelector("#changesTable tbody");
+    const notesInput = document.querySelector("#add_notes");
+    const assignedInput = document.querySelector("#assigned_json");
+
+    let cambios = [];
+    let assigned = JSON.parse(assignedInput.value); 
+    // [{detail_id, user_id, usertype}, ...]
+
+    /* ------------------------------ */
+    /*    BOTONES TURNO / VEHÍCULO    */
+    /* ------------------------------ */
+    document.querySelectorAll(".add-change-btn").forEach(btn => {
         btn.onclick = async () => {
+
             const tipo = btn.dataset.tipo;
             let anterior = "", nuevo = "";
 
             if (tipo === "Turno") {
-                anterior = "{{ $scheduling->schedule->name ?? 'Sin turno' }}";
-                nuevo = document.querySelector("#newSchedule")?.selectedOptions[0]?.text || "";
-            } else if (tipo === "Vehículo") {
+                anterior = "{{ $scheduling->schedule->name }}";
+                nuevo = document.querySelector("#newSchedule")?.selectedOptions[0]?.text;
+            }
+
+            if (tipo === "Vehículo") {
                 anterior = "{{ $scheduling->vehicle->plate ?? 'Sin vehículo' }}";
-                nuevo = document.querySelector("#newVehicle")?.selectedOptions[0]?.text || "";
-            } else if (tipo === "Personal") {
-                anterior = document.querySelector("#oldEmployee")?.selectedOptions[0]?.text || "";
-                nuevo = document.querySelector("#newEmployee")?.selectedOptions[0]?.text || "";
+                nuevo = document.querySelector("#newVehicle")?.selectedOptions[0]?.text;
             }
 
             if (!nuevo || nuevo === anterior) {
-                Swal.fire("Atención", "Selecciona un valor diferente antes de registrar el cambio.", "warning");
+                Swal.fire("Atención","Seleccione otro valor.","warning");
                 return;
             }
 
             const { value: notas } = await Swal.fire({
                 title: "Notas del cambio",
                 input: "text",
-                inputPlaceholder: "Motivo o comentario...",
                 showCancelButton: true,
-                confirmButtonText: "Agregar",
-                confirmButtonColor: "#10b981"
+                confirmButtonText: "Agregar"
             });
 
             if (notas !== undefined) {
-                cambios.push({ tipo, anterior, nuevo, notas: notas || "" });
+                cambios.push({ tipo, anterior, nuevo, notas });
                 renderCambios();
             }
         };
     });
 
+
+    /* ------------------------------ */
+    /*       REEMPLAZO PERSONAL       */
+    /* ------------------------------ */
+    document.querySelectorAll(".replace-btn").forEach(btn => {
+        btn.onclick = async () => {
+
+            let detailId = parseInt(btn.dataset.detail);
+            let currentId = parseInt(btn.dataset.current);
+            let currentName = btn.dataset["currentName"];
+
+            let select = btn.closest("tr").querySelector(".newReplaceSelect");
+            let newId = parseInt(select.value);
+            let newName = select.selectedOptions[0]?.text || "";
+
+            if (!newId || newId === currentId) {
+                Swal.fire("Atención", "Seleccione un empleado válido", "warning");
+                return;
+            }
+
+            const { value: notas } = await Swal.fire({
+                title: "Notas del cambio",
+                input: "text",
+                showCancelButton: true,
+                confirmButtonText: "Registrar"
+            });
+
+            if (notas === undefined) return;
+
+            // 🔥 ACTUALIZAR JSON assigned
+            assigned = assigned.map(d =>
+                d.detail_id === detailId
+                    ? { ...d, user_id: newId }
+                    : d
+            );
+
+            assignedInput.value = JSON.stringify(assigned);
+
+            // 🔥 Registrar cambio en historial temporal del modal
+            cambios.push({
+                tipo: "Reemplazo Personal",
+                anterior: currentName,
+                nuevo: newName,
+                notas
+            });
+
+            renderCambios();
+        };
+    });
+
+
+    /* ------------------------------ */
+    /*     TABLA CAMBIOS REGISTRADOS */
+    /* ------------------------------ */
     function renderCambios() {
         tbody.innerHTML = "";
-        cambios.forEach((c, i) => {
+        cambios.forEach((c, idx) => {
             tbody.insertAdjacentHTML("beforeend", `
                 <tr>
                     <td class="border px-4 py-2">${c.tipo}</td>
@@ -216,23 +343,28 @@ function setupSchedulingModal() {
                     <td class="border px-4 py-2">${c.nuevo}</td>
                     <td class="border px-4 py-2">${c.notas}</td>
                     <td class="border px-4 py-2 text-center">
-                        <button type="button" class="delete-change text-red-600 hover:text-red-800" data-index="${i}">
+                        <button data-index="${idx}" class="delete-change text-red-600 hover:text-red-800">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>
                 </tr>
             `);
         });
-        inputHidden.value = JSON.stringify(cambios);
+
+        notesInput.value = JSON.stringify(cambios);
     }
 
+    /* ------------------------------ */
+    /*   ELIMINAR UN CAMBIO           */
+    /* ------------------------------ */
     tbody.addEventListener("click", e => {
-        const btn = e.target.closest(".delete-change");
-        if (btn) {
-            cambios.splice(parseInt(btn.dataset.index), 1);
-            renderCambios();
-        }
+        let btn = e.target.closest(".delete-change");
+        if (!btn) return;
+
+        cambios.splice(btn.dataset.index, 1);
+        renderCambios();
     });
 }
 </script>
+
 </turbo-frame>
