@@ -118,65 +118,75 @@
                 </div>
 
 
-                <!-- ============================= -->
-                <!-- 🔹 REEMPLAZO DE PERSONAL -->
-                <!-- ============================= -->
-                <div class="border border-slate-200 rounded-xl p-5 bg-white">
-                    <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-user-switch text-blue-600"></i> Reemplazo de Personal Asignado
-                    </h4>
+           <!-- ============================= -->
+<!-- 🔹 REEMPLAZO DE PERSONAL -->
+<!-- ============================= -->
+<div class="border border-slate-200 rounded-xl p-5 bg-white">
+    <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
+        <i class="fa-solid fa-user-switch text-blue-600"></i> Reemplazo de Personal Asignado
+    </h4>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full border border-slate-200 text-sm text-slate-700">
-                            <thead class="bg-slate-100">
-                                <tr>
-                                    <th class="border px-4 py-2">Actual</th>
-                                    <th class="border px-4 py-2">Rol</th>
-                                    <th class="border px-4 py-2">Reemplazar Por</th>
-                                    <th class="border px-4 py-2 text-center">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+    <div class="overflow-x-auto">
+        <table class="min-w-full border border-slate-200 text-sm text-slate-700">
+            <thead class="bg-slate-100">
+                <tr>
+                    <th class="border px-4 py-2">Actual</th>
+                    <th class="border px-4 py-2">Rol</th>
+                    <th class="border px-4 py-2">Reemplazar Por</th>
+                    <th class="border px-4 py-2 text-center">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
 
-                                @foreach($assigned as $detail)
-                                <tr>
-                                    <td class="border px-4 py-2">
-                                        {{ $detail->user->firstname }} {{ $detail->user->lastname }}
-                                    </td>
+                @foreach($assigned as $detail)
+                @php
+                    $requiredUsertype = $detail->usertype_id; 
+                @endphp
 
-                                    <td class="border px-4 py-2">
-                                        {{ $detail->role_name }}
-                                    </td>
+                <tr>
+                    <td class="border px-4 py-2">
+                        {{ $detail->user->firstname }} {{ $detail->user->lastname }}
+                    </td>
 
-                                    <td class="border px-4 py-2">
-                                        <select class="newReplaceSelect w-full border-slate-300 rounded-lg py-1 px-2"
-                                            data-detail="{{ $detail->id }}">
-                                            <option value="">Seleccione...</option>
-                                            @foreach($allEmployees as $emp)
-                                                <option value="{{ $emp->id }}">
-                                                    {{ $emp->firstname }} {{ $emp->lastname }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </td>
+                    <td class="border px-4 py-2">
+                        {{ $detail->role_name }}
+                    </td>
 
-                                    <td class="border px-4 py-2 text-center">
-                                        <button type="button"
-                                            class="replace-btn bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700"
-                                            data-detail="{{ $detail->id }}"
-                                            data-current="{{ $detail->user_id }}"
-                                            data-current-name="{{ $detail->user->firstname }} {{ $detail->user->lastname }}">
-                                            <i class="fa-solid fa-right-left"></i> Reemplazar
-                                        </button>
-                                    </td>
+                    <td class="border px-4 py-2">
+                        <select class="newReplaceSelect w-full border-slate-300 rounded-lg py-1 px-2"
+                            data-detail="{{ $detail->id }}">
 
-                                </tr>
-                                @endforeach
+                            <option value="">Seleccione...</option>
 
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                            @foreach($allEmployees->where('usertype_id', $requiredUsertype) as $emp)
+                                @if($emp->id !== $detail->user_id)
+                                    <option value="{{ $emp->id }}">
+                                        {{ $emp->firstname }} {{ $emp->lastname }}
+                                    </option>
+                                @endif
+                            @endforeach
+
+                        </select>
+                    </td>
+
+                    <td class="border px-4 py-2 text-center">
+                        <button type="button"
+                            class="replace-btn bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700"
+                            data-detail="{{ $detail->id }}"
+                            data-current="{{ $detail->user_id }}"
+                            data-current-name="{{ $detail->user->firstname }} {{ $detail->user->lastname }}">
+
+                            <i class="fa-solid fa-right-left"></i> Reemplazar
+                        </button>
+                    </td>
+                </tr>
+
+                @endforeach
+
+            </tbody>
+        </table>
+    </div>
+</div>
 
 
                 <!-- ============================= -->
