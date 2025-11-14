@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Vehicle\VehicleController;
 use App\Http\Controllers\Api\Schedule\EmployeeGroupController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Web\ContractController;
+use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\MaintenanceController;
 use App\Http\Controllers\Web\MaintenanceScheduleController;
 use App\Http\Controllers\Web\MaintenanceRecordController;
@@ -43,9 +44,7 @@ Route::post('/mark-attendance', [AttendaceController::class, 'markAttendance'])-
 
 // Rutas protegidas por autenticación
 Route::middleware('auth')->group(function () {
-    Route::get('/', function () {
-        return view('welcome'); // O tu dashboard principal
-    })->name('dashboard');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
 
     Route::resource('maintenances', MaintenanceController::class);
