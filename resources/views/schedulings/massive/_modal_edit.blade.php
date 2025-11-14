@@ -1,510 +1,604 @@
 <turbo-frame id="modal-frame">
-<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] overflow-y-auto">
+<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
 
-<div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl overflow-hidden my-10">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl overflow-hidden mx-4 sm:mx-6 my-10">
 
-    <!-- ===================================== -->
-    <!-- HEADER -->
-    <!-- ===================================== -->
-    <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50">
-        <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
-            <i class="fa-solid fa-calendar-pen text-amber-600"></i> Edición Masiva de Programaciones
-        </h3>
-        <button onclick="Turbo.visit(window.location.href)">
-            <i class="fa-solid fa-xmark text-xl text-slate-500 hover:text-slate-700"></i>
-        </button>
-    </div>
+        {{-- HEADER --}}
+        <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50">
+            <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-calendar-pen text-amber-600"></i> Edición Masiva de Programaciones
+            </h3>
+            <button onclick="Turbo.visit(window.location.href)">
+                <i class="fa-solid fa-xmark text-xl text-slate-500 hover:text-slate-700"></i>
+            </button>
+        </div>
 
+        {{-- BODY --}}
+        <div class="p-6 space-y-6 overflow-y-auto max-h-[85vh]">
 
-    <!-- ===================================== -->
-    <!-- FILTRO -->
-    <!-- ===================================== -->
-    <div class="p-6">
-        <form id="massiveFilter" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {{-- FILTRO SUPERIOR --}}
+            <form id="massiveFilter" class="grid grid-cols-1 md:grid-cols-4 gap-4"
+                  action="{{ route('schedulings.edit-massive') }}" method="GET">
 
-            @csrf
+               <select id="f_schedule" name="schedule_id" class="border rounded-lg p-2">
 
-            <div>
-                <label class="text-sm font-semibold text-slate-700">Turno</label>
-                <select id="f_schedule" class="border rounded-lg p-2 w-full">
-                    <option value="">Todos</option>
+                    <option value="">Turno</option>
                     @foreach($schedules as $s)
-                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                        <option value="{{ $s->id }}" {{ request('schedule_id') == $s->id ? 'selected' : '' }}>
+                            {{ $s->name }}
+                        </option>
                     @endforeach
                 </select>
-            </div>
 
-            <div>
-                <label class="text-sm font-semibold text-slate-700">Desde</label>
-                <input id="f_start" type="date"
-                    class="border rounded-lg p-2 w-full"
-                    value="{{ now()->toDateString() }}">
-            </div>
+                <input id="f_start" type="date" name="start_date"
+                       class="border rounded-lg p-2"
+                       value="{{ request('start_date', now()->toDateString()) }}">
 
-            <div>
-                <label class="text-sm font-semibold text-slate-700">Hasta</label>
-                <input id="f_end" type="date"
-                    class="border rounded-lg p-2 w-full"
-                    value="{{ now()->addWeek()->toDateString() }}">
-            </div>
+                <input id="f_end" type="date" name="end_date"
+                       class="border rounded-lg p-2"
+                       value="{{ request('end_date', now()->addWeek()->toDateString()) }}">
 
-            <div class="flex items-end">
-                <button class="bg-amber-600 text-white rounded-lg p-2 w-full hover:bg-amber-700 flex items-center justify-center gap-2">
+                <button class="bg-amber-600 text-white rounded-lg p-2 hover:bg-amber-700 flex items-center justify-center gap-2">
                     <i class="fa-solid fa-search"></i> Buscar
                 </button>
-            </div>
+            </form>
 
-        </form>
-    </div>
-
-
-    <!-- ===================================== -->
-    <!-- RESULTADOS -->
-    <!-- ===================================== -->
-    <div id="massiveResults" class="p-6 space-y-6"></div>
-
-
-    <!-- ===================================== -->
-    <!-- BOTÓN GUARDAR CAMBIOS -->
-    <!-- ===================================== -->
-    <div id="massiveSaveContainer" class="hidden p-6 border-t bg-slate-50">
-        <button onclick="saveMassiveChanges()"
-            class="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-lg mx-auto">
-            <i class="fa-solid fa-floppy-disk"></i> Guardar Todos los Cambios
-        </button>
-    </div>
-
-</div>
-</div>
-
-<script>
-document.addEventListener("turbo:frame-load", () => {
-    document.querySelector("#massiveFilter").onsubmit = e => {
-        e.preventDefault();
-        loadMassive();
-    };
-});
-
-
-// ===========================================================
-// 🔥 CARGAR PROGRAMACIONES DEL RANGO DE FECHAS
-// ===========================================================
-function loadMassive() {
-
-    const token = document.querySelector('meta[name="csrf-token"]').content;
-    const box = document.querySelector("#massiveResults");
-    const saveBox = document.querySelector("#massiveSaveContainer");
-
-    saveBox.classList.add("hidden");
-    box.innerHTML = `
-        <div class='text-center py-10 text-slate-500'>
-            <i class='fa-solid fa-spinner fa-spin text-3xl'></i>
-            <p class='mt-2'>Cargando...</p>
-        </div>
-    `;
-
-    fetch("{{ route('schedulings.fetch-massive') }}", {
-        method: "POST",
-        headers: {"Content-Type":"application/json", "X-CSRF-TOKEN": token},
-        body: JSON.stringify({
-            schedule_id: document.querySelector('#f_schedule').value,
-            start_date: document.querySelector('#f_start').value,
-            end_date: document.querySelector('#f_end').value
-        })
-    })
-    .then(r => r.json())
-    .then(data => renderMassive(data))
-    .catch(err => {
-        box.innerHTML = `<div class="p-4 bg-red-50 text-red-700 rounded-lg">
-            Error al cargar datos.
-        </div>`;
-    });
-}
-
-
-// ===========================================================
-// 🔥 RENDERIZAR TODA LA ESTRUCTURA EXACTA DEL EDITAR INDIVIDUAL
-// ===========================================================
-function renderMassive(data){
-
-    const box = document.querySelector("#massiveResults");
-    const saveBox = document.querySelector("#massiveSaveContainer");
-
-    if(!data.success || data.schedulings.length === 0){
-        box.innerHTML = `<div class="p-4 text-amber-700 bg-amber-50 rounded-lg">No hay programaciones.</div>`;
-        return;
-    }
-
-    saveBox.classList.remove("hidden");
-
-    let html = "";
-
-    data.schedulings.forEach(item => {
-
-        const s = item.scheduling;
-        const assigned = item.assigned;
-        const employees = item.allEmployees;
-        const schedules = @json($schedules);
-        const vehicles = @json($vehicles);
-
-        html += `
-
-        <!-- ===================================================== -->
-        <!-- 🔥 BLOQUE COMPLETO DE UNA PROGRAMACIÓN -->
-        <!-- ===================================================== -->
-        <div class="border border-slate-300 rounded-xl p-6 bg-white shadow-sm space-y-6"
-             data-id="${s.id}">
-
-            <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-calendar-day text-emerald-600"></i>
-                Programación #${s.id} — ${s.date}
-            </h3>
-
-            <!-- HIDDEN JSON DE PERSONAL -->
-            <input type="hidden"
-                   class="assigned_json"
-                   value='${JSON.stringify(assigned)}'>
-
-
-            <!-- ============================= -->
-            <!-- 🔹 CAMBIO DE TURNO -->
-            <!-- ============================= -->
-            <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/60">
-                <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-clock text-emerald-600"></i> Cambio de Turno
-                </h4>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="text-sm font-medium text-slate-600">Turno Actual</label>
-                        <input type="text" readonly value="${s.schedule_name}"
-                               class="w-full bg-slate-100 border-slate-200 rounded-lg py-2 px-3">
-                    </div>
-
-                    <div>
-                        <label class="text-sm font-medium text-slate-600">Nuevo Turno</label>
-                        <select class="newSchedule w-full border-slate-300 rounded-lg py-2 px-3">
-                            ${schedules.map(sc =>
-                                `<option value="${sc.id}" ${sc.id==s.schedule_id?'selected':''}>${sc.name}</option>`
-                            ).join('')}
-                        </select>
-                    </div>
-
-                    <div class="flex items-end">
-                        <button class="add-change-btn bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
-                                data-type="Turno">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
-                    </div>
+            {{-- SIN RESULTADOS --}}
+            @if(!$programaciones->count())
+                <div class="text-center py-10 text-slate-500">
+                    <i class="fa-solid fa-circle-info text-3xl mb-2"></i><br>
+                    No se encontraron programaciones en el rango indicado.
                 </div>
+            @endif
+
+            {{-- BOTÓN GLOBAL --}}
+            @if($programaciones->count())
+            <div class="flex justify-end">
+                <button id="btnSaveMassive"
+                        class="bg-emerald-600 text-white px-5 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2">
+                    <i class="fa-solid fa-check-double"></i> Aplicar Cambios a Todas
+                </button>
             </div>
+            @endif
+
+            {{-- LISTADO DE PROGRAMACIONES --}}
+            <div id="massiveResults" class="space-y-6"></div>
 
 
-            <!-- ============================= -->
-            <!-- 🔹 CAMBIO DE VEHÍCULO -->
-            <!-- ============================= -->
-            <div class="border border-slate-200 rounded-xl p-5 bg-white">
-                <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-truck text-emerald-600"></i> Cambio de Vehículo
-                </h4>
+                @foreach($programaciones as $program)
+                @php
+                    $assigned = \App\Models\SchedulingDetail::with(['user'])
+                        ->where('scheduling_id', $program->id)
+                        ->orderBy('position_order')
+                        ->get();
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="text-sm font-medium text-slate-600">Actual</label>
-                        <input type="text" readonly
-                               value="${s.vehicle_plate ?? 'Sin asignar'}"
-                               class="w-full bg-slate-100 border-slate-200 rounded-lg py-2 px-3">
+                    $allEmployees = $users;
+                @endphp
+
+                <div class="border rounded-xl shadow p-5 bg-white relative" data-id="{{ $program->id }}">
+
+                    {{-- TÍTULO --}}
+                    <div class="flex justify-between mb-4">
+                        <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-calendar"></i>
+                            Programación #{{ $program->id }} — {{ $program->date }}
+                        </h3>
+                        <span class="text-slate-500">{{ $program->group->name }}</span>
                     </div>
 
-                    <div>
-                        <label class="text-sm font-medium text-slate-600">Nuevo Vehículo</label>
-                        <select class="newVehicle w-full border-slate-300 rounded-lg py-2 px-3">
-                            <option value="">Seleccione...</option>
-                            ${vehicles.map(v =>
-                                `<option value="${v.id}" ${v.id==s.vehicle_id?'selected':''}>
-                                    ${v.plate} - ${v.name}
-                                 </option>`
-                            ).join('')}
-                        </select>
+                    {{-- HIDDEN JSON PARA ESTA PROGRAMACIÓN --}}
+                    @php
+                    $assignedJson = $assigned->map(function($d){
+                        return [
+                            "detail_id" => $d->id,
+                            "user_id"   => $d->user_id,
+                            "usertype"  => $d->usertype_id,
+                        ];
+                    })->toJson();
+                    @endphp
+
+                    <input type="hidden" class="assigned_json"
+                           value='{{ $assignedJson }}'>
+
+                    <!-- ====================================== -->
+                    <!-- 🔹 CAMBIO DE TURNO -->
+                    <!-- ====================================== -->
+                    <div class="border rounded-lg p-4 bg-slate-50 mb-4">
+                        <h4 class="font-semibold text-slate-700 mb-3">
+                            <i class="fa-solid fa-clock text-emerald-600"></i> Cambio de Turno
+                        </h4>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                            <div>
+                                <label class="text-sm text-slate-600">Turno Actual</label>
+                                <input type="text" readonly
+                                       value="{{ $program->schedule->name }}"
+                                       class="w-full bg-slate-100 border rounded-lg py-2 px-3">
+                            </div>
+
+                            <div>
+                                <label class="text-sm text-slate-600">Nuevo Turno</label>
+                                <select class="mass_newSchedule border rounded-lg py-2 px-3 w-full">
+                                    @foreach($schedules as $s)
+                                        <option value="{{ $s->id }}"
+                                            {{ $s->id == $program->schedule_id ? 'selected':'' }}>
+                                            {{ $s->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="flex items-end">
+                                <button type="button"
+                                    class="mass-add-change-btn bg-emerald-600 text-white px-4 py-2 rounded-lg"
+                                    data-tipo="Turno">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+
+                        </div>
                     </div>
 
-                    <div class="flex items-end">
-                        <button class="add-change-btn bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
-                                data-type="Vehículo">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
+                    <!-- ====================================== -->
+                    <!-- 🔹 CAMBIO DE VEHÍCULO -->
+                    <!-- ====================================== -->
+                    <div class="border rounded-lg p-4 bg-white mb-4">
+                        <h4 class="font-semibold text-slate-700 mb-3">
+                            <i class="fa-solid fa-truck text-emerald-600"></i> Cambio de Vehículo
+                        </h4>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                            <div>
+                                <label class="text-sm text-slate-600">Vehículo Actual</label>
+                                <input type="text" readonly
+                                       value="{{ $program->vehicle->plate ?? 'Sin asignar' }}"
+                                       class="w-full bg-slate-100 border rounded-lg py-2 px-3">
+                            </div>
+
+                            <div>
+                                <label class="text-sm text-slate-600">Nuevo Vehículo</label>
+                                <select class="mass_newVehicle border rounded-lg py-2 px-3 w-full">
+                                    <option value="">Seleccione...</option>
+                                    @foreach($vehicles as $v)
+                                        <option value="{{ $v->id }}"
+                                            {{ $v->id == $program->vehicle_id ? 'selected':'' }}>
+                                            {{ $v->plate }} - {{ $v->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="flex items-end">
+                                <button type="button"
+                                        class="mass-add-change-btn bg-emerald-600 text-white px-4 py-2 rounded-lg"
+                                        data-tipo="Vehículo">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+
+                        </div>
                     </div>
-                </div>
-            </div>
 
+                    <!-- ====================================== -->
+                    <!-- 🔹 REEMPLAZO DE PERSONAL -->
+                    <!-- ====================================== -->
+                    <div class="border rounded-lg p-4 bg-white mb-4">
+                        <h4 class="font-semibold text-slate-700 mb-3">
+                            <i class="fa-solid fa-user-switch text-blue-600"></i> Reemplazo de Personal
+                        </h4>
 
-            <!-- ============================= -->
-            <!-- 🔹 REEMPLAZO DE PERSONAL -->
-            <!-- ============================= -->
-            <div class="border border-slate-200 rounded-xl p-5 bg-white">
-                <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-user-switch text-blue-600"></i> Reemplazo de Personal
-                </h4>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full border border-slate-200 text-sm text-slate-700">
-                        <thead class="bg-slate-100">
-                            <tr>
-                                <th class="border px-4 py-2">Actual</th>
-                                <th class="border px-4 py-2">Rol</th>
-                                <th class="border px-4 py-2">Reemplazar Por</th>
-                                <th class="border px-4 py-2 text-center">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-
-                            ${assigned.map(d => `
+                        <table class="min-w-full border text-sm text-slate-700">
+                            <thead class="bg-slate-100">
                                 <tr>
-                                    <td class="border px-4 py-2">${d.user_name}</td>
-                                    <td class="border px-4 py-2">${d.role_name}</td>
-                                    <td class="border px-4 py-2">
-                                        <select class="replaceSelect w-full border-slate-300 rounded-lg py-1 px-2"
-                                                data-detail="${d.detail_id}">
+                                    <th class="border px-3 py-2">Actual</th>
+                                    <th class="border px-3 py-2">Rol</th>
+                                    <th class="border px-3 py-2">Reemplazar Por</th>
+                                    <th class="border px-3 py-2 text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                            @foreach($assigned as $d)
+                                @php
+                                    $role = $d->usertype_id;
+                                @endphp
+
+                                <tr>
+                                    <td class="border px-3 py-2">
+                                        {{ $d->user->firstname }} {{ $d->user->lastname }}
+                                    </td>
+
+                                    <td class="border px-3 py-2">
+                                        {{ $d->role_name }}
+                                    </td>
+
+                                    <td class="border px-3 py-2">
+                                        <select class="mass_replaceSelect border rounded-lg px-2 py-1 w-full"
+                                                data-detail="{{ $d->id }}">
                                             <option value="">Seleccione...</option>
-                                            
-                                            ${employees
-                                                .filter(e => e.usertype_id == d.usertype)
-                                                .filter(e => e.id != d.user_id)
-                                                .map(e =>
-                                                    `<option value="${e.id}">${e.firstname} ${e.lastname}</option>`
-                                                ).join('')}
+
+                                            @foreach($allEmployees->where('usertype_id', $role) as $emp)
+                                                @if($emp->id !== $d->user_id)
+                                                    <option value="{{ $emp->id }}">
+                                                        {{ $emp->firstname }} {{ $emp->lastname }}
+                                                    </option>
+                                                @endif
+                                            @endforeach
                                         </select>
                                     </td>
-                                    <td class="border px-4 py-2 text-center">
-                                        <button class="replace-btn bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700"
-                                            data-detail="${d.detail_id}" 
-                                            data-current="${d.user_id}" 
-                                            data-current-name="${d.user_name}">
-                                            <i class="fa-solid fa-right-left"></i> Reemplazar
+
+                                    <td class="border px-3 py-2 text-center">
+                                        <button type="button"
+                                                class="mass-replace-btn bg-blue-600 text-white px-3 py-1 rounded-lg"
+                                                data-detail="{{ $d->id }}"
+                                                data-current="{{ $d->user_id }}"
+                                                data-current-name="{{ $d->user->firstname }} {{ $d->user->lastname }}">
+                                            <i class="fa-solid fa-right-left"></i>
                                         </button>
                                     </td>
                                 </tr>
-                            `).join('')}
+                            @endforeach
 
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ====================================== -->
+                    <!-- 🔹 TABLA CAMBIOS POR ESTA PROGRAMACIÓN -->
+                    <!-- ====================================== -->
+                    <div class="border rounded-lg p-4 bg-white">
+                        <h4 class="font-semibold mb-3 flex items-center gap-2 text-slate-700">
+                            <i class="fa-solid fa-list text-emerald-600"></i> Cambios Registrados
+                        </h4>
+
+                        <table class="mass_changesTable min-w-full border text-sm text-slate-700">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="border px-3 py-2">Tipo</th>
+                                    <th class="border px-3 py-2">Anterior</th>
+                                    <th class="border px-3 py-2">Nuevo</th>
+                                    <th class="border px-3 py-2">Notas</th>
+                                    <th class="border px-3 py-2 text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
                 </div>
+                @endforeach
             </div>
-
-
-            <!-- ============================= -->
-            <!-- 🔹 TABLA DE CAMBIOS -->
-            <!-- ============================= -->
-            <div class="border border-slate-200 rounded-xl p-5 bg-white">
-                <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-list text-emerald-600"></i> Cambios Registrados
-                </h4>
-
-                <table class="changeTable min-w-full border border-slate-200 text-sm text-slate-700">
-                    <thead class="bg-slate-100">
-                        <tr>
-                            <th class="border px-4 py-2">Tipo</th>
-                            <th class="border px-4 py-2">Anterior</th>
-                            <th class="border px-4 py-2">Nuevo</th>
-                            <th class="border px-4 py-2">Notas</th>
-                            <th class="border px-4 py-2 text-center">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-
-            </div>
-
         </div>
+    </div>
+</div>
 
+{{-- SCRIPT GLOBAL --}}
+<script>
+const FETCH_URL = "{{ route('schedulings.fetch-massive') }}";
+const MASSIVE_UPDATE_URL = "{{ route('schedulings.update-massive') }}";
+
+// 🔥 Turnos disponibles desde Laravel
+const TURNOS = @json($schedules);
+
+// 🔥 Vehículos disponibles desde Laravel
+const VEHICULOS = @json($vehicles);
+
+// Neutralizar modal individual
+window.setupSchedulingModal = function(){};
+
+
+document.addEventListener("turbo:frame-load", () => {
+    initMassiveEditor();
+});
+
+
+function initMassiveEditor() {
+
+    const filterForm = document.querySelector("#massiveFilter");
+    const massiveResults = document.querySelector("#massiveResults");
+
+    if (!filterForm) return;
+
+    filterForm.onsubmit = e => {
+        e.preventDefault();
+        fetchMassive();
+    };
+
+    function fetchMassive() {
+        const token = document.querySelector('meta[name="csrf-token"]').content;
+
+        const payload = {
+            schedule_id: document.querySelector("#f_schedule").value,
+            start_date: document.querySelector("#f_start").value,
+            end_date: document.querySelector("#f_end").value
+        };
+
+        massiveResults.innerHTML = loader();
+
+        fetch(FETCH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": token },
+            body: JSON.stringify(payload)
+        })
+            .then(r => r.json())
+            .then(data => renderMassive(data))
+            .catch(() => massiveResults.innerHTML = errorView());
+    }
+
+
+    // ================================================================
+    // 🔹 RENDERIZAR LAS PROGRAMACIONES MASIVAS
+    // ================================================================
+    function renderMassive(data) {
+
+        if (!data.success || !data.groups.length) {
+            massiveResults.innerHTML = emptyView();
+            return;
+        }
+
+        let html = `
+        <button onclick="applyMassive()" 
+                class="bg-emerald-600 text-white px-4 py-2 mb-4 rounded-lg hover:bg-emerald-700">
+            <i class="fa-solid fa-check-double"></i> Aplicar cambios
+        </button>
+        <div class="space-y-4">
         `;
-    });
 
-    box.innerHTML = html;
+        data.groups.forEach(group => {
 
-    setupMassiveJS();
-}
+            group.schedulings.forEach(item => {
 
+                const assigned = [];
+                const config = group;
 
+                html += `
+                <div class="massive-card border rounded-xl p-4 bg-white shadow-sm"
+                     data-id="${item.id}" data-group="${group.group_id}">
 
-// ===========================================================
-// 🔥 JS PARA CADA BLOQUE DE PROGRAMACIÓN
-// ===========================================================
-function setupMassiveJS(){
+                    <input type="hidden" class="assigned_json" value='${JSON.stringify(assigned)}'>
+                    <input type="hidden" class="changes_json" value='[]'>
 
-    document.querySelectorAll(".add-change-btn").forEach(btn => {
-        btn.onclick = async function(){
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-slate-800">${item.date}</p>
+                            <p class="text-xs text-slate-500">${group.group_name}</p>
+                            <p class="text-xs text-slate-500">${group.zone || ''}</p>
+                        </div>
 
-            const card = btn.closest("[data-id]");
-            const schedulingId = card.dataset.id;
-
-            let tipo = btn.dataset.type;
-            let anterior = "";
-            let nuevo = "";
-
-            if(tipo === "Turno"){
-                anterior = card.querySelector("input[readonly]").value;
-                nuevo = card.querySelector(".newSchedule").selectedOptions[0].text;
-            }
-
-            if(tipo === "Vehículo"){
-                anterior = card.querySelector("input[readonly]").value;
-                nuevo = card.querySelector(".newVehicle").selectedOptions[0].text;
-            }
-
-            if(!nuevo || nuevo===anterior){
-                Swal.fire("Atención", "Seleccione un valor diferente.", "warning");
-                return;
-            }
-
-            const { value: notas } = await Swal.fire({
-                title:"Notas",
-                input:"text",
-                showCancelButton:true
-            });
-
-            if(notas === undefined) return;
-
-            const table = card.querySelector(".changeTable tbody");
-            table.insertAdjacentHTML("beforeend", `
-                <tr>
-                    <td class="border px-4 py-2">${tipo}</td>
-                    <td class="border px-4 py-2">${anterior}</td>
-                    <td class="border px-4 py-2">${nuevo}</td>
-                    <td class="border px-4 py-2">${notas}</td>
-                    <td class="border px-4 py-2 text-center">
-                        <button class="del-change text-red-600"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                </tr>
-            `);
-        };
-    });
+                        <input type="checkbox" class="massive-select h-5 w-5 mt-1">
+                    </div>
 
 
-    // 🔥 REEMPLAZO DE PERSONAL
-    document.querySelectorAll(".replace-btn").forEach(btn => {
-        btn.onclick = async function(){
+                    <!-- ================================ -->
+                    <!-- CAMBIO DE TURNO -->
+                    <!-- ================================ -->
+                    <div class="mt-4 border-t pt-3">
+                        <label class="text-sm text-slate-600">Turno</label>
+                        <select class="m_turno w-full border-slate-300 rounded-lg py-1 px-2">
+                            ${turnoOptions(item.schedule_id)}
+                        </select>
 
-            const card = btn.closest("[data-id]");
-            const assignedInput = card.querySelector(".assigned_json");
-
-            let assigned = JSON.parse(assignedInput.value);
-
-            let detailId = parseInt(btn.dataset.detail);
-            let currentId = parseInt(btn.dataset.current);
-            let currentName = btn.dataset.currentName;
-
-            let select = btn.closest("tr").querySelector(".replaceSelect");
-            let newId = parseInt(select.value);
-            let newName = select.selectedOptions[0]?.text;
-
-            if(!newId){
-                Swal.fire("Atención","Seleccione un empleado válido","warning");
-                return;
-            }
-
-            const { value: notas } = await Swal.fire({
-                title:"Notas",
-                input:"text",
-                showCancelButton:true
-            });
-
-            if(notas === undefined) return;
-
-            // actualizar json
-            assigned = assigned.map(d =>
-                d.detail_id === detailId
-                    ? { ...d, user_id:newId }
-                    : d
-            );
-
-            assignedInput.value = JSON.stringify(assigned);
-
-            // añadir al historial
-            const table = card.querySelector(".changeTable tbody");
-            table.insertAdjacentHTML("beforeend", `
-                <tr>
-                    <td class="border px-4 py-2">Reemplazo Personal</td>
-                    <td class="border px-4 py-2">${currentName}</td>
-                    <td class="border px-4 py-2">${newName}</td>
-                    <td class="border px-4 py-2">${notas}</td>
-                    <td class="border px-4 py-2 text-center">
-                        <button class="del-change text-red-600">
-                            <i class="fa-solid fa-trash"></i>
+                        <button class="add-change-turno mt-2 text-emerald-600 flex items-center gap-1 text-sm">
+                            <i class="fa-solid fa-plus"></i> Registrar cambio
                         </button>
+                    </div>
+
+                    <!-- ================================ -->
+                    <!-- CAMBIO DE VEHÍCULO -->
+                    <!-- ================================ -->
+                    <div class="mt-4 border-t pt-3">
+                        <label class="text-sm text-slate-600">Vehículo</label>
+                        <select class="m_vehicle w-full border-slate-300 rounded-lg py-1 px-2">
+                            ${vehicleOptions(item.vehicle)}
+                        </select>
+
+                        <button class="add-change-vehicle mt-2 text-emerald-600 flex items-center gap-1 text-sm">
+                            <i class="fa-solid fa-plus"></i> Registrar cambio
+                        </button>
+                    </div>
+
+                    <!-- ================================ -->
+                    <!-- NOTAS -->
+                    <!-- ================================ -->
+                    <div class="mt-4 border-t pt-3">
+                        <label class="text-sm text-slate-600">Notas</label>
+                        <input type="text" class="m_notes w-full border-slate-300 rounded-lg py-1 px-2" value="${item.notes || ''}">
+                    </div>
+
+
+                    <!-- ================================ -->
+                    <!-- HISTORIAL TEMPORAL -->
+                    <!-- ================================ -->
+                    <div class="mt-4 border-t pt-3">
+                        <p class="text-sm font-semibold text-slate-700 mb-1">Cambios Registrados</p>
+
+                        <table class="w-full text-sm border border-slate-300 changes_table">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="border px-2 py-1">Tipo</th>
+                                    <th class="border px-2 py-1">Anterior</th>
+                                    <th class="border px-2 py-1">Nuevo</th>
+                                    <th class="border px-2 py-1">Notas</th>
+                                    <th class="border px-2 py-1">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                </div>
+                `;
+            });
+
+        });
+
+        html += "</div>";
+        massiveResults.innerHTML = html;
+
+        bindMassiveEvents();
+    }
+
+
+    // ================================================================
+    // 🔹 ENLAZAR EVENTOS A LOS ELEMENTOS DINÁMICOS
+    // ================================================================
+    function bindMassiveEvents() {
+
+        document.querySelectorAll(".add-change-turno").forEach(btn => {
+            btn.onclick = () => registerChange(btn, "Turno");
+        });
+
+        document.querySelectorAll(".add-change-vehicle").forEach(btn => {
+            btn.onclick = () => registerChange(btn, "Vehículo");
+        });
+    }
+
+
+    // ================================================================
+    // 🔹 REGISTRAR CAMBIO DE TURNO / VEHÍCULO
+    // ================================================================
+    async function registerChange(btn, tipo) {
+
+        const card = btn.closest(".massive-card");
+        const changesInput = card.querySelector(".changes_json");
+        const table = card.querySelector(".changes_table tbody");
+
+        let anterior = "", nuevo = "";
+
+        if (tipo === "Turno") {
+            anterior = "Turno anterior";
+            nuevo = card.querySelector(".m_turno").selectedOptions[0].text;
+        }
+
+        if (tipo === "Vehículo") {
+            anterior = "Vehículo anterior";
+            nuevo = card.querySelector(".m_vehicle").selectedOptions[0].text;
+        }
+
+        const { value: notas } = await Swal.fire({
+            title: "Notas del cambio",
+            input: "text",
+            showCancelButton: true,
+            confirmButtonText: "Agregar"
+        });
+
+        if (notas === undefined) return;
+
+        let changes = JSON.parse(changesInput.value);
+        changes.push({ tipo, anterior, nuevo, notas });
+
+        changesInput.value = JSON.stringify(changes);
+
+        renderChangesTable(changes, table);
+    }
+
+
+    // ================================================================
+    // 🔹 RENDER TABLE
+    // ================================================================
+    function renderChangesTable(changes, tbody) {
+        tbody.innerHTML = "";
+
+        changes.forEach((c, idx) => {
+            tbody.insertAdjacentHTML("beforeend", `
+                <tr>
+                    <td class="border px-2 py-1">${c.tipo}</td>
+                    <td class="border px-2 py-1">${c.anterior}</td>
+                    <td class="border px-2 py-1">${c.nuevo}</td>
+                    <td class="border px-2 py-1">${c.notas}</td>
+                    <td class="border px-2 py-1 text-center">
+                        <button class="delete-change text-red-600" data-index="${idx}">X</button>
                     </td>
                 </tr>
             `);
-        };
-    });
+        });
+    }
 
 
-    // 🔥 BORRAR CAMBIO
-    document.querySelectorAll(".changeTable tbody").forEach(tbody => {
-        tbody.onclick = function(e){
-            if(e.target.closest(".del-change")){
-                e.target.closest("tr").remove();
-            }
-        };
-    });
-}
+    // ================================================================
+    // 🔹 APLICAR CAMBIOS MASIVOS
+    // ================================================================
+    window.applyMassive = function () {
 
+        const token = document.querySelector('meta[name="csrf-token"]').content;
 
+        let selected = [...document.querySelectorAll(".massive-select:checked")].map(chk => {
+            let card = chk.closest(".massive-card");
 
-// ===========================================================
-// 🔥 GUARDAR CAMBIOS MASIVOS
-// ===========================================================
-function saveMassiveChanges(){
+            return {
+                id: card.dataset.id,
+                schedule_id: card.querySelector(".m_turno").value,
+                vehicle_id: card.querySelector(".m_vehicle").value || null,
+                notes: card.querySelector(".m_notes").value || null,
+                changes: JSON.parse(card.querySelector(".changes_json").value),
+                assigned_json: JSON.parse(card.querySelector(".assigned_json").value)
+            };
+        });
 
-    let payload = [];
+        if (!selected.length) {
+            Swal.fire("Atención", "Seleccione registros para aplicar cambios", "warning");
+            return;
+        }
 
-    document.querySelectorAll("[data-id]").forEach(card => {
-
-        const schedulingId = parseInt(card.dataset.id);
-
-        const schedule_id = parseInt(card.querySelector(".newSchedule").value);
-        const vehicle_id = card.querySelector(".newVehicle").value || null;
-        const assigned_json = card.querySelector(".assigned_json").value;
-
-        // cambios del historial
-        let changes = [];
-        card.querySelectorAll(".changeTable tbody tr").forEach(tr => {
-            let tds = tr.querySelectorAll("td");
-            changes.push({
-                tipo: tds[0].innerText,
-                anterior: tds[1].innerText,
-                nuevo: tds[2].innerText,
-                notas: tds[3].innerText
+        fetch(MASSIVE_UPDATE_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": token },
+            body: JSON.stringify({ updates: selected })
+        })
+            .then(r => r.json())
+            .then(d => {
+                Swal.fire("Éxito", "Cambios aplicados correctamente", "success");
+                fetchMassive();
             });
-        });
+    };
 
-        payload.push({
-            id: schedulingId,
-            schedule_id,
-            vehicle_id,
-            assigned_json,
-            changes
-        });
-    });
 
-    const token = document.querySelector('meta[name="csrf-token"]').content;
 
-    fetch("{{ route('schedulings.update-massive') }}", {
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json",
-            "X-CSRF-TOKEN": token
-        },
-        body: JSON.stringify({ updates: payload })
-    })
-    .then(r=>r.json())
-    .then(res=>{
-        Swal.fire("Éxito", "Cambios guardados correctamente", "success");
-    })
-    .catch(err=>{
-        Swal.fire("Error","Ocurrió un problema","error")
-    });
+    // ================================================================
+    // 🔹 VISTAS AUXILIARES
+    // ================================================================
+    function loader() {
+        return `<div class="text-center py-4 text-slate-500">
+            <i class='fa-solid fa-spinner fa-spin'></i> Cargando...
+        </div>`;
+    }
+
+    function emptyView() {
+        return `<div class="p-4 bg-amber-50 text-amber-700 border rounded-lg">
+            No se encontraron programaciones en este rango.
+        </div>`;
+    }
+
+    function errorView() {
+        return `<div class="p-4 bg-red-50 text-red-700 border rounded-lg">
+            Error al cargar información.
+        </div>`;
+    }
+
+
+    // ================================================================
+    // 🔹 OPCIONES PARA TURNOS Y VEHÍCULOS
+    // ================================================================
+    function turnoOptions(selected) {
+        return TURNOS.map(t => `
+            <option value="${t.id}" ${t.id == selected ? 'selected':''}>
+                ${t.name}
+            </option>
+        `).join("");
+    }
+
+    function vehicleOptions(selectedName) {
+        return VEHICULOS.map(v => `
+            <option value="${v.id}">
+                ${v.plate} - ${v.name}
+            </option>
+        `).join("");
+    }
+
 }
 
 </script>
+
 </turbo-frame>
