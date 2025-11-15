@@ -61,13 +61,15 @@
         </div>
 
         {{-- ESTADÍSTICAS --}}
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
             {{-- Total Zonas Programadas --}}
             <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-blue-600 font-medium">Zonas</p>
-                        <p class="text-3xl font-bold text-blue-700 mt-1">{{ $stats['total_zones'] }}</p>
+                        <p class="text-3xl font-bold text-blue-700 mt-1" data-stat="total_zones">
+                            {{ $stats['total_zones'] }}
+                        </p>
                     </div>
                     <div class="bg-blue-200 w-14 h-14 rounded-full flex items-center justify-center">
                         <i class="fa-solid fa-clipboard-list text-2xl text-blue-700"></i>
@@ -76,14 +78,47 @@
             </div>
 
             {{-- Grupos Completos --}}
-            <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-5 border border-emerald-200">
+            <button type="button" onclick="filterZones('ready')"
+                class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-5 border-2 border-emerald-200 hover:border-emerald-400 hover:scale-105 transition-all duration-200 cursor-pointer text-left">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-emerald-600 font-medium">Grupos completos</p>
-                        <p class="text-3xl font-bold text-emerald-700 mt-1">{{ $stats['ready_zones'] }}</p>
+                        <p class="text-3xl font-bold text-emerald-700 mt-1" data-stat="ready_zones">
+                            {{ $stats['ready_zones'] }}
+                        </p>
                     </div>
                     <div class="bg-emerald-200 w-14 h-14 rounded-full flex items-center justify-center">
                         <i class="fa-solid fa-truck text-2xl text-emerald-700"></i>
+                    </div>
+                </div>
+            </button>
+
+            {{-- Personal Ausente --}}
+            <button type="button" onclick="filterZones('not_ready')"
+                class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-5 border-2 border-orange-200 hover:border-orange-400 hover:scale-105 transition-all duration-200 cursor-pointer text-left">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-orange-600 font-medium">Faltan</p>
+                        <p class="text-3xl font-bold text-orange-700 mt-1" data-stat="absent_personnel">
+                            {{ $stats['absent_personnel'] }}
+                        </p>
+                    </div>
+                    <div class="bg-orange-200 w-14 h-14 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-2xl text-orange-700"></i>
+                    </div>
+                </div>
+            </button>
+
+            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-5 border border-purple-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-purple-600 font-medium">En Proceso</p>
+                        <p class="text-3xl font-bold text-purple-700 mt-1" data-stat="in_process">
+                            {{ $stats['in_process'] }}
+                        </p>
+                    </div>
+                    <div class="bg-purple-200 w-14 h-14 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-spinner text-2xl text-purple-700"></i>
                     </div>
                 </div>
             </div>
@@ -101,18 +136,6 @@
                 </div>
             </div>
 
-            {{-- Personal Ausente --}}
-            <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-5 border border-red-200">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-red-600 font-medium">Faltan</p>
-                        <p class="text-3xl font-bold text-red-700 mt-1">{{ $stats['absent_personnel'] }}</p>
-                    </div>
-                    <div class="bg-red-200 w-14 h-14 rounded-full flex items-center justify-center">
-                        <i class="fa-solid fa-xmark text-2xl text-red-700"></i>
-                    </div>
-                </div>
-            </div>
         </div>
 
         {{-- LEYENDA DE COLORES --}}
@@ -127,82 +150,56 @@
                     <span class="text-slate-700">Grupo completo y listo para operar</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <div class="w-4 h-4 bg-red-500 rounded"></div>
-                    <span class="text-slate-700">Faltan integrantes por llegar o confirmar asistencia</span>
+                    <div class="w-4 h-4 bg-orange-500 rounded"></div>
+                    <span class="text-slate-700">Faltan integrantes por confirmar asistencia</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-purple-500 rounded"></div>
+                    <span class="text-slate-700">En proceso de recolección</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                    <span class="text-slate-700">Completada exitosamente</span>
                 </div>
             </div>
         </div>
 
-        {{-- TARJETAS DE ZONAS --}}
-        @if ($zonesData->isEmpty())
-            <div class="bg-white rounded-xl shadow-md border border-slate-100 p-12 text-center">
-                <i class="fa-solid fa-calendar-xmark text-5xl text-slate-300 mb-3"></i>
-                <p class="text-lg font-medium text-slate-600">No hay programaciones para esta fecha y turno</p>
-                <p class="text-sm text-slate-400">Intenta seleccionar otra fecha o turno</p>
-            </div>
-        @else
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                @foreach ($zonesData as $zoneData)
-                    <div
-                        class="bg-white rounded-xl shadow-md border-2 
-                    {{ $zoneData['status'] === 'ready' ? 'border-emerald-200' : 'border-red-200' }} 
-                    p-6 hover:shadow-lg transition">
+        {{-- LAYOUT DE DOS COLUMNAS --}}
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                        {{-- Encabezado de Zona --}}
-                        <div class="flex items-start justify-between mb-4">
-                            <div>
-                                <h3 class="text-lg font-bold text-slate-800">
-                                    Zona: {{ $zoneData['scheduling']->zone->name }}
-                                </h3>
-                                <p class="text-sm text-slate-500">
-                                    {{ $zoneData['scheduling']->schedule->name }} -
-                                    {{ $zoneData['scheduling']->vehicle->plate }}
-                                </p>
-                            </div>
-                            <div
-                                class="w-3 h-3 rounded-full {{ $zoneData['status'] === 'ready' ? 'bg-emerald-500' : 'bg-red-500' }}">
-                            </div>
-                        </div>
-
-                        {{-- Estado --}}
-                        <div
-                            class="mb-4 p-3 rounded-lg {{ $zoneData['status'] === 'ready' ? 'bg-emerald-50' : 'bg-red-50' }}">
-                            <p
-                                class="text-sm font-medium {{ $zoneData['status'] === 'ready' ? 'text-emerald-700' : 'text-red-700' }}">
-                                {{ $zoneData['reason'] }}
-                            </p>
-                        </div>
-
-                        {{-- Personal Ausente --}}
-                        @if ($zoneData['status'] === 'not_ready')
-                            <div class="mb-4">
-                                <p class="text-xs font-semibold text-slate-600 mb-2">Personal faltante:</p>
-                                <ul class="space-y-1">
-                                    @foreach ($zoneData['absent_personnel'] as $absent)
-                                        <li class="text-xs text-slate-600 flex items-center gap-2">
-                                            <i class="fa-solid fa-user-xmark text-red-500"></i>
-                                            {{ $absent['user']->firstname }} {{ $absent['user']->lastname }}
-                                            <span class="text-slate-400">({{ $absent['role'] }})</span>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </div>
-
-                            {{-- Botón para Editar --}}
-                            <a href="{{ route('schedulings.edit', ['scheduling' => $zoneData['scheduling']->id, 'date' => $zoneData['date']]) }}"
-                                data-turbo-frame="modal-frame" class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition">
-                                <i class="fa-solid fa-arrows-rotate"></i> Realizar cambios
-                            </a>
-                        @else
-                            <div class="flex items-center justify-center gap-2 text-emerald-600 py-2">
-                                <i class="fa-solid fa-circle-check text-xl"></i>
-                                <span class="font-medium">Listo para operar</span>
-                            </div>
-                        @endif
+            {{-- COLUMNA IZQUIERDA: PENDIENTES (8/12) --}}
+            <div class="lg:col-span-9">
+                <div class="bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-clock text-blue-600"></i>
+                            Programaciones Pendientes
+                        </h2>
                     </div>
-                @endforeach
+
+                    <div class="p-6 max-h-[600px] overflow-y-auto" id="pendingZonesContainer">
+                        @include('Dashboard._ProgramacionesPendientes')
+                    </div>
+                </div>
             </div>
-        @endif
+
+            {{-- COLUMNA DERECHA: EN CURSO Y COMPLETADAS (4/12) --}}
+            <div class="lg:col-span-3">
+                <div class="bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden">
+                    <div class="bg-slate-50 px-4 py-3 border-b border-slate-200">
+                        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-purple-600"></i>
+                            En Curso y Completadas
+                        </h2>
+                    </div>
+
+                    <div class="p-4 max-h-[600px] overflow-y-auto" id="activeCompletedZonesContainer">
+                        @include('Dashboard._ProgramacionesOtras')
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         {{-- TARJETAS DE INDICADORES --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -243,14 +240,6 @@
                 <p class="text-xs text-green-600 font-medium mt-1">Objetivo: 85% al cierre del trimestre</p>
             </div>
         </div>
-
-        {{-- SECCIÓN PRINCIPAL --}}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        </div>
-
-        {{-- DISTRIBUCIÓN DE MATERIALES --}}
-        {{-- <div class="bg-white rounded-xl shadow-md border border-slate-100 p-6"> </div> --}}
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {{-- GRAFICO DE RECOLECCIÓN --}}
@@ -332,6 +321,320 @@
                     }
                 }
             });
+
+            const statsElements = document.querySelectorAll('[data-stat]');
+
+            statsElements.forEach(element => {
+
+                const finalValue = parseInt(element.textContent.trim()) || 0;
+                element.textContent = '0';
+                animateNumber(element, finalValue);
+            });
         });
+
+        const scrollingElement = document.getElementById('mainContent');
+
+        function filterZones(status) {
+            const cards = document.querySelectorAll('.zone-card');
+
+            cards.forEach(card => {
+                const cardStatus = card.dataset.status;
+
+                if (status === 'all') {
+                    card.style.display = '';
+                } else if (cardStatus === status) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function getFormFilters() {
+            const dateInput = document.querySelector('input[name="date"]');
+            const scheduleSelect = document.querySelector('select[name="schedule_id"]');
+
+            return {
+                date: dateInput ? dateInput.value : '',
+                schedule_id: scheduleSelect ? scheduleSelect.value : ''
+            };
+        }
+
+        // 🎨 Animación fade out
+        function fadeOut(element) {
+            return new Promise(resolve => {
+                element.style.transition = 'opacity 0.3s ease-out';
+                element.style.opacity = '0';
+                setTimeout(() => resolve(), 300);
+            });
+        }
+
+        // Animación de número (contador)
+        function animateNumber(element, newValue) {
+            const currentValue = parseInt(element.textContent) || 0;
+            if (newValue === currentValue) {
+                return;
+            }
+            const animationStartValue = 0;
+            const difference = newValue - animationStartValue;
+            if (difference === 0) {
+                element.textContent = 0;
+                return;
+            }
+            const steps = Math.abs(difference);
+            const duration = 500; // ms
+            const stepValue = difference / steps;
+            const stepDuration = duration / steps;
+
+            let currentStep = 0;
+
+            const interval = setInterval(() => {
+                currentStep++;
+                const value = Math.round(animationStartValue + (stepValue * currentStep));
+                element.textContent = value;
+
+                if (currentStep >= steps) {
+                    element.textContent = newValue;
+                    clearInterval(interval);
+                }
+            }, stepDuration);
+        }
+
+        // 🎨 Animación fade in
+        function fadeIn(element) {
+            return new Promise(resolve => {
+                element.style.opacity = '0';
+                setTimeout(() => {
+                    element.style.transition = 'opacity 0.3s ease-in';
+                    element.style.opacity = '1';
+                    setTimeout(() => resolve(), 300);
+                }, 50);
+            });
+        }
+
+        async function reloadSection(containerId, endpoint) {
+            try {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+
+                // 🎨 Fade out
+                await fadeOut(container);
+
+                // 📡 Fetch data
+                const filters = getFormFilters();
+                // Crea un objeto URL
+                const url = new URL(endpoint, window.location
+                    .origin); // window.location.origin ayuda si el endpoint es relativo
+
+                // Añade los parámetros de forma segura (esto los codifica si es necesario)
+                url.searchParams.append('date', filters.date);
+                url.searchParams.append('schedule_id', filters.schedule_id)
+
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'text/html'
+                    }
+                });
+
+                if (!response.ok) throw new Error(`Error al cargar ${endpoint}`);
+
+                const html = await response.text();
+                container.innerHTML = html;
+
+                // 🎨 Fade in
+                await fadeIn(container);
+
+            } catch (error) {
+                console.error('Error:', error);
+                throw error;
+            }
+        }
+
+        async function updateStats() {
+            try {
+                const filters = getFormFilters();
+                // Crea un objeto URL
+                const url = new URL('/dashboard/stats', window.location.origin);
+
+                // Añade los parámetros de forma segura (esto los codifica si es necesario)
+                url.searchParams.append('date', filters.date);
+                url.searchParams.append('schedule_id', filters.schedule_id)
+
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Error al cargar estadísticas');
+
+                const stats = await response.json();
+
+                // Actualizar cada estadística con animación
+                const statElements = {
+                    'total_zones': stats.total_zones,
+                    'ready_zones': stats.ready_zones,
+                    'in_process': stats.in_process,
+                    'absent_personnel': stats.absent_personnel
+                };
+
+                Object.keys(statElements).forEach(key => {
+                    const newValue = statElements[key];
+                    const element = document.querySelector(`[data-stat="${key}"]`);
+
+                    if (element) {
+
+                        animateNumber(element, statElements[key]);
+                    }
+                });
+            } catch (error) {
+                console.error('Error al actualizar estadísticas:', error);
+            }
+        }
+
+        async function reloadPendingProg() {
+            // pendingZonesContainer /dashboard/programacion-pendiente
+            return reloadSection('pendingZonesContainer', '/dashboard/programacion-pendiente');
+        }
+        async function reloadOtrasProg() {
+            // activeCompletedZonesContaine /dashboard/programaciones-otras
+            return reloadSection('activeCompletedZonesContainer', '/dashboard/programaciones-otras');
+        }
+
+        async function changeSchedulingStatus(schedulingId, newStatus, title, text) {
+            const currentScrollPosition = scrollingElement ? scrollingElement.scrollTop : 0;
+
+            const result = await Swal.fire({
+                title: title,
+                text: text,
+                icon: newStatus === 3 ? 'warning' : 'question',
+                showCancelButton: true,
+                confirmButtonColor: newStatus === 3 ? '#ef4444' : '#10b981',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, continuar',
+                cancelButtonText: 'Cancelar',
+                heightAuto: false,
+                didOpen: () => {
+                    // Mantener scroll en la posición original
+                    if (scrollingElement) scrollingElement.scrollTo(0, currentScrollPosition);
+                },
+                didClose: () => {
+                    // Prevenir salto al CERRAR (si se cancela)
+                    if (scrollingElement) scrollingElement.scrollTo(0, currentScrollPosition);
+                }
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            try {
+                Swal.fire({
+                    title: 'Procesando...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                        if (scrollingElement) scrollingElement.scrollTo(0, currentScrollPosition);
+                    }
+                });
+
+                const response = await fetch(`/schedulings/${schedulingId}/change-status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: newStatus
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            if (scrollingElement) scrollingElement.scrollTo(0, currentScrollPosition);
+                        }
+                    });
+
+                    // ✅ RECARGAR SOLO LAS SECCIONES
+                    await Promise.all([
+                        reloadPendingProg(),
+                        reloadOtrasProg(),
+                        updateStats()
+                    ]);
+
+
+                    // 📍 Restaurar scroll después de recargar
+                    setTimeout(() => {
+                        if (scrollingElement) {
+                            // ¡LA MAGIA ESTÁ AQUÍ!
+                            scrollingElement.scrollTo({
+                                top: (currentScrollPosition - 100),
+                                behavior: 'smooth' // <-- Esto le dice al navegador que anime el scroll
+                            });
+                        }
+                    }, 0);
+
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Ocurrió un error'
+                    });
+                    if (scrollingElement) scrollingElement.scrollTo(0, currentScrollPosition);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo conectar con el servidor',
+                    heightAuto: false,
+                    didOpen: () => {
+                        if (scrollingElement) scrollingElement.scrollTo(0, currentScrollPosition);
+                    }
+                });
+            }
+        }
+
+        function startScheduling(schedulingId) {
+            changeSchedulingStatus(
+                schedulingId,
+                1,
+                '¿Iniciar programación?',
+                'La programación cambiará a estado "En Proceso"',
+                'Programación iniciada correctamente'
+            );
+        }
+
+        function completeScheduling(schedulingId) {
+            changeSchedulingStatus(
+                schedulingId,
+                2,
+                '¿Completar programación?',
+                'La programación se marcará como completada',
+                'Programación completada exitosamente'
+            );
+        }
+
+        function cancelScheduling(schedulingId) {
+            changeSchedulingStatus(
+                schedulingId,
+                3,
+                '¿Cancelar programación?',
+                'Esta acción marcará la programación como cancelada',
+                'Programación cancelada'
+            );
+        }
     </script>
 @endsection

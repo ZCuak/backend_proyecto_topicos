@@ -8,15 +8,16 @@ use App\Models\Schedule;
 use App\Models\Scheduling;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class DashboardController extends Controller
 {
     /**
-     * 🎯 Dashboard principal con filtro de fecha y turno
+     * Dashboard principal con filtro de fecha y turno
      */
     public function index(Request $request)
     {
-        // 📅 Fecha: por defecto HOY, no permite fechas anteriores
+        // Fecha: por defecto HOY, no permite fechas anteriores
         $selectedDate = $request->input('date', now()->format('Y-m-d'));
 
         // Validar que no sea fecha pasada
@@ -24,70 +25,38 @@ class DashboardController extends Controller
             $selectedDate = now()->format('Y-m-d');
         }
 
-        // 🕐 Turno: por defecto TODOS
+        // Turno: por defecto TODOS
         $selectedScheduleId = $request->input('schedule_id');
 
-        // 🔍 Obtener programaciones del día (o rango que incluya el día)
-        $query = Scheduling::with([
-            'zone',
-            'vehicle',
-            'schedule',
-            'group',
-            'details.user',
-            'details.userType'
-        ])
-            ->where(function ($q) use ($selectedDate) {
-                // Programaciones de un solo día
-                $q->whereDate('date', $selectedDate)
-                    // O programaciones de rango que incluyan esta fecha
-                    ->orWhere(function ($q2) use ($selectedDate) {
-                        $q2->whereNotNull('start_date')
-                            ->whereNotNull('end_date')
-                            ->whereDate('start_date', '<=', $selectedDate)
-                            ->whereDate('end_date', '>=', $selectedDate);
-                    });
-            });
-
-        // Filtrar por turno si se seleccionó uno
-        if ($selectedScheduleId) {
-            $query->where('schedule_id', $selectedScheduleId);
-        }
-
-        $schedulings = $query->get();
+        // Obtener programaciones del día (o rango que incluya el día)
+        $schedulings = $this->getSchedulings($selectedDate, $selectedScheduleId);
 
         $debugData = [];
         $zonesData = collect();
-
-        // 🔍 Usar foreach en lugar de map
-        foreach ($schedulings as $scheduling) {
-            $analysis = $this->analyzeScheduling($scheduling, $selectedDate, $debugData);
-            $zonesData->push($analysis);
-        }
-        // 🔍 MOSTRAR TODO AL FINAL
+        // Procesar zonas usando helpers
+        $pendingZones = $this->processPendingZones($schedulings, $selectedDate);
+        $groupedBySchedule = $this->processActiveCompletedZones($schedulings, $selectedDate);
+        // MOSTRAR TODO AL FINAL
         // dd($debugData);
 
-        // 📊 Estadísticas
-        $stats = [
-            'total_zones' => $zonesData->count(),
-            'ready_zones' => $zonesData->where('status', 'ready')->count(),
-            'not_ready_zones' => $zonesData->where('status', 'not_ready')->count(),
-            'absent_personnel' => $zonesData->sum('absent_count'),
-        ];
+        //Estadísticas
+        $stats = $this->calculateStats($pendingZones, $groupedBySchedule);
 
-        // 📋 Obtener turnos para el filtro
+        // Obtener turnos para el filtro
         $schedules = Schedule::all();
 
         return view('welcome', compact(
-            'zonesData',
+            'pendingZones',
+            'groupedBySchedule',
+            'schedules',
             'stats',
             'selectedDate',
-            'selectedScheduleId',
-            'schedules'
+            'selectedScheduleId'
         ));
     }
 
     /**
-     * 🔍 Analizar una programación y verificar disponibilidad de personal
+     * Analizar una programación y verificar disponibilidad de personal
      */
     private function analyzeScheduling(Scheduling $scheduling, $date, &$debugData)
     {
@@ -254,5 +223,184 @@ class DashboardController extends Controller
         $result = $checkIn->between($toleranceStart, $end);
 
         return $result;
+    }
+
+    public function changeStatus(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'status' => 'required|integer|in:0,1,2,3'
+            ]);
+
+            $scheduling = Scheduling::findOrFail($id);
+            $newStatus = $request->input('status');
+            $oldStatus = $scheduling->status;
+
+            // Actualizar estado
+            $scheduling->status = $newStatus;
+            $scheduling->save();
+
+            // Mensajes según el estado
+            $messages = [
+                0 => 'Programación marcada como pendiente',
+                1 => 'Programación iniciada correctamente',
+                2 => 'Programación completada exitosamente',
+                3 => 'Programación cancelada',
+            ];
+            return response()->json([
+                'success' => true,
+                'message' => $messages[$newStatus] ?? 'Estado actualizado',
+                'data' => [
+                    'scheduling_id' => $scheduling->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus
+                ]
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el estado: ' . $e->getMessage()
+            ], 500);
+        }
+
+        // return redirect()->back()->with('success', $messages[$newStatus] ?? 'Estado actualizado');
+    }
+
+    /**
+     * Obtener solo las programaciones pendientes (AJAX)
+     */
+    public function getPrgPendientes(Request $request)
+    {
+        $selectedDate = $request->input('date', now()->format('Y-m-d'));
+        $selectedScheduleId = $request->input('schedule_id');
+
+        $schedulings = $this->getSchedulings($selectedDate, $selectedScheduleId);
+        $pendingZones = $this->processPendingZones($schedulings, $selectedDate);
+
+        return view('Dashboard._ProgramacionesPendientes', compact('pendingZones'))->render();
+    }
+
+    /**
+     * Obtener solo las programaciones activas/completadas (AJAX)
+     */
+    public function getPrgOtras(Request $request)
+    {
+        $selectedDate = $request->input('date', now()->format('Y-m-d'));
+        $selectedScheduleId = $request->input('schedule_id');
+
+        $schedulings = $this->getSchedulings($selectedDate, $selectedScheduleId);
+        $groupedBySchedule = $this->processActiveCompletedZones($schedulings, $selectedDate);
+
+        return view('Dashboard._ProgramacionesOtras', compact('groupedBySchedule'))->render();
+    }
+
+    /**
+     * Obtener solo las estadísticas (AJAX)
+     */
+    public function getStats(Request $request)
+    {
+        $selectedDate = $request->input('date', now()->format('Y-m-d'));
+        $selectedScheduleId = $request->input('schedule_id');
+
+        $schedulings = $this->getSchedulings($selectedDate, $selectedScheduleId);
+        $pendingZones = $this->processPendingZones($schedulings, $selectedDate);
+        $groupedBySchedule = $this->processActiveCompletedZones($schedulings, $selectedDate);
+
+        $stats = $this->calculateStats($pendingZones, $groupedBySchedule);
+
+        return response()->json($stats);
+    }
+
+    /**
+     *  Helper: Obtener programaciones
+     */
+    private function getSchedulings($selectedDate, $selectedScheduleId = null)
+    {
+        $query = Scheduling::with([
+            'zone',
+            'vehicle',
+            'schedule',
+            'group',
+            'details.user',
+            'details.userType'
+        ])->where(function ($q) use ($selectedDate) {
+            $q->whereDate('date', $selectedDate)
+                ->orWhere(function ($q2) use ($selectedDate) {
+                    $q2->whereNotNull('start_date')
+                        ->whereNotNull('end_date')
+                        ->whereDate('start_date', '<=', $selectedDate)
+                        ->whereDate('end_date', '>=', $selectedDate);
+                });
+        });
+
+        if ($selectedScheduleId) {
+            $query->where('schedule_id', $selectedScheduleId);
+        }
+
+        return $query->get();
+    }
+
+    private function calculateStats($pendingZones, $groupedBySchedule)
+    {
+        return [
+            'total_zones' => $pendingZones->count() + $groupedBySchedule->flatten(1)->count(),
+            'ready_zones' => $pendingZones->where('status', 'ready')->count(),
+            'not_ready_zones' => $pendingZones->where('status', 'not_ready')->count(),
+            'absent_personnel' => $pendingZones->sum('absent_count'),
+            'in_process' => $groupedBySchedule->flatten(1)->filter(fn($z) => $z['scheduling']->status == 1)->count(),
+        ];
+    }
+
+    /**
+     * Helper: Procesar zonas pendientes
+     */
+    private function processPendingZones($schedulings, $date)
+    {
+        $pendingZones = collect();
+        $debugData = [];
+
+        foreach ($schedulings as $scheduling) {
+            if ($scheduling->status == 0) {
+                $analysis = $this->analyzeScheduling($scheduling, $date, $debugData);
+                $pendingZones->push($analysis);
+            }
+        }
+
+        return $pendingZones;
+    }
+    /**
+     * 🔧 Helper: Procesar zonas activas/completadas
+     */
+    private function processActiveCompletedZones($schedulings, $date)
+    {
+        $activeCompletedZones = collect();
+        $debugData = [];
+
+        foreach ($schedulings as $scheduling) {
+            if ($scheduling->status != 0) {
+                $analysis = $this->analyzeScheduling($scheduling, $date, $debugData);
+                $activeCompletedZones->push($analysis);
+            }
+        }
+
+        // Agrupar por turno
+        $groupedBySchedule = $activeCompletedZones->groupBy(function ($zoneData) {
+            return $zoneData['scheduling']->schedule->id;
+        });
+
+        // Ordenar dentro de cada turno: EN PROCESO primero, luego COMPLETADAS/CANCELADAS
+        $groupedBySchedule = $groupedBySchedule->map(function ($zones) {
+            return $zones->sortBy(function ($zoneData) {
+                return $zoneData['scheduling']->status;
+            })->values();
+        });
+
+        return $groupedBySchedule;
     }
 }

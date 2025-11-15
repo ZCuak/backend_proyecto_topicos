@@ -45,6 +45,10 @@ Route::post('/mark-attendance', [AttendaceController::class, 'markAttendance'])-
 // Rutas protegidas por autenticación
 Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/schedulings/{id}/change-status', [DashboardController::class, 'changeStatus'])->name('schedulings.changeStatus');
+    Route::get('/dashboard/programacion-pendiente', [DashboardController::class, 'getPrgPendientes'])->name('dashboard.pendingZones');
+    Route::get('/dashboard/programaciones-otras', [DashboardController::class, 'getPrgOtras'])->name('dashboard.activeCompletedZones');
+    Route::get('/dashboard/stats', [DashboardController::class, 'getStats'])->name('dashboard.stats');
 
 
     Route::resource('maintenances', MaintenanceController::class);
