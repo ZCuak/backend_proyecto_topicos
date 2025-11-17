@@ -19,12 +19,17 @@ class MaintenanceScheduleController extends Controller
     {
         try {
             $search = $request->input('search');
+            $maintenanceId = $request->input('maintenance_id');
             $query = MaintenanceSchedule::with(['maintenance', 'vehicle']);
 
             if ($search) {
                 $query->whereHas('maintenance', function ($q) use ($search) {
                     $q->where('name', 'ILIKE', "%{$search}%");
                 });
+            }
+
+            if ($maintenanceId) {
+                $query->where('maintenance_id', $maintenanceId);
             }
 
             $schedules = $query->orderBy('day')->orderBy('start_time')->paginate(10);
@@ -92,6 +97,25 @@ class MaintenanceScheduleController extends Controller
         DB::beginTransaction();
         try {
             $data = $validator->validated();
+
+            // Validar solapamiento por vehículo y día
+            $overlap = MaintenanceSchedule::where('vehicle_id', $data['vehicle_id'])
+                ->where('day', $data['day'])
+                ->where('start_time', '<', $data['end_time'])
+                ->where('end_time', '>', $data['start_time'])
+                ->exists();
+
+            if ($overlap) {
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El horario se solapa con otro existente para el mismo vehículo y día.',
+                    ], 422);
+                }
+
+                return back()->with('error', 'El horario se solapa con otro existente para el mismo vehículo y día.')->withInput();
+            }
+
             MaintenanceSchedule::create($data);
 
             DB::commit();
@@ -152,6 +176,22 @@ class MaintenanceScheduleController extends Controller
             }
 
             $data = $validator->validated();
+
+            // Validar solapamiento al actualizar (excluir el propio registro)
+            $overlap = MaintenanceSchedule::where('vehicle_id', $data['vehicle_id'])
+                ->where('day', $data['day'])
+                ->where('start_time', '<', $data['end_time'])
+                ->where('end_time', '>', $data['start_time'])
+                ->where('id', '<>', $schedule->id)
+                ->exists();
+
+            if ($overlap) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El horario se solapa con otro existente para el mismo vehículo y día.',
+                ], 422);
+            }
+
             $schedule->update($data);
 
             if ($isTurbo) {
@@ -187,6 +227,14 @@ class MaintenanceScheduleController extends Controller
                     'success' => false,
                     'message' => 'Horario no encontrado.',
                 ], 404);
+            }
+
+            // No permitir eliminar si existen registros asociados
+            if ($schedule->records()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar el horario porque tiene registros asociados.',
+                ], 400);
             }
 
             $schedule->delete();

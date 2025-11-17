@@ -175,6 +175,14 @@ class MaintenanceController extends Controller
                 ], 404);
             }
 
+            // No permitir eliminar si existen horarios asociados
+            if ($maintenance->schedules()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar el mantenimiento porque tiene horarios asociados.',
+                ], 400);
+            }
+
             $maintenance->delete();
 
             return response()->json([

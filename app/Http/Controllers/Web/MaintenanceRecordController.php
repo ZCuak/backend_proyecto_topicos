@@ -8,6 +8,8 @@ use App\Models\MaintenanceSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class MaintenanceRecordController extends Controller
 {
@@ -89,6 +91,64 @@ class MaintenanceRecordController extends Controller
         try {
             $data = $validator->validated();
 
+            // Validar que la fecha corresponda al día de la semana y al periodo del mantenimiento
+            $schedule = MaintenanceSchedule::find($data['schedule_id']);
+            if (!$schedule) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Horario de mantenimiento no encontrado.',
+                ], 404);
+            }
+
+            $maintenance = $schedule->maintenance;
+            if (!$maintenance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mantenimiento asociado no encontrado.',
+                ], 404);
+            }
+
+            $date = Carbon::parse($data['date']);
+
+            $daysMap = [
+                'LUNES' => 1,
+                'MARTES' => 2,
+                'MIÉRCOLES' => 3,
+                'MIERCOLES' => 3,
+                'JUEVES' => 4,
+                'VIERNES' => 5,
+                'SÁBADO' => 6,
+                'SABADO' => 6,
+                'DOMINGO' => 7,
+            ];
+
+            $expectedWeek = $daysMap[strtoupper($schedule->day)] ?? null;
+            $actualWeek = (int) $date->format('N');
+
+            if ($expectedWeek === null || $expectedWeek !== $actualWeek) {
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day,
+                    ], 422);
+                }
+
+                return back()->with('error', 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day)->withInput();
+            }
+
+            $start = Carbon::parse($maintenance->start_date);
+            $end = Carbon::parse($maintenance->end_date);
+            if ($date->lt($start) || $date->gt($end)) {
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date,
+                    ], 422);
+                }
+
+                return back()->with('error', 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date)->withInput();
+            }
+
             if ($request->hasFile('image_path')) {
                 $data['image_path'] = $request->file('image_path')->store('maintenance_records', 'public');
             }
@@ -152,9 +212,59 @@ class MaintenanceRecordController extends Controller
 
             $data = $validator->validated();
 
+            // Validar que la fecha corresponda al día de la semana y al periodo del mantenimiento (igual que en store)
+            $schedule = MaintenanceSchedule::find($data['schedule_id']);
+            if (!$schedule) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Horario de mantenimiento no encontrado.',
+                ], 404);
+            }
+
+            $maintenance = $schedule->maintenance;
+            if (!$maintenance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mantenimiento asociado no encontrado.',
+                ], 404);
+            }
+
+            $date = Carbon::parse($data['date']);
+
+            $daysMap = [
+                'LUNES' => 1,
+                'MARTES' => 2,
+                'MIÉRCOLES' => 3,
+                'MIERCOLES' => 3,
+                'JUEVES' => 4,
+                'VIERNES' => 5,
+                'SÁBADO' => 6,
+                'SABADO' => 6,
+                'DOMINGO' => 7,
+            ];
+
+            $expectedWeek = $daysMap[strtoupper($schedule->day)] ?? null;
+            $actualWeek = (int) $date->format('N');
+
+            if ($expectedWeek === null || $expectedWeek !== $actualWeek) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day,
+                ], 422);
+            }
+
+            $start = Carbon::parse($maintenance->start_date);
+            $end = Carbon::parse($maintenance->end_date);
+            if ($date->lt($start) || $date->gt($end)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date,
+                ], 422);
+            }
+
             if ($request->hasFile('image_path')) {
                 if ($record->image_path) {
-                    \Storage::disk('public')->delete($record->image_path);
+                    Storage::disk('public')->delete($record->image_path);
                 }
                 $data['image_path'] = $request->file('image_path')->store('maintenance_records', 'public');
             }
@@ -197,7 +307,7 @@ class MaintenanceRecordController extends Controller
             }
 
             if ($record->image_path) {
-                \Storage::disk('public')->delete($record->image_path);
+                Storage::disk('public')->delete($record->image_path);
             }
 
             $record->delete();

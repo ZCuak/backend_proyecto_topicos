@@ -49,6 +49,7 @@
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Nombre</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Fecha Inicio</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Fecha Fin</th>
+                    <th class="px-4 py-3 text-center font-semibold text-slate-600 uppercase">Horario</th>
                     <th class="px-4 py-3 text-center font-semibold text-slate-600 uppercase">Acciones</th>
                 </tr>
             </thead>
@@ -60,6 +61,13 @@
                         <td class="px-4 py-3 font-mono text-slate-700">{{ $maintenance->name }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $maintenance->start_date }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $maintenance->end_date }}</td>
+                        <td class="px-4 py-3 text-slate-700 text-center">
+                            <a href="{{ route('maintenance-schedules.index', ['maintenance_id' => $maintenance->id]) }}"
+                               class="inline-flex items-center justify-center w-8 h-8 rounded-md text-emerald-600 hover:bg-emerald-50"
+                               title="Ver horarios">
+                                <i class="fa-solid fa-calendar"></i>
+                            </a>
+                        </td>
                         <td class="px-4 py-3 flex justify-center gap-2">
                             <a href="{{ route('maintenances.edit', $maintenance->id) }}"
                                data-turbo-frame="modal-frame"
