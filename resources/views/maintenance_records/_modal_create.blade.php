@@ -31,6 +31,7 @@
 
                 <!-- Body -->
                 <div class="flyonui-body p-6 bg-white">
+                    {{-- Los mensajes se muestran vía SweetAlert2 (Swal.fire) para mejor UX. --}}
                     <form action="{{ route('maintenance-records.store') }}"
                           method="POST"
                           enctype="multipart/form-data"
@@ -40,6 +41,40 @@
                         @include('maintenance_records._form', ['buttonText' => 'Registrar'])
                     </form>
                 </div>
+                <script>
+                    (function(){
+                        try {
+                            @if(isset($validationErrors) && $validationErrors->any())
+                                const htmlErrors = {!! json_encode(implode('<br>', $validationErrors->all())) !!};
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Errores de validación',
+                                    html: htmlErrors,
+                                });
+                            @elseif(isset($errorMessage))
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Atención',
+                                    text: {!! json_encode($errorMessage) !!},
+                                });
+                            @elseif(isset($successMessage))
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Éxito',
+                                    text: {!! json_encode($successMessage) !!},
+                                    timer: 1600,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    if (window.FlyonUI && typeof FlyonUI.modal.close === 'function') {
+                                        FlyonUI.modal.close('{{ isset($record->id) ? 'editModal' : 'createModal' }}');
+                                    }
+                                });
+                            @endif
+                        } catch (e) {
+                            console.error('Error mostrando alert:', e);
+                        }
+                    })();
+                </script>
             </div>
         </div>
     </div>

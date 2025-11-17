@@ -31,6 +31,7 @@
 
                 <!-- Body -->
                 <div class="flyonui-body p-6 bg-white overflow-y-auto max-h-[85vh]">
+                    {{-- Los mensajes se muestran vía SweetAlert2 (Swal.fire) para mejor UX. --}}
                     <form action="{{ route('maintenance-records.update', $record->id) }}"
                           method="POST"
                           enctype="multipart/form-data"
@@ -42,6 +43,40 @@
                         @include('maintenance_records._form', ['buttonText' => 'Actualizar'])
                     </form>
                 </div>
+                <script>
+                    (function(){
+                        try {
+                            @if(isset($validationErrors) && $validationErrors->any())
+                                const htmlErrors = {!! json_encode(implode('<br>', $validationErrors->all())) !!};
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Errores de validación',
+                                    html: htmlErrors,
+                                });
+                            @elseif(isset($errorMessage))
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Atención',
+                                    text: {!! json_encode($errorMessage) !!},
+                                });
+                            @elseif(isset($successMessage))
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Éxito',
+                                    text: {!! json_encode($successMessage) !!},
+                                    timer: 1600,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    if (window.FlyonUI && typeof FlyonUI.modal.close === 'function') {
+                                        FlyonUI.modal.close('editModal');
+                                    }
+                                });
+                            @endif
+                        } catch (e) {
+                            console.error('Error mostrando alert:', e);
+                        }
+                    })();
+                </script>
             </div>
         </div>
     </div>

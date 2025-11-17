@@ -84,6 +84,7 @@ class MaintenanceRecordController extends Controller
                     'errors' => $validator->errors(),
                 ], 422);
             }
+
             return back()->withErrors($validator)->withInput();
         }
 
@@ -94,18 +95,20 @@ class MaintenanceRecordController extends Controller
             // Validar que la fecha corresponda al día de la semana y al periodo del mantenimiento
             $schedule = MaintenanceSchedule::find($data['schedule_id']);
             if (!$schedule) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Horario de mantenimiento no encontrado.',
-                ], 404);
+                if ($isTurbo) {
+                    return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 422);
+                }
+
+                return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 404);
             }
 
             $maintenance = $schedule->maintenance;
             if (!$maintenance) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Mantenimiento asociado no encontrado.',
-                ], 404);
+                if ($isTurbo) {
+                    return response()->json(['success' => false, 'message' => 'Mantenimiento asociado no encontrado.'], 422);
+                }
+
+                return response()->json(['success' => false, 'message' => 'Mantenimiento asociado no encontrado.'], 404);
             }
 
             $date = Carbon::parse($data['date']);
@@ -127,10 +130,7 @@ class MaintenanceRecordController extends Controller
 
             if ($expectedWeek === null || $expectedWeek !== $actualWeek) {
                 if ($isTurbo) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day,
-                    ], 422);
+                    return response()->json(['success' => false, 'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day], 422);
                 }
 
                 return back()->with('error', 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day)->withInput();
@@ -140,10 +140,7 @@ class MaintenanceRecordController extends Controller
             $end = Carbon::parse($maintenance->end_date);
             if ($date->lt($start) || $date->gt($end)) {
                 if ($isTurbo) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date,
-                    ], 422);
+                    return response()->json(['success' => false, 'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date], 422);
                 }
 
                 return back()->with('error', 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date)->withInput();
@@ -158,10 +155,7 @@ class MaintenanceRecordController extends Controller
             DB::commit();
 
             if ($isTurbo) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Registro de mantenimiento creado exitosamente.',
-                ], 201);
+                return response()->json(['success' => true, 'data' => $data, 'message' => 'Registro de mantenimiento creado exitosamente.'], 201);
             }
 
             return redirect()->route('maintenance-records.index')
@@ -203,6 +197,14 @@ class MaintenanceRecordController extends Controller
             ]);
 
             if ($validator->fails()) {
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Errores de validación.',
+                        'errors' => $validator->errors(),
+                    ], 422);
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Errores de validación.',
@@ -215,10 +217,11 @@ class MaintenanceRecordController extends Controller
             // Validar que la fecha corresponda al día de la semana y al periodo del mantenimiento (igual que en store)
             $schedule = MaintenanceSchedule::find($data['schedule_id']);
             if (!$schedule) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Horario de mantenimiento no encontrado.',
-                ], 404);
+                if ($isTurbo) {
+                    return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 422);
+                }
+
+                return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 404);
             }
 
             $maintenance = $schedule->maintenance;
@@ -247,19 +250,21 @@ class MaintenanceRecordController extends Controller
             $actualWeek = (int) $date->format('N');
 
             if ($expectedWeek === null || $expectedWeek !== $actualWeek) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day,
-                ], 422);
+                if ($isTurbo) {
+                    return response()->json(['success' => false, 'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day], 422);
+                }
+
+                return response()->json(['success' => false, 'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day], 422);
             }
 
             $start = Carbon::parse($maintenance->start_date);
             $end = Carbon::parse($maintenance->end_date);
             if ($date->lt($start) || $date->gt($end)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date,
-                ], 422);
+                if ($isTurbo) {
+                    return response()->json(['success' => false, 'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date], 422);
+                }
+
+                return response()->json(['success' => false, 'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date], 422);
             }
 
             if ($request->hasFile('image_path')) {
@@ -272,10 +277,7 @@ class MaintenanceRecordController extends Controller
             $record->update($data);
 
             if ($isTurbo) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Registro actualizado correctamente.',
-                ], 200);
+                return response()->json(['success' => true, 'data' => $record->fresh(), 'message' => 'Registro actualizado correctamente.'], 200);
             }
 
             return redirect()->route('maintenance-records.index')
