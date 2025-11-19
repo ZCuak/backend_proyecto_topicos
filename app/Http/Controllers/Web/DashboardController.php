@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendace;
 use App\Models\Schedule;
 use App\Models\Scheduling;
+use App\Models\SchedulingDetail;
+use App\Models\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -402,5 +404,86 @@ class DashboardController extends Controller
         });
 
         return $groupedBySchedule;
+    }
+
+    /**
+     * 🔄 Editar programación con personal disponible para reemplazo
+     */
+    public function editWithReplacements(Request $request, Scheduling $scheduling)
+    {
+        $selectedDate = $request->input('date', now()->format('Y-m-d'));
+
+        $schedules = Schedule::orderBy('name')
+            ->where('id', '!=', $scheduling->schedule_id)
+            ->get();
+
+        $vehicles = Vehicle::orderBy('name')
+            ->where('id', '!=', $scheduling->vehicle_id)
+            ->get();
+
+        $assigned = \App\Models\SchedulingDetail::with('user')
+            ->where('scheduling_id', $scheduling->id)
+            ->orderBy('position_order')
+            ->get();
+
+        $assignedUserIds = $assigned->pluck('user_id')->toArray();
+
+        $allEmployees = $this->getAvailableEmployeesForReplacement(
+            $selectedDate,
+            $scheduling->schedule_id,
+            $assignedUserIds
+        );
+
+        return view('schedulings._modal_edit', compact(
+            'scheduling',
+            'schedules',
+            'vehicles',
+            'allEmployees',
+            'assigned'
+        ));
+    }
+
+    /**
+     * 🔍 Obtener empleados disponibles para reemplazo
+     * 
+     * @param string $date - Fecha de la programación
+     * @param int $scheduleId - ID del turno
+     * @param array $excludeUserIds - IDs de usuarios a excluir (ya asignados)
+     * @return \Illuminate\Support\Collection
+     */
+    private function getAvailableEmployeesForReplacement($date, $scheduleId, $excludeUserIds = [])
+    {
+        // Obtener el turno
+        $schedule = Schedule::findOrFail($scheduleId);
+        $shiftStartTime = Carbon::parse($schedule->time_start)->format('H:i');
+        $shiftEndTime = Carbon::parse($schedule->time_end)->format('H:i');
+
+        // 🎯 Obtener todas las asistencias del día que cumplan los criterios
+        $validAttendances = Attendace::with('user')
+            ->whereDate('date', $date)
+            ->whereNotNull('check_in')
+            ->whereNull('check_out') // ✅ NO tienen salida (aún están trabajando)
+            ->whereNotIn('user_id', $excludeUserIds) // ✅ NO están ya asignados
+            ->get()
+            ->filter(function ($attendance) use ($shiftStartTime, $shiftEndTime) {
+                $checkInTime = Carbon::parse($attendance->check_in)->format('H:i');
+
+                // ✅ Verificar si está dentro del turno (con 2h de tolerancia)
+                return $this->isTimeWithinShift($checkInTime, $shiftStartTime, $shiftEndTime);
+            });
+
+        // 📋 Extraer usuarios únicos disponibles
+        $availableUsers = collect();
+
+        foreach ($validAttendances as $attendance) {
+            if ($attendance->user) {
+                // Evitar duplicados
+                if (!$availableUsers->contains('id', $attendance->user->id)) {
+                    $availableUsers->push($attendance->user);
+                }
+            }
+        }
+
+        return $availableUsers->sortBy('firstname')->values();
     }
 }

@@ -55,7 +55,7 @@
                     </div>
 
                     {{-- Botón Realizar Cambios --}}
-                    <a href="{{ route('schedulings.edit', $zoneData['scheduling']->id) }}?date={{ $zoneData['date'] }}"
+                    <a href="{{ route('dashboard.schedulings.editWithReplacements', $zoneData['scheduling']->id) }}?date={{ $zoneData['date'] }}"
                         data-turbo-frame="modal-frame"
                         class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition">
                         <i class="fa-solid fa-arrows-rotate"></i>
