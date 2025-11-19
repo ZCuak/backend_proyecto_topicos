@@ -10,8 +10,15 @@ class Maintenance extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['id', 'name', 'start_date', 'end_date'];
+    protected $fillable = [
+        'name',
+        'start_date',
+        'end_date',
+    ];
 
+    /**
+     * Relación: Un mantenimiento tiene muchos horarios
+     */
     public function schedules()
     {
         return $this->hasMany(MaintenanceSchedule::class);

@@ -45,27 +45,68 @@
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-emerald-50">
                 <tr>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">#</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Mantenimiento</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Vehículo</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Tipo</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Día</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Hora Inicio</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Hora Fin</th>
-                    <th class="px-4 py-3 text-center font-semibold text-slate-600 uppercase">Acciones</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700 uppercase tracking-wider">Día</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700 uppercase tracking-wider">Vehículo</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700 uppercase tracking-wider">Responsable</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700 uppercase tracking-wider">Tipo</th>
+                    <th class="px-4 py-3 text-center font-semibold text-slate-700 uppercase tracking-wider">Inicio</th>
+                    <th class="px-4 py-3 text-center font-semibold text-slate-700 uppercase tracking-wider">Fin</th>
+                    <th class="px-4 py-3 text-center font-semibold text-slate-700 uppercase tracking-wider">
+                        <i class="fa-solid fa-eye"></i> VER
+                    </th>
+                    <th class="px-4 py-3 text-center font-semibold text-slate-700 uppercase tracking-wider">
+                        <i class="fa-solid fa-pen"></i> acciones
+                    </th>
                 </tr>
             </thead>
 
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-slate-100 bg-white">
                 @forelse($schedules as $schedule)
                     <tr class="hover:bg-emerald-50/40 transition">
-                        <td class="px-4 py-3 text-slate-600">{{ $schedule->id }}</td>
-                        <td class="px-4 py-3 font-mono text-slate-700">{{ $schedule->maintenance->name }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $schedule->vehicle->name }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $schedule->type }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $schedule->day }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $schedule->start_time }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $schedule->end_time }}</td>
+                        {{-- DÍA --}}
+                        <td class="px-4 py-3 font-medium text-slate-800">
+                            {{ ucfirst(strtolower($schedule->day)) }}
+                        </td>
+
+                        {{-- VEHÍCULO --}}
+                        <td class="px-4 py-3 text-slate-700">
+                            {{ $schedule->vehicle->plate }} - {{ $schedule->vehicle->name }}
+                        </td>
+
+                        {{-- RESPONSABLE --}}
+                        <td class="px-4 py-3 text-slate-700">
+                            {{ $schedule->responsible->firstname ?? 'N/A' }} {{ $schedule->responsible->lastname ?? '' }}
+                        </td>
+
+                        {{-- TIPO --}}
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded text-xs font-medium
+                                {{ $schedule->type === 'PREVENTIVO' ? 'bg-blue-100 text-blue-700' : '' }}
+                                {{ $schedule->type === 'LIMPIEZA' ? 'bg-green-100 text-green-700' : '' }}
+                                {{ $schedule->type === 'REPARACIÓN' ? 'bg-orange-100 text-orange-700' : '' }}">
+                                {{ $schedule->type }}
+                            </span>
+                        </td>
+
+                        {{-- HORA INICIO --}}
+                        <td class="px-4 py-3 text-center text-slate-600">
+                            {{ \Carbon\Carbon::parse($schedule->start_time)->format('h:i A') }}
+                        </td>
+
+                        {{-- HORA FIN --}}
+                        <td class="px-4 py-3 text-center text-slate-600">
+                            {{ \Carbon\Carbon::parse($schedule->end_time)->format('h:i A') }}
+                        </td>
+
+                        {{-- VER DÍAS GENERADOS --}}
+                        <td class="px-4 py-3 text-center">
+                            <a href="{{ route('maintenance-records.show', $schedule->id) }}"
+                               class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
+                               title="Ver días generados">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                        </td>
+
                         <td class="px-4 py-3 flex justify-center gap-2">
                             <a href="{{ route('maintenance-schedules.edit', $schedule->id) }}"
                                data-turbo-frame="modal-frame"
@@ -85,10 +126,17 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center py-4 text-slate-400">No se encontraron horarios registrados.</td>
+                        <td colspan="9" class="text-center py-8">
+                            <div class="flex flex-col items-center gap-2 text-slate-400">
+                                <i class="fa-solid fa-inbox text-4xl"></i>
+                                <p class="text-sm">No se encontraron horarios registrados</p>
+                            </div>
+                        </td>
                     </tr>
                 @endforelse
             </tbody>
+
+            
         </table>
     </div>
 

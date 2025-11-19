@@ -81,8 +81,28 @@ class MaintenanceController extends Controller
         DB::beginTransaction();
         try {
             $data = $validator->validated();
-            Maintenance::create($data);
 
+            $overlap = Maintenance::where(function ($q) use ($data) {
+                $q->whereBetween('start_date', [$data['start_date'], $data['end_date']])
+                    ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
+                    ->orWhere(function ($q2) use ($data) {
+                        $q2->where('start_date', '<=', $data['start_date'])
+                            ->where('end_date', '>=', $data['end_date']);
+                    });
+            })->exists();
+
+            if ($overlap) {
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Solapamiento de fechas.',
+                        'errors' => ['name' => ['Ya existe un mantenimiento entre las fechas seleccionadas']]
+                    ], 422);
+                }
+                // return back()->with('error', 'Las fechas se solapan con otro mantenimiento existente.')->withInput();
+            }
+
+            Maintenance::create($data);
             DB::commit();
 
             if ($isTurbo) {
@@ -135,6 +155,28 @@ class MaintenanceController extends Controller
                     'message' => 'Errores de validación.',
                     'errors' => $validator->errors(),
                 ], 422);
+            }
+
+            $data = $validator->validated();
+            $overlap = Maintenance::where('id', '!=', $id)
+                ->where(function ($q) use ($data) {
+                    $q->whereBetween('start_date', [$data['start_date'], $data['end_date']])
+                        ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
+                        ->orWhere(function ($q2) use ($data) {
+                            $q2->where('start_date', '<=', $data['start_date'])
+                                ->where('end_date', '>=', $data['end_date']);
+                        });
+                })->exists();
+
+            if ($overlap) {
+                if ($isTurbo) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Solapamiento de fechas.',
+                        'errors' => ['name' => ['Ya existe un mantenimiento entre las fechas seleccionadas']]
+                    ], 422);
+                }
+                // return back()->with('error', 'Las fechas se solapan con otro mantenimiento existente.')->withInput();
             }
 
             $data = $validator->validated();

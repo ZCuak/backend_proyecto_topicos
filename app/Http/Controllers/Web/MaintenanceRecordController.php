@@ -20,19 +20,50 @@ class MaintenanceRecordController extends Controller
     {
         try {
             $search = $request->input('search');
-            $query = MaintenanceRecord::with(['schedule.maintenance', 'schedule.vehicle']);
+            $scheduleId = $request->input('schedule_id'); // 🎯 NUEVO - Filtrar por horario
+
+            $query = MaintenanceRecord::with(['schedule.maintenance', 'schedule.vehicle', 'schedule.responsible']); // 🎯 Agregar responsible
 
             if ($search) {
                 $query->where('description', 'ILIKE', "%{$search}%")
-                      ->orWhereHas('schedule.maintenance', function ($q) use ($search) {
-                          $q->where('name', 'ILIKE', "%{$search}%");
-                      });
+                    ->orWhereHas('schedule.maintenance', function ($q) use ($search) {
+                        $q->where('name', 'ILIKE', "%{$search}%");
+                    });
+            }
+
+            if ($scheduleId) {
+                $query->where('schedule_id', $scheduleId);
             }
 
             $records = $query->orderBy('date', 'desc')->paginate(10);
-            return view('maintenance_records.index', compact('records', 'search'));
+
+            // 🎯 NUEVO - Pasar schedules para filtro
+            $schedules = MaintenanceSchedule::with(['maintenance', 'vehicle'])
+                ->orderBy('id')
+                ->get();
+
+            return view('maintenance_records.index', compact('records', 'search', 'schedules', 'scheduleId'));
         } catch (\Exception $e) {
             return back()->with('error', 'Error al listar registros: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 🎯 VER días generados de un horario específico
+     */
+    public function show($scheduleId)
+    {
+        try {
+            $schedule = MaintenanceSchedule::with(['maintenance', 'vehicle', 'responsible'])
+                ->findOrFail($scheduleId);
+
+            $records = MaintenanceRecord::where('schedule_id', $scheduleId)
+                ->orderBy('date', 'asc')
+                ->get();
+
+            return view('maintenance_records.show', compact('schedule', 'records'));
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al cargar registros: ' . $e->getMessage());
         }
     }
 
@@ -42,7 +73,7 @@ class MaintenanceRecordController extends Controller
     public function create(Request $request)
     {
         $record = new MaintenanceRecord();
-        $schedules = MaintenanceSchedule::all();
+        $schedules = MaintenanceSchedule::with(['maintenance', 'vehicle'])->get();
 
         return response()
             ->view('maintenance_records._modal_create', compact('record', 'schedules'))
@@ -54,11 +85,11 @@ class MaintenanceRecordController extends Controller
      */
     public function edit($id)
     {
-        $record = MaintenanceRecord::findOrFail($id);
+        $record = MaintenanceRecord::with(['schedule.maintenance', 'schedule.vehicle'])->findOrFail($id);
         $schedules = MaintenanceSchedule::all();
 
         return response()
-            ->view('maintenance_records._modal_edit', compact('record', 'schedules'))
+            ->view('maintenance_records._modal_edit', compact('record'))
             ->header('Turbo-Frame', 'modal-frame');
     }
 
@@ -73,7 +104,8 @@ class MaintenanceRecordController extends Controller
             'schedule_id' => 'required|exists:maintenance_schedules,id',
             'date' => 'required|date',
             'description' => 'required|string|max:1000',
-            'image_path' => 'nullable|image|max:2048',
+            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 🎯 Especificar tipos
+            'completed' => 'nullable|boolean', // 🎯 NUEVO
         ]);
 
         if ($validator->fails()) {
@@ -92,27 +124,26 @@ class MaintenanceRecordController extends Controller
         try {
             $data = $validator->validated();
 
-            // Validar que la fecha corresponda al día de la semana y al periodo del mantenimiento
+            // 🎯 Validar que la fecha corresponda al día de la semana y al periodo del mantenimiento
             $schedule = MaintenanceSchedule::find($data['schedule_id']);
             if (!$schedule) {
                 if ($isTurbo) {
-                    return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 422);
+                    return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 404);
                 }
-
-                return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 404);
+                return back()->with('error', 'Horario de mantenimiento no encontrado.')->withInput();
             }
 
             $maintenance = $schedule->maintenance;
             if (!$maintenance) {
                 if ($isTurbo) {
-                    return response()->json(['success' => false, 'message' => 'Mantenimiento asociado no encontrado.'], 422);
+                    return response()->json(['success' => false, 'message' => 'Mantenimiento asociado no encontrado.'], 404);
                 }
-
-                return response()->json(['success' => false, 'message' => 'Mantenimiento asociado no encontrado.'], 404);
+                return back()->with('error', 'Mantenimiento asociado no encontrado.')->withInput();
             }
 
             $date = Carbon::parse($data['date']);
 
+            // 🎯 Validar día de la semana
             $daysMap = [
                 'LUNES' => 1,
                 'MARTES' => 2,
@@ -126,36 +157,59 @@ class MaintenanceRecordController extends Controller
             ];
 
             $expectedWeek = $daysMap[strtoupper($schedule->day)] ?? null;
-            $actualWeek = (int) $date->format('N');
+            $actualWeek = (int) $date->dayOfWeekIso;
 
             if ($expectedWeek === null || $expectedWeek !== $actualWeek) {
+                $message = 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day;
                 if ($isTurbo) {
-                    return response()->json(['success' => false, 'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day], 422);
+                    return response()->json(['success' => false, 'message' => $message], 422);
                 }
-
-                return back()->with('error', 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day)->withInput();
+                return back()->with('error', $message)->withInput();
             }
 
+            // 🎯 Validar que esté dentro del periodo
             $start = Carbon::parse($maintenance->start_date);
             $end = Carbon::parse($maintenance->end_date);
+
             if ($date->lt($start) || $date->gt($end)) {
+                $message = 'La fecha debe estar dentro del periodo del mantenimiento: ' .
+                    $maintenance->start_date . ' - ' . $maintenance->end_date;
                 if ($isTurbo) {
-                    return response()->json(['success' => false, 'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date], 422);
+                    return response()->json(['success' => false, 'message' => $message], 422);
+                }
+                return back()->with('error', $message)->withInput();
+            }
+
+            // 🎯 FIX: Guardar imagen correctamente
+            if ($request->hasFile('image_path')) {
+                $file = $request->file('image_path');
+
+                // Validar que el archivo sea válido
+                if (!$file->isValid()) {
+                    throw new \Exception('Archivo de imagen inválido');
                 }
 
-                return back()->with('error', 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date)->withInput();
+                // Generar nombre único
+                $filename = time() . '_' . $file->getClientOriginalName();
+
+                // Guardar en storage/app/public/maintenance_records
+                $path = $file->storeAs('maintenance_records', $filename, 'public');
+
+                $data['image_path'] = $path;
             }
 
-            if ($request->hasFile('image_path')) {
-                $data['image_path'] = $request->file('image_path')->store('maintenance_records', 'public');
-            }
+            // 🎯 Asegurar que completed sea booleano
+            $data['completed'] = $data['completed'] ?? false;
 
             MaintenanceRecord::create($data);
 
             DB::commit();
 
             if ($isTurbo) {
-                return response()->json(['success' => true, 'data' => $data, 'message' => 'Registro de mantenimiento creado exitosamente.'], 201);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Registro de mantenimiento creado exitosamente.'
+                ], 201);
             }
 
             return redirect()->route('maintenance-records.index')
@@ -190,10 +244,10 @@ class MaintenanceRecordController extends Controller
             }
 
             $validator = Validator::make($request->all(), [
-                'schedule_id' => 'required|exists:maintenance_schedules,id',
-                'date' => 'required|date',
+                // 🎯 NO permitir cambiar schedule_id ni date en edición
                 'description' => 'required|string|max:1000',
-                'image_path' => 'nullable|image|max:2048',
+                'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 🎯 Especificar tipos
+                'completed' => 'nullable|boolean', // 🎯 NUEVO
             ]);
 
             if ($validator->fails()) {
@@ -205,79 +259,47 @@ class MaintenanceRecordController extends Controller
                     ], 422);
                 }
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Errores de validación.',
-                    'errors' => $validator->errors(),
-                ], 422);
+                return back()->withErrors($validator)->withInput();
             }
 
             $data = $validator->validated();
 
-            // Validar que la fecha corresponda al día de la semana y al periodo del mantenimiento (igual que en store)
-            $schedule = MaintenanceSchedule::find($data['schedule_id']);
-            if (!$schedule) {
-                if ($isTurbo) {
-                    return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 422);
-                }
-
-                return response()->json(['success' => false, 'message' => 'Horario de mantenimiento no encontrado.'], 404);
-            }
-
-            $maintenance = $schedule->maintenance;
-            if (!$maintenance) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Mantenimiento asociado no encontrado.',
-                ], 404);
-            }
-
-            $date = Carbon::parse($data['date']);
-
-            $daysMap = [
-                'LUNES' => 1,
-                'MARTES' => 2,
-                'MIÉRCOLES' => 3,
-                'MIERCOLES' => 3,
-                'JUEVES' => 4,
-                'VIERNES' => 5,
-                'SÁBADO' => 6,
-                'SABADO' => 6,
-                'DOMINGO' => 7,
-            ];
-
-            $expectedWeek = $daysMap[strtoupper($schedule->day)] ?? null;
-            $actualWeek = (int) $date->format('N');
-
-            if ($expectedWeek === null || $expectedWeek !== $actualWeek) {
-                if ($isTurbo) {
-                    return response()->json(['success' => false, 'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day], 422);
-                }
-
-                return response()->json(['success' => false, 'message' => 'La fecha debe corresponder al día de la semana del horario: ' . $schedule->day], 422);
-            }
-
-            $start = Carbon::parse($maintenance->start_date);
-            $end = Carbon::parse($maintenance->end_date);
-            if ($date->lt($start) || $date->gt($end)) {
-                if ($isTurbo) {
-                    return response()->json(['success' => false, 'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date], 422);
-                }
-
-                return response()->json(['success' => false, 'message' => 'La fecha debe estar dentro del periodo del mantenimiento: ' . $maintenance->start_date . ' - ' . $maintenance->end_date], 422);
-            }
-
+            // 🎯 FIX: Guardar imagen correctamente
             if ($request->hasFile('image_path')) {
-                if ($record->image_path) {
+                // Eliminar imagen anterior si existe
+                if ($record->image_path && Storage::disk('public')->exists($record->image_path)) {
                     Storage::disk('public')->delete($record->image_path);
                 }
-                $data['image_path'] = $request->file('image_path')->store('maintenance_records', 'public');
+
+                $file = $request->file('image_path');
+
+                // Validar que el archivo sea válido
+                if (!$file->isValid()) {
+                    throw new \Exception('Archivo de imagen inválido');
+                }
+
+                // Generar nombre único
+                $filename = time() . '_' . $file->getClientOriginalName();
+
+                // Guardar en storage/app/public/maintenance_records
+                $path = $file->storeAs('maintenance_records', $filename, 'public');
+
+                $data['image_path'] = $path;
+            }
+
+            // 🎯 Asegurar que completed sea booleano
+            if (isset($data['completed'])) {
+                $data['completed'] = (bool) $data['completed'];
             }
 
             $record->update($data);
 
             if ($isTurbo) {
-                return response()->json(['success' => true, 'data' => $record->fresh(), 'message' => 'Registro actualizado correctamente.'], 200);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Registro actualizado correctamente.',
+                    'data' => $record->fresh()
+                ], 200);
             }
 
             return redirect()->route('maintenance-records.index')
@@ -308,7 +330,8 @@ class MaintenanceRecordController extends Controller
                 ], 404);
             }
 
-            if ($record->image_path) {
+            // 🎯 Eliminar imagen si existe
+            if ($record->image_path && Storage::disk('public')->exists($record->image_path)) {
                 Storage::disk('public')->delete($record->image_path);
             }
 
