@@ -38,14 +38,30 @@
             </select>
         </div>
 
+        {{-- Encargado --}}
+        <div class="mt-3">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Encargado <span class="text-red-500">*</span></label>
+            <select name="user_id"
+                    class="w-full py-2 px-3 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
+                <option value="">Seleccione un encargado</option>
+                @foreach($users as $user)
+                    <option value="{{ $user->id }}" 
+                            {{ old('user_id', $schedule->user_id ?? '') == $user->id ? 'selected' : '' }}>
+                        {{ $user->firstname }} {{ $user->lastname }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
         {{-- Tipo --}}
         <div class="mt-3">
             <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de Mantenimiento <span class="text-red-500">*</span></label>
             <select name="type"
                     class="w-full py-2 px-3 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
                 <option value="">Seleccione un tipo</option>
-                <option value="LIMPIEZA" {{ old('type', $schedule->type ?? '') == 'LIMPIEZA' ? 'selected' : '' }}>Limpieza</option>
-                <option value="REPARACIÓN" {{ old('type', $schedule->type ?? '') == 'REPARACIÓN' ? 'selected' : '' }}>Reparación</option>
+                <option value="PREVENTIVO" {{ old('type', $schedule->type ?? '') == 'PREVENTIVO' ? 'selected' : '' }}>PREVENTIVO</option>
+                <option value="LIMPIEZA" {{ old('type', $schedule->type ?? '') == 'LIMPIEZA' ? 'selected' : '' }}>LIMPIEZA</option>
+                <option value="REPARACIÓN" {{ old('type', $schedule->type ?? '') == 'REPARACIÓN' ? 'selected' : '' }}>REPARACIÓN</option>
             </select>
         </div>
 

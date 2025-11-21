@@ -81,9 +81,9 @@
                 <a href="{{ route('brand-models.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-wrench mr-2"></i>Modelos</a>
                 <a href="{{ route('vehicletypes.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car mr-2"></i>Tipo de Vehículo</a>
                 <a href="{{ route('vehicles.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car-side mr-2"></i>Vehículo</a>
-                <a href="{{ route('maintenances.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-wrench mr-2"></i>Mantenimientos</a>
-                <a href="{{ route('maintenance-schedules.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-wrench mr-2"></i>Horarios de mant.</a>
-                <a href="{{ route('maintenance-records.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-wrench mr-2"></i>Registro de mant.</a>
+                <a href="{{ route('maintenances.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car mr-2"></i>Mantenimiento</a>
+                <a href="{{ route('maintenance-schedules.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car mr-2"></i>Horario de Mantenimiento</a>
+                <a href="{{ route('maintenance-records.index') }}" class="block text-slate-600 hover:text-emerald-600 transition"><i class="fas fa-car mr-2"></i>Registro de Mantenimiento</a>
             </div>
         </details>
 

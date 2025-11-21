@@ -40,6 +40,17 @@
                       placeholder="Ingrese una descripción del mantenimiento">{{ old('description', $record->description ?? '') }}</textarea>
         </div>
 
+        {{-- Realizado --}}
+        <div class="mt-3">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Realizado <span class="text-red-500">*</span></label>
+            <select name="status"
+                    class="w-full py-2 px-3 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
+                <option value="">Seleccione un valor</option>
+                <option value="SI" {{ old('status', $record->status ?? '') == 'SI' ? 'selected' : '' }}>SI</option>
+                <option value="NO" {{ old('status', $record->status ?? '') == 'NO' ? 'selected' : '' }}>NO</option>
+            </select>
+        </div>
+
         {{-- Imagen --}}
         <div class="mt-3">
             <label class="block text-sm font-medium text-slate-700 mb-1">Imagen (opcional)</label>

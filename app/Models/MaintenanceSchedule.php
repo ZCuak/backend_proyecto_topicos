@@ -9,7 +9,7 @@ class MaintenanceSchedule extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['id', 'maintenance_id', 'vehicle_id', 'type', 'day', 'start_time', 'end_time'];
+    protected $fillable = ['id', 'maintenance_id', 'vehicle_id', 'type', 'day', 'start_time', 'end_time','user_id'];
 
     public function maintenance()
     {
@@ -20,6 +20,12 @@ class MaintenanceSchedule extends Model
     {
         return $this->belongsTo(Vehicle::class);
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
 
     public function records()
     {

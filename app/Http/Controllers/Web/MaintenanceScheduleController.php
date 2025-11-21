@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\MaintenanceSchedule;
+use App\Models\MaintenanceRecord;
 use App\Models\Maintenance;
 use App\Models\Vehicle;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+
 
 class MaintenanceScheduleController extends Controller
 {
@@ -20,7 +24,7 @@ class MaintenanceScheduleController extends Controller
         try {
             $search = $request->input('search');
             $maintenanceId = $request->input('maintenance_id');
-            $query = MaintenanceSchedule::with(['maintenance', 'vehicle']);
+            $query = MaintenanceSchedule::with(['maintenance', 'vehicle', 'user']);
 
             if ($search) {
                 $query->whereHas('maintenance', function ($q) use ($search) {
@@ -47,9 +51,10 @@ class MaintenanceScheduleController extends Controller
         $schedule = new MaintenanceSchedule();
         $maintenances = Maintenance::all();
         $vehicles = Vehicle::all();
+        $users = User::all();
 
         return response()
-            ->view('maintenance_schedules._modal_create', compact('schedule', 'maintenances', 'vehicles'))
+            ->view('maintenance_schedules._modal_create', compact('schedule', 'maintenances', 'vehicles', 'users'))
             ->header('Turbo-Frame', 'modal-frame');
     }
 
@@ -61,9 +66,10 @@ class MaintenanceScheduleController extends Controller
         $schedule = MaintenanceSchedule::findOrFail($id);
         $maintenances = Maintenance::all();
         $vehicles = Vehicle::all();
+        $users = User::all();
 
         return response()
-            ->view('maintenance_schedules._modal_edit', compact('schedule', 'maintenances', 'vehicles'))
+            ->view('maintenance_schedules._modal_edit', compact('schedule', 'maintenances', 'vehicles', 'users'))
             ->header('Turbo-Frame', 'modal-frame');
     }
 
@@ -76,8 +82,9 @@ class MaintenanceScheduleController extends Controller
 
         $validator = Validator::make($request->all(), [
             'maintenance_id' => 'required|exists:maintenances,id',
+            'user_id' => 'required|exists:users,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'type' => 'required|in:LIMPIEZA,REPARACIÓN',
+            'type' => 'required',
             'day' => 'required|in:LUNES,MARTES,MIÉRCOLES,JUEVES,VIERNES,SÁBADO',
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i|after:start_time',
@@ -89,7 +96,7 @@ class MaintenanceScheduleController extends Controller
                     'success' => false,
                     'message' => 'Errores de validación.',
                     'errors' => $validator->errors(),
-                ], 422);
+                ], 500);
             }
             return back()->withErrors($validator)->withInput();
         }
@@ -98,7 +105,7 @@ class MaintenanceScheduleController extends Controller
         try {
             $data = $validator->validated();
 
-            // Validar solapamiento por vehículo y día
+            // Validar solapamiento
             $overlap = MaintenanceSchedule::where('vehicle_id', $data['vehicle_id'])
                 ->where('day', $data['day'])
                 ->where('start_time', '<', $data['end_time'])
@@ -109,26 +116,66 @@ class MaintenanceScheduleController extends Controller
                 if ($isTurbo) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'El horario se solapa con otro existente para el mismo vehículo y día.',
-                    ], 422);
+                        'message' => 'Existe un solapamiento entre horarios del vehículo.',
+                    ], 500);
                 }
-
-                return back()->with('error', 'El horario se solapa con otro existente para el mismo vehículo y día.')->withInput();
+                return back()->with('error', 'Existe un solapamiento entre horarios del vehículo.')->withInput();
             }
 
-            MaintenanceSchedule::create($data);
+            // 1. Crear el Schedule
+            $schedule = MaintenanceSchedule::create($data);
+
+            // 2. Obtener el mantenimiento al cual pertenece
+            $maintenance = Maintenance::find($data['maintenance_id']);
+
+            // 3. Determinar el mes y año de la programación
+            $startMonth = Carbon::parse($maintenance->start_date);
+            $endMonth = Carbon::parse($maintenance->end_date);
+
+            // Solo se genera para el MES del mantenimiento
+            $month = $startMonth->month;
+            $year  = $startMonth->year;
+
+            // 4. Convertir el día español a número (Carbon::dayOfWeek)
+            $daysMap = [
+                'LUNES' => 1,
+                'MARTES' => 2,
+                'MIÉRCOLES' => 3,
+                'JUEVES' => 4,
+                'VIERNES' => 5,
+                'SÁBADO' => 6,
+            ];
+
+            $dayNumber = $daysMap[$data['day']];
+
+            // 5. Recorrer todos los días del mes
+            $date = Carbon::create($year, $month, 1);
+            $endOfMonth = $date->copy()->endOfMonth();
+
+            while ($date->lte($endOfMonth)) {
+                if ($date->dayOfWeek === $dayNumber) {
+                    MaintenanceRecord::create([
+                        'schedule_id' => $schedule->id,
+                        'date' => $date->format('Y-m-d'),
+                        'description' => '-',
+                        'image_path' => null,
+                        'status' => 'NO',
+                    ]);
+                }
+                $date->addDay();
+            }
 
             DB::commit();
 
             if ($isTurbo) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Horario registrado exitosamente.',
+                    'message' => 'Horario registrado exitosamente con sus detalles generados.',
                 ], 201);
             }
 
             return redirect()->route('maintenance-schedules.index')
-                ->with('success', 'Horario registrado exitosamente.');
+                ->with('success', 'Horario registrado exitosamente con sus detalles.');
         } catch (\Exception $e) {
             DB::rollBack();
             if ($isTurbo) {
@@ -160,8 +207,9 @@ class MaintenanceScheduleController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'maintenance_id' => 'required|exists:maintenances,id',
+                'user_id' => 'required|exists:users,id',
                 'vehicle_id' => 'required|exists:vehicles,id',
-                'type' => 'required|in:LIMPIEZA,REPARACIÓN',
+                'type' => 'required',
                 'day' => 'required|in:LUNES,MARTES,MIÉRCOLES,JUEVES,VIERNES,SÁBADO',
                 'start_time' => 'required',
                 'end_time' => 'required|after:start_time',
@@ -229,13 +277,8 @@ class MaintenanceScheduleController extends Controller
                 ], 404);
             }
 
-            // No permitir eliminar si existen registros asociados
-            if ($schedule->records()->exists()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede eliminar el horario porque tiene registros asociados.',
-                ], 400);
-            }
+            
+           $schedule->records()->delete();
 
             $schedule->delete();
 

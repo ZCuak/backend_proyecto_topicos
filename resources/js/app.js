@@ -227,7 +227,7 @@ document.addEventListener("turbo:load", () => {
             const result = await Swal.fire({
                 icon: "warning",
                 title: "¿Eliminar este registro?",
-                text: "Esta acción no se puede deshacer.",
+                text: "Esta acción no se puede deshacer y se eliminarán los regitros asociados si se está autorizado.",
                 showCancelButton: true,
                 confirmButtonText: "Sí, eliminar",
                 cancelButtonText: "Cancelar",

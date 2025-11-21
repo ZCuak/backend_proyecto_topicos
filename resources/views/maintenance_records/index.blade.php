@@ -7,15 +7,14 @@
     {{-- ENCABEZADO --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-slate-800">📋 Gestión de Registros de Mantenimiento</h1>
-            <p class="text-slate-500">Administra los registros de mantenimiento realizados.</p>
+            <h1 class="text-3xl font-bold text-slate-800">Mantenimientos realizados</h1>
         </div>
 
-        <a href="{{ route('maintenance-records.create') }}"
+        <!-- <a href="{{ route('maintenance-records.create') }}"
            data-turbo-frame="modal-frame"
            class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
            <i class="fa-solid fa-plus"></i> Nuevo Registro
-        </a>
+        </a> -->
     </div>
 
     {{-- ALERTAS --}}
@@ -49,8 +48,9 @@
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Mantenimiento</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Vehículo</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Fecha</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Descripción</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Observación</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Foto</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Estado</th>
                     <th class="px-4 py-3 text-center font-semibold text-slate-600 uppercase">Acciones</th>
                 </tr>
             </thead>
@@ -72,6 +72,7 @@
                                 <span class="text-slate-400">Sin imagen</span>
                             @endif
                         </td>
+                        <td class="px-4 py-3 text-slate-700">{{ $record->status }}</td>
                         <td class="px-4 py-3 flex justify-center gap-2">
                             <a href="{{ route('maintenance-records.edit', $record->id) }}"
                                data-turbo-frame="modal-frame"

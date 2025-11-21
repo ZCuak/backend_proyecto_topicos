@@ -78,6 +78,28 @@ class MaintenanceController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
+        $start = $request->start_date;
+        $end = $request->end_date;
+
+        $overlap = Maintenance::where(function ($q) use ($start, $end) {
+            $q->where('start_date', '<=', $end)
+              ->where('end_date', '>=', $start);
+        })->exists();
+
+        if ($overlap) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Existe un solapamiento entre mantenimientos',
+            ], 500);
+        }
+
+        if ($end < $start) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',
+            ], 500);
+        }
+
         DB::beginTransaction();
         try {
             $data = $validator->validated();
@@ -135,6 +157,29 @@ class MaintenanceController extends Controller
                     'message' => 'Errores de validación.',
                     'errors' => $validator->errors(),
                 ], 422);
+            }
+
+            $start = $request->start_date;
+            $end = $request->end_date;
+
+            $overlap = Maintenance::where(function ($q) use ($start, $end, $id) {
+                $q->where('start_date', '<=', $end)
+                ->where('end_date', '>=', $start)
+                ->where('id', '!=', $id);
+            })->exists();
+
+            if ($overlap) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Existe un solapamiento entre mantenimientos',
+                ], 500);
+            }
+
+            if ($end < $start) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',
+                ], 500);
             }
 
             $data = $validator->validated();

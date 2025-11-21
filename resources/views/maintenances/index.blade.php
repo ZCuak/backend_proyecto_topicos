@@ -7,8 +7,7 @@
     {{-- ENCABEZADO --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-slate-800">🛠 Gestión de Mantenimientos</h1>
-            <p class="text-slate-500">Administra los mantenimientos programados.</p>
+            <h1 class="text-3xl font-bold text-slate-800">Gestión de Mantenimientos</h1>
         </div>
 
         <a href="{{ route('maintenances.create') }}"

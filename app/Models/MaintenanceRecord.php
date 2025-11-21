@@ -9,7 +9,7 @@ class MaintenanceRecord extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['id', 'schedule_id', 'date', 'description', 'image_path'];
+    protected $fillable = ['id', 'schedule_id', 'date', 'description', 'image_path', 'status'];
 
     public function schedule()
     {
