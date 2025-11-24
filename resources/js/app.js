@@ -244,14 +244,27 @@ document.addEventListener("turbo:load", () => {
                     const token = document.querySelector('meta[name="csrf-token"]').content;
 
                     const response = await fetch(url, {
-                        method: "DELETE",
+                        method: "POST", // usamos POST con override para evitar 405 en algunos servidores
                         headers: {
                             "X-CSRF-TOKEN": token,
+                            "X-HTTP-Method-Override": "DELETE",
                             "Accept": "application/json",
+                            "Content-Type": "application/json",
                         },
+                        body: JSON.stringify({ _method: "DELETE" })
                     });
 
-                    const data = await response.json();
+                    let data;
+                    try {
+                        const contentType = response.headers.get("content-type") || "";
+                        if (contentType.includes("application/json")) {
+                            data = await response.json();
+                        } else {
+                            data = { success: response.ok, message: response.ok ? "Registro eliminado" : "Error al eliminar" };
+                        }
+                    } catch (parseErr) {
+                        data = { success: response.ok, message: "Registro eliminado" };
+                    }
 
                     const onTurboLoaded = () => {
                         toggleLoader(false);

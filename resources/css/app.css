@@ -1,11 +1,25 @@
 @import 'tailwindcss';
-
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 
-/* Transiciones globales suaves */
-* {
-    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+:root {
+    --rsu-emerald: #10b981;
+    --rsu-slate: #0f172a;
 }
+
+body {
+    font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #f8fafc;
+    background-image:
+        radial-gradient(circle at 18% 20%, rgba(16, 185, 129, 0.07), transparent 32%),
+        radial-gradient(circle at 82% 0%, rgba(59, 130, 246, 0.06), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.9));
+}
+
+/* Smooth transitions so the UI feels premium */
+* {
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
 .input.border-red-500 {
     border-color: #ef4444 !important;
 }
@@ -14,14 +28,209 @@
     z-index: 10050 !important;
 }
 
-/* Scrollbar personalizado */
+/* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
 }
 ::-webkit-scrollbar-thumb {
-    background-color: #16a34a;
+    background-color: var(--rsu-emerald);
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background-color: #15803d;
+    background-color: #0f9f6f;
+}
+
+   /* Spinner base */
+        .spinner {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: auto;
+            display: inline-block;
+            background: linear-gradient(0deg, rgb(16, 185, 129) 33%, #1f2937 100%);
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+
+        /* Círculo interno blanco */
+        .spinner::after {
+            content: "";
+            box-sizing: border-box;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: #ffffff;
+        }
+
+        /* Animación de rotación */
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Contenedor general */
+        .loader {
+            position: relative;
+            width: 150px;
+            height: 150px;
+        }
+
+        /* Imagen central del loader */
+        .img-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            z-index: 10;
+            animation: none;
+            user-select: none;
+        }
+
+/* --- Navegación futurista --- */
+#sidebarMenu {
+    transform-origin: left center;
+    transition: transform 0.65s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.4s ease, filter 0.45s ease, width 0.6s ease, min-width 0.6s ease;
+    will-change: transform, filter, opacity, width;
+}
+
+#sidebarMenu::before {
+    content: "";
+    position: absolute;
+    inset: -140% -40% 10% -70%;
+    background: radial-gradient(circle at 30% 50%, rgba(16, 185, 129, 0.1), transparent 55%), radial-gradient(circle at 80% 40%, rgba(94, 234, 212, 0.08), transparent 60%);
+    opacity: 0.4;
+    filter: blur(18px);
+    pointer-events: none;
+    animation: nav-aurora 9s ease-in-out infinite alternate;
+}
+
+#sidebarMenu::after {
+    content: "";
+    position: absolute;
+    inset: -10% 55% -10% -30%;
+    background: linear-gradient(120deg, rgba(16, 185, 129, 0.55), rgba(59, 130, 246, 0.12));
+    opacity: 0;
+    transform: skewX(-10deg);
+    filter: blur(18px);
+    pointer-events: none;
+}
+
+#sidebarMenu.nav-energized::after {
+    opacity: 0.65;
+    animation: nav-pulse 0.85s ease;
+}
+
+@media (min-width: 768px) {
+    body.nav-collapsed #sidebarMenu {
+        width: 0;
+        min-width: 0;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-120%) scale(0.92) rotateY(14deg);
+        filter: blur(10px) saturate(1.2);
+        box-shadow: none;
+    }
+
+    body.nav-collapsed #sidebarMenu::after {
+        opacity: 0.9;
+        animation: nav-warp 0.7s ease;
+    }
+
+    body.nav-collapsed #sidebarMenu::before {
+        opacity: 0;
+    }
+}
+
+#navEnergyToggle {
+    box-shadow: 0 14px 38px rgba(16, 185, 129, 0.38);
+}
+
+#navEnergyToggle::after {
+    content: "";
+    position: absolute;
+    inset: -45%;
+    background: conic-gradient(from 120deg, rgba(16, 185, 129, 0.4), rgba(94, 234, 212, 0.5), rgba(59, 130, 246, 0.35), rgba(16, 185, 129, 0.4));
+    opacity: 0;
+    transform: scale(0.6);
+    filter: blur(12px);
+    transition: opacity 0.35s ease, transform 0.6s ease;
+}
+
+#navEnergyToggle.is-active::after {
+    opacity: 0.9;
+    transform: scale(1);
+    animation: nav-toggle-sweep 1s ease;
+}
+
+#navEnergyToggle.is-active i {
+    transform: rotate(-180deg) scale(1.05);
+}
+
+#navEnergyToggle:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 3px;
+}
+
+@keyframes nav-aurora {
+    0% {
+        transform: translate3d(0, 0, 0) scale(1);
+        opacity: 0.35;
+    }
+    50% {
+        transform: translate3d(12px, -18px, 0) scale(1.05);
+        opacity: 0.5;
+    }
+    100% {
+        transform: translate3d(-16px, 14px, 0) scale(1.02);
+        opacity: 0.4;
+    }
+}
+
+@keyframes nav-warp {
+    0% {
+        transform: translateX(0) skewX(-10deg);
+        opacity: 0.1;
+    }
+    100% {
+        transform: translateX(-80%) skewX(-16deg);
+        opacity: 0;
+    }
+}
+
+@keyframes nav-pulse {
+    0% {
+        transform: scale(0.78) rotate(-6deg);
+        opacity: 0.55;
+    }
+    100% {
+        transform: scale(1.1) rotate(0deg);
+        opacity: 0;
+    }
+}
+
+@keyframes nav-toggle-sweep {
+    0% {
+        transform: scale(0.7) rotate(0deg);
+        opacity: 0.4;
+    }
+    100% {
+        transform: scale(1.05) rotate(8deg);
+        opacity: 0;
+    }
 }

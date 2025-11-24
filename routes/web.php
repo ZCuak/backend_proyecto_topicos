@@ -79,6 +79,8 @@ Route::post('/schedulings/fetch-massive', [SchedulingController::class, 'fetchMa
     ->name('schedulings.fetch-massive');
 
     Route::resource('schedulings', SchedulingController::class);
+    Route::match(['delete','post'], 'schedulings/{scheduling}', [SchedulingController::class, 'destroy'])
+        ->name('schedulings.destroy');
 
     Route::resource('vacations', VacationController::class);
     Route::resource('contracts', ContractController::class);

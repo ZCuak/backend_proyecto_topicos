@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Gestión de Programaciones — RSU Reciclaje')
+@section('title', 'Gestion de Programaciones - RSU Reciclaje')
 
 @section('content')
 <div class="space-y-8">
@@ -7,8 +7,8 @@
     {{-- ENCABEZADO --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-slate-800">📅 Gestión de Programaciones</h1>
-            <p class="text-slate-500">Administra las programaciones de recolección por grupos y zonas.</p>
+            <h1 class="text-3xl font-bold text-slate-800">Gestion de Programaciones</h1>
+            <p class="text-slate-500">Administra las programaciones de recoleccion por grupos y zonas.</p>
         </div>
 
         <div class="flex gap-2">
@@ -20,19 +20,19 @@
             <a href="{{ route('schedulings.create') }}"
                data-turbo-frame="modal-frame"
                class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
-               <i class="fa-solid fa-plus"></i> Nueva Programación
+               <i class="fa-solid fa-plus"></i> Nueva Programacion
             </a>
             
             <a href="{{ route('schedulings.create-massive') }}"
                data-turbo-frame="modal-frame"
                class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-               <i class="fa-solid fa-calendar-plus"></i> Programación Masiva
+               <i class="fa-solid fa-calendar-plus"></i> Programacion Masiva
             </a>
-                <a href="{{ route('schedulings.edit-massive') }}"
-                    data-turbo-frame="modal-frame"
-                    class="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
-                    <i class="fa-solid fa-edit"></i> Editar Masivo
-                </a>
+            <a href="{{ route('schedulings.edit-massive') }}"
+               data-turbo-frame="modal-frame"
+               class="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
+               <i class="fa-solid fa-edit"></i> Editar Masivo
+            </a>
         </div>
     </div>
 
@@ -49,7 +49,7 @@
 
     {{-- FILTROS --}}
     <form method="GET" class="flex items-center gap-3 bg-white p-4 rounded-xl shadow border border-slate-100">
-        <input type="text" name="search" placeholder="Buscar por grupo, horario, vehículo, zona, notas..."
+        <input type="text" name="search" placeholder="Buscar por grupo, horario, vehiculo, zona, notas..."
                value="{{ $search }}"
                class="flex-1 border-none focus:ring-0 text-slate-700 placeholder-slate-400">
         
@@ -79,8 +79,9 @@
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Fecha</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Grupo</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Horario</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Vehículo</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Vehiculo</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Zona</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Conductor</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Estado</th>
                     <th class="px-4 py-3 text-center font-semibold text-slate-600 uppercase">Acciones</th>
                 </tr>
@@ -103,14 +104,14 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
                                 <i class="fa-solid fa-users text-blue-600"></i>
-                                <span class="text-slate-700">{{ $scheduling->group->name ?? '—' }}</span>
+                                <span class="text-slate-700">{{ $scheduling->group->name ?? '-' }}</span>
                             </div>
                         </td>
                         
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
                                 <i class="fa-solid fa-clock text-orange-600"></i>
-                                <span class="text-slate-700">{{ $scheduling->schedule->name ?? '—' }}</span>
+                                <span class="text-slate-700">{{ $scheduling->schedule->name ?? '-' }}</span>
                             </div>
                         </td>
                         
@@ -121,7 +122,7 @@
                                     <span class="text-slate-700">{{ $scheduling->vehicle->name }}</span>
                                 </div>
                             @else
-                                <span class="text-slate-400">—</span>
+                                <span class="text-slate-400">-</span>
                             @endif
                         </td>
                         
@@ -132,7 +133,27 @@
                                     <span class="text-slate-700">{{ $scheduling->zone->name }}</span>
                                 </div>
                             @else
-                                <span class="text-slate-400">—</span>
+                                <span class="text-slate-400">-</span>
+                            @endif
+                        </td>
+
+                        <td class="px-4 py-3">
+                            @php
+                                $driverDetail = $scheduling->details->first(function($detail){
+                                    return $detail->usertype_id == 1;
+                                }) ?? $scheduling->details->first();
+                                $driverName = ($driverDetail && $driverDetail->user)
+                                    ? $driverDetail->user->firstname . ' ' . $driverDetail->user->lastname
+                                    : null;
+                            @endphp
+
+                            @if($driverName)
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-id-card text-emerald-600"></i>
+                                    <span class="text-slate-700">{{ $driverName }}</span>
+                                </div>
+                            @else
+                                <span class="text-slate-400">-</span>
                             @endif
                         </td>
                         
@@ -177,7 +198,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center py-8 text-slate-400">
+                        <td colspan="9" class="text-center py-8 text-slate-400">
                             <i class="fa-solid fa-calendar-times text-4xl mb-2"></i>
                             <p>No se encontraron programaciones.</p>
                         </td>
@@ -187,7 +208,7 @@
         </table>
     </div>
 
-    {{-- PAGINACIÓN --}}
+    {{-- PAGINACION --}}
     <div class="mt-4">
         {{ $schedulings->links() }}
     </div>

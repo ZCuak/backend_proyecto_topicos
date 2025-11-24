@@ -9,6 +9,8 @@ use App\Models\EmployeeGroup;
 use App\Models\Schedule;
 use App\Models\Vehicle;
 use App\Models\Zone;
+use App\Models\SchedulingDetail;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -29,7 +31,7 @@ class SchedulingController extends Controller
         $perPage = $request->input('perPage', 10);
         $dateFilter = $request->input('date_filter');
 
-        $query = Scheduling::with(['group', 'schedule', 'vehicle', 'zone']);
+        $query = Scheduling::with(['group', 'schedule', 'vehicle', 'zone', 'details.user']);
 
         // Búsqueda general
         if ($search) {
@@ -480,10 +482,24 @@ public function update(Request $request, Scheduling $scheduling)
                     $newUserId = $detail['user_id'] ?? null;
 
                     if ($detailId && $newUserId) {
-                        \App\Models\SchedulingDetail::where('id', $detailId)
+                        $detailModel = SchedulingDetail::where('id', $detailId)->first();
+                        $oldUserId = $detailModel?->user_id;
+
+                        SchedulingDetail::where('id', $detailId)
                             ->update([
                                 'user_id' => $newUserId
                             ]);
+
+                        if ((string) $oldUserId !== (string) $newUserId) {
+                            $roleLabel = $detailModel->role_name ?? 'Personal';
+                            $this->registrarCambioDetalle(
+                                $scheduling,
+                                $roleLabel,
+                                $oldUserId,
+                                $newUserId,
+                                $request->add_notes ?? null
+                            );
+                        }
                     }
                 }
             }
@@ -1224,6 +1240,35 @@ public function update(Request $request, Scheduling $scheduling)
     }
 
     /**
+     * Registrar cambio de personal en historial
+     */
+    private function registrarCambioDetalle(Scheduling $scheduling, string $rol, $oldUserId, $newUserId, ?string $nota = null): void
+    {
+        $auditTypeName = $this->getAuditTypeName($scheduling);
+        $userName = auth()->check() ? auth()->user()->username : 'Sistema/Invitado';
+
+        Audit::create([
+            'auditable_type' => $auditTypeName,
+            'auditable_id' => $scheduling->id,
+            'campo_modificado' => $rol,
+            'valor_anterior' => $this->nombreUsuario($oldUserId),
+            'valor_nuevo' => $this->nombreUsuario($newUserId),
+            'user_name' => $userName,
+            'nota_adicional' => $nota,
+        ]);
+    }
+
+    private function nombreUsuario($userId): string
+    {
+        if (!$userId) {
+            return 'SIN ASIGNAR';
+        }
+
+        $user = User::find($userId);
+        return $user ? trim($user->firstname . ' ' . $user->lastname) : 'ID ' . $userId;
+    }
+
+    /**
      * Formatear fechas de conflicto para mostrar en mensajes de error
      */
     private function formatConflictDates($dates)
@@ -1454,6 +1499,14 @@ public function update(Request $request, Scheduling $scheduling)
  */
 public function editMassive(Request $request)
 {
+    $request->validate([
+        'start_date' => 'nullable|date',
+        'end_date' => 'nullable|date|after_or_equal:start_date',
+        'zone_id' => 'nullable|exists:zones,id',
+        'schedule_id' => 'nullable|exists:schedules,id',
+        'change_type' => 'nullable|string|in:driver,occupant,turn,vehicle',
+    ]);
+
     $schedules = Schedule::orderBy('name')->get();
     $groups = EmployeeGroup::orderBy('name')->get();
     $users = User::orderBy('firstname')->get();
@@ -1462,12 +1515,19 @@ public function editMassive(Request $request)
 
     $programaciones = collect();
 
-    if ($request->filled(['schedule_id', 'start_date', 'end_date'])) {
+    if ($request->filled(['start_date', 'end_date'])) {
         $programaciones = Scheduling::with(['group', 'schedule', 'vehicle', 'zone'])
-            ->where('schedule_id', $request->schedule_id)
-            ->whereBetween('date', [$request->start_date, $request->end_date])
-            ->orderBy('date')
-            ->get();
+            ->whereBetween('date', [$request->start_date, $request->end_date]);
+
+        if ($request->filled('zone_id')) {
+            $programaciones->where('zone_id', $request->zone_id);
+        }
+
+        if ($request->filled('schedule_id')) {
+            $programaciones->where('schedule_id', $request->schedule_id);
+        }
+
+        $programaciones = $programaciones->orderBy('date')->get();
     }
 
     return view('schedulings.massive._modal_edit', compact(
@@ -1490,20 +1550,33 @@ public function editMassive(Request $request)
 public function fetchMassive(Request $request)
 {
     $request->validate([
-        'schedule_id' => 'required|exists:schedules,id',
         'start_date' => 'required|date',
         'end_date' => 'required|date|after_or_equal:start_date',
+        'zone_id' => 'nullable|exists:zones,id',
+        'schedule_id' => 'nullable|exists:schedules,id',
     ]);
 
-    $scheduleId = $request->schedule_id;
     $start = \Carbon\Carbon::parse($request->start_date);
     $end = \Carbon\Carbon::parse($request->end_date);
 
-    $schedulings = Scheduling::with(['group.vehicle', 'group.zone', 'group.configgroups.user', 'schedule'])
-        ->where('schedule_id', $scheduleId)
-        ->whereBetween('date', [$start, $end])
-        ->get()
-        ->groupBy('group_id');
+    $query = Scheduling::with([
+        'group.vehicle',
+        'group.zone',
+        'group.configgroups.user',
+        'schedule',
+        'vehicle',
+        'details.user',
+    ])->whereBetween('date', [$start, $end]);
+
+    if ($request->filled('schedule_id')) {
+        $query->where('schedule_id', $request->schedule_id);
+    }
+
+    if ($request->filled('zone_id')) {
+        $query->where('zone_id', $request->zone_id);
+    }
+
+    $schedulings = $query->get()->groupBy('group_id');
 
     $data = $schedulings->map(function ($groupSchedulings) {
         $group = $groupSchedulings->first()->group;
@@ -1527,6 +1600,18 @@ public function fetchMassive(Request $request)
                     'date' => $s->date,
                     'status' => $s->status,
                     'notes' => $s->notes,
+                    'vehicle_id' => $s->vehicle_id,
+                    'vehicle_label' => $s->vehicle ? $s->vehicle->plate.' - '.$s->vehicle->name : null,
+                    'schedule_id' => $s->schedule_id,
+                    'schedule_name' => $s->schedule?->name,
+                    'assigned' => $s->details->map(function($d){
+                        return [
+                            'detail_id' => $d->id,
+                            'user_id' => $d->user_id,
+                            'usertype' => $d->usertype_id,
+                            'name' => $d->user ? $d->user->firstname.' '.$d->user->lastname : 'Sin asignar',
+                        ];
+                    })->values(),
                 ];
             })->values()
         ];
@@ -1613,10 +1698,27 @@ public function updateMassive(Request $request)
                     $detail = SchedulingDetail::find($row['detail_id']);
                     if (!$detail) continue;
 
+                    $oldUserId = $detail->user_id;
+
                     $detail->update([
                         'user_id' => $row['user_id'],
                         'usertype_id' => $row['usertype'],
                     ]);
+
+                    if ((string) $oldUserId !== (string) $row['user_id']) {
+                        $roleLabel = $detail->role_name ?? 'Personal';
+                        $notaCambio = null;
+                        if (!empty($item['changes']) && is_array($item['changes'])) {
+                            $notaCambio = $item['changes'][0]['notas'] ?? null;
+                        }
+                        $this->registrarCambioDetalle(
+                            $scheduling,
+                            $roleLabel,
+                            $oldUserId,
+                            $row['user_id'],
+                            $notaCambio
+                        );
+                    }
                 }
             }
 
@@ -1627,7 +1729,7 @@ public function updateMassive(Request $request)
                 $this->registrarCambios(
                     $scheduling,
                     $original,
-                    json_encode($item['changes']),
+                    [],
                     ['id', 'created_at', 'updated_at', 'deleted_at']
                 );
             }
@@ -1692,3 +1794,4 @@ public function updateMassive(Request $request)
         return implode(' ', $errorMessages);
     }
 }
+
