@@ -13,7 +13,7 @@ return new class extends Migration {
             $table->date('date')->comment('Fecha de marcación de asistencia');
             $table->time('check_in')->nullable()->comment('Hora de entrada');
             $table->time('check_out')->nullable()->comment('Hora de salida');
-            $table->enum('type', ['ENTRADA', 'SALIDA'])->default('ENTRADA')->comment('Tipo de asistencia');
+            // $table->enum('type', ['ENTRADA', 'SALIDA'])->default('ENTRADA')->comment('Tipo de asistencia');
             $table->enum('status', ['PRESENTE', 'AUSENTE', 'TARDANZA'])->default('PRESENTE')->comment('Estado de asistencia');
             $table->string('notes')->nullable()->comment('Anotaciones de observación sobre la asistencia');
             $table->timestamps();
