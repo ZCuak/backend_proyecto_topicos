@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use Database\Seeders\changes\MotiveSeeeder;
 use Database\Seeders\Programacion\TurnoSeeder;
 use Database\Seeders\Programacion\ZonasCoordsSeeder;
 use Database\Seeders\Programacion\ZonasSeeder;
@@ -48,6 +49,7 @@ class DatabaseSeeder extends Seeder
             VehicleSeeder::class,  
 
             ContractsSeeder::class,
+            MotiveSeeeder::class, 
         ]);
     }
 }
