@@ -57,12 +57,11 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Placa <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <i class="fa-solid fa-id-card absolute left-3 top-2.5 text-slate-400"></i>
-                        <input type="text" name="plate" maxlength="10"
+                        <input type="text" name="plate" id="plateInput"
                             value="{{ old('plate', $vehicle->plate ?? '') }}"
                             class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 uppercase @error('plate') border-red-500 @enderror"
-                            placeholder="Ej. ABC-123"
-                            pattern="^[A-Z0-9\-]{3,10}$"
-                            title="Formato válido: letras, números y guiones (3-10 caracteres)">
+                            placeholder="Ej. ABC123, AB-1234, ABC-123"
+                            title="Formatos válidos: XXXXXX (ej: ABC123), XX-XXXX (ej: AB-1234), XXX-XXX (ej: ABC-123)">
                     </div>
                     @error('plate')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -72,11 +71,12 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Año <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <i class="fa-solid fa-calendar absolute left-3 top-2.5 text-slate-400"></i>
-                        <input type="number" name="year" min="1990" max="{{ date('Y') }}"
+                        <input type="number" name="year" min="1900" max="{{ date('Y') }}" maxlength="4"
                             value="{{ old('year', $vehicle->year ?? '') }}"
                             class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500"
                             placeholder="2023"
-                            title="Año entre 1990 y {{ date('Y') }}">
+                            title="Año entre 1900 y {{ date('Y') }} (4 dígitos)"
+                            oninput="this.value = this.value.slice(0, 4)">
                     </div>
                 </div>
                 <div>
@@ -611,41 +611,130 @@ document.getElementById('brand_id').addEventListener('change', function() {
     }
 });
 
-// Validación de placa en tiempo real
-document.querySelector('input[name="plate"]').addEventListener('input', function(e) {
-    const plate = e.target.value.toUpperCase();
-    const platePattern = /^[A-Z0-9\-]{3,10}$/;
+// Validación de placa en tiempo real con límite dinámico de caracteres
+const plateInput = document.getElementById('plateInput') || document.querySelector('input[name="plate"]');
+if (plateInput) {
+    plateInput.addEventListener('input', function(e) {
+        let plate = e.target.value.toUpperCase().trim();
+        
+        // Remover caracteres no permitidos (solo letras, números y guiones)
+        plate = plate.replace(/[^A-Z0-9\-]/g, '');
+        
+        // Detectar formato y limitar caracteres
+        let maxLength = 6; // Por defecto formato XXXXXX
+        
+        // Si tiene guión, determinar el formato
+        if (plate.includes('-')) {
+            const parts = plate.split('-');
+            if (parts[0].length <= 2 && parts[1].length <= 4) {
+                maxLength = 7; // Formato XX-XXXX (2 + guión + 4 = 7)
+            } else if (parts[0].length <= 3 && parts[1].length <= 3) {
+                maxLength = 7; // Formato XXX-XXX (3 + guión + 3 = 7)
+            }
+        } else {
+            maxLength = 6; // Formato XXXXXX
+        }
+        
+        // Limitar longitud según el formato detectado
+        if (plate.length > maxLength) {
+            plate = plate.slice(0, maxLength);
+        }
+        
+        // Actualizar valor
+        e.target.value = plate;
+        
+        // Validar formatos: XXXXXX, XX-XXXX, XXX-XXX
+        const plateFormats = [
+            /^[A-Z0-9]{6}$/,           // XXXXXX (6 caracteres sin guión)
+            /^[A-Z0-9]{2}-[A-Z0-9]{4}$/, // XX-XXXX (2 caracteres, guión, 4 caracteres)
+            /^[A-Z0-9]{3}-[A-Z0-9]{3}$/, // XXX-XXX (3 caracteres, guión, 3 caracteres)
+        ];
+        
+        let isValid = false;
+        if (plate) {
+            for (let format of plateFormats) {
+                if (format.test(plate)) {
+                    isValid = true;
+                    break;
+                }
+            }
+        }
+        
+        // Validar formato
+        if (plate && !isValid) {
+            e.target.setCustomValidity('Formato inválido. Use: XXXXXX (ej: ABC123), XX-XXXX (ej: AB-1234) o XXX-XXX (ej: ABC-123)');
+            e.target.classList.add('border-red-500');
+            e.target.classList.remove('border-slate-300');
+        } else {
+            e.target.setCustomValidity('');
+            e.target.classList.remove('border-red-500');
+            e.target.classList.add('border-slate-300');
+        }
+    });
     
-    // Actualizar valor en mayúsculas
-    e.target.value = plate;
-    
-    // Validar formato
-    if (plate && !platePattern.test(plate)) {
-        e.target.setCustomValidity('Formato de placa inválido. Use letras, números y guiones (3-10 caracteres)');
-        e.target.classList.add('border-red-500');
-        e.target.classList.remove('border-slate-300');
-    } else {
-        e.target.setCustomValidity('');
-        e.target.classList.remove('border-red-500');
-        e.target.classList.add('border-slate-300');
-    }
-});
+    // Prevenir pegar texto que exceda el límite
+    plateInput.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text').toUpperCase().trim();
+        let plate = pastedText.replace(/[^A-Z0-9\-]/g, '');
+        
+        // Detectar formato y limitar
+        let maxLength = 6;
+        if (plate.includes('-')) {
+            const parts = plate.split('-');
+            if (parts[0].length <= 2 && parts[1].length <= 4) {
+                maxLength = 7;
+            } else if (parts[0].length <= 3 && parts[1].length <= 3) {
+                maxLength = 7;
+            }
+        }
+        
+        if (plate.length > maxLength) {
+            plate = plate.slice(0, maxLength);
+        }
+        
+        this.value = plate;
+        this.dispatchEvent(new Event('input'));
+    });
+}
 
-// Validación de año en tiempo real
-document.querySelector('input[name="year"]').addEventListener('input', function(e) {
-    const year = parseInt(e.target.value);
-    const currentYear = new Date().getFullYear();
+// Validación de año en tiempo real (solo 4 dígitos)
+const yearInput = document.querySelector('input[name="year"]');
+if (yearInput) {
+    yearInput.addEventListener('input', function(e) {
+        // Limitar a 4 dígitos y solo números
+        let value = e.target.value.replace(/[^0-9]/g, '');
+        if (value.length > 4) {
+            value = value.slice(0, 4);
+        }
+        e.target.value = value;
+        
+        const year = parseInt(value);
+        const currentYear = new Date().getFullYear();
+        
+        if (value && (year < 1900 || year > currentYear)) {
+            e.target.setCustomValidity(`El año debe estar entre 1900 y ${currentYear}`);
+            e.target.classList.add('border-red-500');
+            e.target.classList.remove('border-slate-300');
+        } else {
+            e.target.setCustomValidity('');
+            e.target.classList.remove('border-red-500');
+            e.target.classList.add('border-slate-300');
+        }
+    });
     
-    if (year && (year < 1990 || year > currentYear)) {
-        e.target.setCustomValidity(`El año debe estar entre 1990 y ${currentYear}`);
-        e.target.classList.add('border-red-500');
-        e.target.classList.remove('border-slate-300');
-    } else {
-        e.target.setCustomValidity('');
-        e.target.classList.remove('border-red-500');
-        e.target.classList.add('border-slate-300');
-    }
-});
+    // Prevenir pegar texto que no sea numérico o exceda 4 dígitos
+    yearInput.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+        if (pastedText.length > 4) {
+            this.value = pastedText.slice(0, 4);
+        } else {
+            this.value = pastedText;
+        }
+        this.dispatchEvent(new Event('input'));
+    });
+}
 
 // Validación de código único (opcional - se puede implementar con AJAX)
 document.querySelector('input[name="code"]').addEventListener('blur', function(e) {

@@ -148,95 +148,99 @@
 <form id="logoutForm" action="{{ route('logout') }}" method="POST" class="hidden">@csrf</form>
 
 <script>
-const setupNavigation = () => {
-    const sidebar = document.getElementById('sidebarMenu');
-    if (!sidebar) return;
+(function() {
+    'use strict';
+    
+    function setupNavigation() {
+        const sidebar = document.getElementById('sidebarMenu');
+        if (!sidebar) return;
 
-    const overlay = document.getElementById('overlay');
-    const navEnergyToggle = document.getElementById('navEnergyToggle');
-    const toggleBtn = document.getElementById('menuToggle');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const profileBtn = document.getElementById('userProfileBtnMovil');
-    const logoutForm = document.getElementById('logoutForm');
-    let energyTimeout;
+        const overlay = document.getElementById('overlay');
+        const navEnergyToggle = document.getElementById('navEnergyToggle');
+        const toggleBtn = document.getElementById('menuToggle');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const profileBtn = document.getElementById('userProfileBtnMovil');
+        const logoutForm = document.getElementById('logoutForm');
+        let energyTimeout;
 
-    const openMenu = () => {
-        sidebar.classList.remove('-translate-x-full');
-        overlay?.classList.remove('hidden');
-    };
-    const closeMenu = () => {
-        sidebar.classList.add('-translate-x-full');
-        overlay?.classList.add('hidden');
-    };
-    const energizeNav = () => {
-        clearTimeout(energyTimeout);
-        sidebar.classList.add('nav-energized');
-        energyTimeout = window.setTimeout(() => sidebar.classList.remove('nav-energized'), 850);
-    };
-    const collapseNav = () => {
-        document.body.classList.add('nav-collapsed');
-        navEnergyToggle?.classList.add('is-active');
-    };
-    const expandNav = () => {
-        document.body.classList.remove('nav-collapsed');
-        navEnergyToggle?.classList.remove('is-active');
-        sidebar.classList.remove('-translate-x-full');
-        overlay?.classList.add('hidden');
-    };
-    const toggleFuturisticNav = () => {
-        const isDesktop = window.matchMedia('(min-width: 768px)').matches;
-        if (isDesktop) {
-            const shouldCollapse = !document.body.classList.contains('nav-collapsed');
-            shouldCollapse ? collapseNav() : expandNav();
-        } else {
-            const willOpen = sidebar.classList.contains('-translate-x-full');
-            willOpen ? openMenu() : closeMenu();
-            navEnergyToggle?.classList.toggle('is-active', !willOpen);
-        }
-        energizeNav();
-    };
+        const openMenu = () => {
+            sidebar.classList.remove('-translate-x-full');
+            overlay?.classList.remove('hidden');
+        };
+        const closeMenu = () => {
+            sidebar.classList.add('-translate-x-full');
+            overlay?.classList.add('hidden');
+        };
+        const energizeNav = () => {
+            clearTimeout(energyTimeout);
+            sidebar.classList.add('nav-energized');
+            energyTimeout = window.setTimeout(() => sidebar.classList.remove('nav-energized'), 850);
+        };
+        const collapseNav = () => {
+            document.body.classList.add('nav-collapsed');
+            navEnergyToggle?.classList.add('is-active');
+        };
+        const expandNav = () => {
+            document.body.classList.remove('nav-collapsed');
+            navEnergyToggle?.classList.remove('is-active');
+            sidebar.classList.remove('-translate-x-full');
+            overlay?.classList.add('hidden');
+        };
+        const toggleFuturisticNav = () => {
+            const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+            if (isDesktop) {
+                const shouldCollapse = !document.body.classList.contains('nav-collapsed');
+                shouldCollapse ? collapseNav() : expandNav();
+            } else {
+                const willOpen = sidebar.classList.contains('-translate-x-full');
+                willOpen ? openMenu() : closeMenu();
+                navEnergyToggle?.classList.toggle('is-active', !willOpen);
+            }
+            energizeNav();
+        };
 
-    // evitar listeners duplicados al navegar con Turbo
-    toggleBtn && (toggleBtn.onclick = openMenu);
-    overlay && (overlay.onclick = closeMenu);
-    navEnergyToggle && (navEnergyToggle.onclick = (event) => {
-        event.preventDefault();
-        toggleFuturisticNav();
-    });
-
-    profileBtn && (profileBtn.onclick = () => {
-        closeMenu();
-        Swal.fire({
-            icon: 'info',
-            title: 'Perfil del usuario',
-            html: `
-                <div class="text-left leading-7">
-                    <p><b>Nombre:</b> {{ $user->firstname ?? '' }} {{ $user->lastname ?? '' }}</p>
-                    <p><b>DNI:</b> {{ $user->dni ?? '-' }}</p>
-                    <p><b>Rol:</b> {{ $user->usertype->name ?? 'Usuario' }}</p>
-                    <p><b>Correo:</b> {{ $user->email ?? '' }}</p>
-                    <p><b>Telefono:</b> {{ $user->phone ?? '-' }}</p>
-                    <p><b>Direccion:</b> {{ $user->address ?? '-' }}</p>
-                </div>`,
-            confirmButtonText: 'Cerrar',
-            confirmButtonColor: '#10b981'
+        // evitar listeners duplicados al navegar con Turbo
+        toggleBtn && (toggleBtn.onclick = openMenu);
+        overlay && (overlay.onclick = closeMenu);
+        navEnergyToggle && (navEnergyToggle.onclick = (event) => {
+            event.preventDefault();
+            toggleFuturisticNav();
         });
-    });
 
-    logoutBtn && (logoutBtn.onclick = () => {
-        Swal.fire({
-            icon: 'question',
-            title: 'Deseas cerrar sesion?',
-            showCancelButton: true,
-            confirmButtonText: 'Si, cerrar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#ef4444'
-        }).then((result) => {
-            if (result.isConfirmed) logoutForm?.submit();
+        profileBtn && (profileBtn.onclick = () => {
+            closeMenu();
+            Swal.fire({
+                icon: 'info',
+                title: 'Perfil del usuario',
+                html: `
+                    <div class="text-left leading-7">
+                        <p><b>Nombre:</b> {{ $user->firstname ?? '' }} {{ $user->lastname ?? '' }}</p>
+                        <p><b>DNI:</b> {{ $user->dni ?? '-' }}</p>
+                        <p><b>Rol:</b> {{ $user->usertype->name ?? 'Usuario' }}</p>
+                        <p><b>Correo:</b> {{ $user->email ?? '' }}</p>
+                        <p><b>Telefono:</b> {{ $user->phone ?? '-' }}</p>
+                        <p><b>Direccion:</b> {{ $user->address ?? '-' }}</p>
+                    </div>`,
+                confirmButtonText: 'Cerrar',
+                confirmButtonColor: '#10b981'
+            });
         });
-    });
-};
 
-document.addEventListener('DOMContentLoaded', setupNavigation);
-document.addEventListener('turbo:load', setupNavigation);
+        logoutBtn && (logoutBtn.onclick = () => {
+            Swal.fire({
+                icon: 'question',
+                title: 'Deseas cerrar sesion?',
+                showCancelButton: true,
+                confirmButtonText: 'Si, cerrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#ef4444'
+            }).then((result) => {
+                if (result.isConfirmed) logoutForm?.submit();
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', setupNavigation);
+    document.addEventListener('turbo:load', setupNavigation);
+})();
 </script>

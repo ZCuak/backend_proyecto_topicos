@@ -6,9 +6,21 @@
 
     {{-- ENCABEZADO --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-3xl font-bold text-slate-800">🚛 {{ $vehicle->name }}</h1>
-            <p class="text-slate-500">Detalles e información del vehículo de recolección.</p>
+        <div class="flex items-center gap-4">
+            {{-- Imagen de perfil --}}
+            <div class="w-20 h-20 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-slate-200 shadow-sm">
+                @if($vehicle->profileImage)
+                    <img src="{{ $vehicle->profileImage->url }}" 
+                         alt="{{ $vehicle->name }}" 
+                         class="w-full h-full object-cover">
+                @else
+                    <i class="fa-solid fa-truck text-slate-400 text-3xl"></i>
+                @endif
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800">🚛 {{ $vehicle->name }}</h1>
+                <p class="text-slate-500">Detalles e información del vehículo de recolección.</p>
+            </div>
         </div>
 
         <div class="flex gap-2">
