@@ -77,8 +77,16 @@
                                 Valor Nuevo
                             </th>
                             <th
-                                class="px-4 py-3 text-center font-semibold text-slate-600 uppercase tracking-wider text-xs">
+                                class="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">
                                 Motivo
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">
+                                Notas
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">
+                                Usuario
                             </th>
                         </tr>
                     </thead>
@@ -145,14 +153,24 @@
                                 </td>
 
                                 {{-- ========================================
+                                     MOTIVO
+                                ======================================== --}}
+                                <td class="px-4 py-3 text-slate-700 font-medium">
+                                    {{ $audit->motive->name ?? '' }}
+                                </td>
+
+                                {{-- ========================================
                                      NOTA ADICIONAL
                                 ======================================== --}}
                                 <td class="px-4 py-3 text-slate-700 font-medium">
-                                    @if ($audit->nota_adicional)
-                                        {{ $audit->nota_adicional }}
-                                    @else
-                                        <span class="text-slate-400 text-xs italic">Sin nota</span>
-                                    @endif
+                                    {{ $audit->nota_adicional ?? '' }}
+                                </td>
+
+                                {{-- ========================================
+                                     USUARIO
+                                ======================================== --}}
+                                <td class="px-4 py-3 text-slate-600">
+                                    {{ $audit->user_name ?? 'N/D' }}
                                 </td>
                             </tr>
                         @endforeach

@@ -83,7 +83,8 @@ trait HistoryChanges
         Model $model,
         array $originalData,
         ?array $notas = [],
-        array $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at']
+        array $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at'],
+        ?int $motiveId = null
     ): void {
         $changes = [];
         $userName = Auth::check() ? Auth::user()->username : 'Sistema/Invitado';
@@ -128,6 +129,7 @@ trait HistoryChanges
                     'valor_anterior' => $change['valor_anterior'],
                     'valor_nuevo' => $change['valor_nuevo'],
                     'user_name' => $userName,
+                    'motive_id' => $motiveId,
                     'nota_adicional' => $change['nota'],
                 ]);
             }

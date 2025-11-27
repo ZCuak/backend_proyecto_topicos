@@ -19,11 +19,17 @@ class Audit extends Model
         'valor_anterior',
         'valor_nuevo',
         'user_name',
+        'motive_id',
         'nota_adicional',
     ];
 
     public function auditable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function motive()
+    {
+        return $this->belongsTo(Motive::class, 'motive_id');
     }
 }

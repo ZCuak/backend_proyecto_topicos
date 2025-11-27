@@ -71,12 +71,22 @@
         @endforeach
     </select>
 
+    <!-- SELECT FILTRO ESTADO -->
+    <select name="status_filter"
+        class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+        <option value="">Todos los estados</option>
+        <option value="0" {{ $statusFilter === '0' ? 'selected' : '' }}>Programado</option>
+        <option value="1" {{ $statusFilter === '1' ? 'selected' : '' }}>En Proceso</option>
+        <option value="2" {{ $statusFilter === '2' ? 'selected' : '' }}>Completado</option>
+        <option value="3" {{ $statusFilter === '3' ? 'selected' : '' }}>Cancelado</option>
+    </select>
+
     <button type="submit"
         class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
         <i class="fa-solid fa-search"></i>
     </button>
 
-    @if($search || $zoneFilter || $hasCustomDateFilters)
+    @if($search || $zoneFilter || $hasCustomDateFilters || $statusFilter !== null && $statusFilter !== '')
         <a href="{{ route('schedulings.index') }}"
             class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
             <i class="fa-solid fa-times"></i>
@@ -311,5 +321,4 @@
     });
 </script>
 @endsection
-
 

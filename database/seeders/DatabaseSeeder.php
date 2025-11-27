@@ -13,6 +13,7 @@ use Database\Seeders\Vehicles\BrandModelSeeder;
 use Database\Seeders\Vehicles\BrandSeeder;
 use Database\Seeders\Vehicles\ColorSeeder;
 use Database\Seeders\Vehicles\VehicleTypeSeeder;
+use Database\Seeders\Vehicles\VehicleSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -43,7 +44,8 @@ class DatabaseSeeder extends Seeder
             VehicleTypeSeeder::class,
             ColorSeeder::class,
             BrandSeeder::class,
-            BrandModelSeeder::class,  
+            BrandModelSeeder::class,
+            VehicleSeeder::class,  
 
             ContractsSeeder::class,
         ]);

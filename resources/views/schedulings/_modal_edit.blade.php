@@ -127,7 +127,7 @@
     </h4>
 
     <div class="overflow-x-auto">
-        <table class="min-w-full border border-slate-200 text-sm text-slate-700">
+      <table class="min-w-full border border-slate-200 text-sm text-slate-700">
             <thead class="bg-slate-100">
                 <tr>
                     <th class="border px-4 py-2">Actual</th>
@@ -206,7 +206,8 @@
                                     <th class="border px-4 py-2">Anterior</th>
                                     <th class="border px-4 py-2">Nuevo</th>
                                     <th class="border px-4 py-2">Notas</th>
-                                    <th class="border px-4 py-2 text-center">Acción</th>
+                                    <th class="border px-4 py-2">Motivo</th>
+                                    <th class="border px-4 py-2 text-center">Acci??n</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -251,6 +252,51 @@ function setupSchedulingModal() {
     let assigned = JSON.parse(assignedInput.value); 
     // [{detail_id, user_id, usertype}, ...]
 
+    const motives = @json($motives->map(fn($m)=>['id'=>$m->id,'name'=>$m->name]));
+    const motivesMap = Object.fromEntries(motives.map(m => [m.id, m.name]));
+
+    const askNoteWithMotive = async () => {
+        const options = motives.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+        const { value: formValues } = await Swal.fire({
+            title: "Notas del cambio",
+            html: `
+                <div class="space-y-4 text-left text-slate-700">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Motivo</label>
+                        <select id="swal-motive"
+                                class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-slate-700">
+                            <option value="">-- Selecciona un motivo --</option>
+                            ${options}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Detalle</label>
+                        <textarea id="swal-note"
+                                  rows="3"
+                                  class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-slate-50 text-slate-700 placeholder-slate-400"
+                                  placeholder="Ej. Ajuste por solicitud"></textarea>
+                    </div>
+                </div>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: "Agregar",
+            cancelButtonText: "Cancelar",
+            buttonsStyling: false,
+            customClass: {
+                popup: 'rounded-2xl shadow-2xl border border-slate-200',
+                confirmButton: 'px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition font-semibold',
+                cancelButton: 'px-4 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition font-semibold'
+            },
+            preConfirm: () => {
+                const motiveId = document.getElementById('swal-motive').value || null;
+                const notas = document.getElementById('swal-note').value || '';
+                return { notas, motive_id: motiveId ? parseInt(motiveId, 10) : null };
+            }
+        });
+        return formValues;
+    };
+
     /* ------------------------------ */
     /*    BOTONES TURNO / VEHÍCULO    */
     /* ------------------------------ */
@@ -275,15 +321,17 @@ function setupSchedulingModal() {
                 return;
             }
 
-            const { value: notas } = await Swal.fire({
-                title: "Notas del cambio",
-                input: "text",
-                showCancelButton: true,
-                confirmButtonText: "Agregar"
-            });
+            const res = await askNoteWithMotive();
 
-            if (notas !== undefined) {
-                cambios.push({ tipo, anterior, nuevo, notas });
+            if (res !== undefined) {
+                cambios.push({
+                    tipo,
+                    anterior,
+                    nuevo,
+                    notas: res?.notas ?? '',
+                    motive_id: res?.motive_id ?? null,
+                    motive_name: res?.motive_id ? motivesMap[res.motive_id] : '-'
+                });
                 renderCambios();
             }
         };
@@ -309,14 +357,8 @@ function setupSchedulingModal() {
                 return;
             }
 
-            const { value: notas } = await Swal.fire({
-                title: "Notas del cambio",
-                input: "text",
-                showCancelButton: true,
-                confirmButtonText: "Registrar"
-            });
-
-            if (notas === undefined) return;
+            const res = await askNoteWithMotive();
+            if (res === undefined) return;
 
             // 🔥 ACTUALIZAR JSON assigned
             assigned = assigned.map(d =>
@@ -332,7 +374,9 @@ function setupSchedulingModal() {
                 tipo: "Reemplazo Personal",
                 anterior: currentName,
                 nuevo: newName,
-                notas
+                notas: res?.notas ?? '',
+                motive_id: res?.motive_id ?? null,
+                motive_name: res?.motive_id ? motivesMap[res.motive_id] : '-'
             });
 
             renderCambios();
@@ -351,7 +395,8 @@ function setupSchedulingModal() {
                     <td class="border px-4 py-2">${c.tipo}</td>
                     <td class="border px-4 py-2">${c.anterior}</td>
                     <td class="border px-4 py-2">${c.nuevo}</td>
-                    <td class="border px-4 py-2">${c.notas}</td>
+                    <td class="border px-4 py-2">${c.notas ?? ''}</td>
+                    <td class="border px-4 py-2">${c.motive_name ?? '-'}</td>
                     <td class="border px-4 py-2 text-center">
                         <button data-index="${idx}" class="delete-change text-red-600 hover:text-red-800">
                             <i class="fa-solid fa-trash"></i>
@@ -378,3 +423,11 @@ function setupSchedulingModal() {
 </script>
 
 </turbo-frame>
+
+
+
+
+
+
+
+

@@ -10,6 +10,7 @@ use App\Models\Schedule;
 use App\Models\Vehicle;
 use App\Models\Zone;
 use App\Models\SchedulingDetail;
+use App\Models\Motive;
 use App\Models\Audit;
 use App\Models\Attendace;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class SchedulingController extends Controller
     $dateFrom = $request->input('date_from');
     $dateTo = $request->input('date_to');
     $zoneFilter = $request->input('zone_filter'); // FILTRO POR ZONA REAL
+    $statusFilter = $request->input('status_filter');
     $hasCustomDateFilters = $request->filled('date_from') || $request->filled('date_to');
 
     // Por defecto mostrar solo las programaciones de hoy
@@ -79,10 +81,16 @@ class SchedulingController extends Controller
         $query->where('zone_id', $zoneFilter);
     }
 
+    // FILTRO POR ESTADO
+    if ($statusFilter !== null && $statusFilter !== '') {
+        $query->where('status', (int) $statusFilter);
+    }
+
     $appends = [
         'search' => $search,
         'perPage' => $perPage,
         'zone_filter' => $zoneFilter, // FILTRO POR ZONA REAL
+        'status_filter' => $statusFilter,
     ];
 
     if ($hasCustomDateFilters) {
@@ -97,7 +105,7 @@ class SchedulingController extends Controller
     // Enviar zonas a la vista
     $zones = \App\Models\Zone::orderBy('name')->get();
 
-    return view('schedulings.index', compact('schedulings', 'search', 'dateFrom', 'dateTo', 'zoneFilter', 'zones', 'hasCustomDateFilters'));
+    return view('schedulings.index', compact('schedulings', 'search', 'dateFrom', 'dateTo', 'zoneFilter', 'zones', 'hasCustomDateFilters', 'statusFilter'));
 }
 
     /**
@@ -474,6 +482,7 @@ class SchedulingController extends Controller
         $schedules = Schedule::orderBy('name')->get();
         $vehicles = Vehicle::orderBy('name')->get();
         $zones = Zone::orderBy('name')->get();
+        $motives = Motive::orderBy('name')->get();
 
         // 🔹 Empleados asignados
         $assigned = \App\Models\SchedulingDetail::with('user')
@@ -482,7 +491,11 @@ class SchedulingController extends Controller
             ->get();
 
         // 🔹 Todos los empleados que existen
-        $allEmployees = \App\Models\User::orderBy('firstname')->get();
+        $allEmployees = \App\Models\User::whereHas('contracts', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->orderBy('firstname')
+            ->get();
 
         return view('schedulings._modal_edit', compact(
             'scheduling',
@@ -491,7 +504,8 @@ class SchedulingController extends Controller
             'vehicles',
             'zones',
             'assigned',
-            'allEmployees'
+            'allEmployees',
+            'motives'
         ));
     }
 
@@ -585,6 +599,7 @@ class SchedulingController extends Controller
             // Mapear notas enviadas (add_notes o notes) hacia campos concretos para la auditoría
             $notesForAudit = [];
             $rawNotes = $request->input('add_notes', $request->input('notes'));
+            $motiveId = null;
 
             if ($rawNotes) {
                 $parsedNotes = is_string($rawNotes) ? json_decode($rawNotes, true) : $rawNotes;
@@ -593,6 +608,7 @@ class SchedulingController extends Controller
                     foreach ($parsedNotes as $noteRow) {
                         $tipo = strtolower($noteRow['tipo'] ?? '');
                         $nota = $noteRow['notas'] ?? null;
+                        $motiveId = $noteRow['motive_id'] ?? $motiveId;
                         if (!$nota) {
                             continue;
                         }
@@ -617,6 +633,11 @@ class SchedulingController extends Controller
                     // Si llega texto plano, asociarlo al campo notes genérico
                     $notesForAudit['notes'] = $rawNotes;
                 }
+            }
+
+            // Fallback si viene motive_id plano
+            if (!$motiveId && $request->filled('motive_id')) {
+                $motiveId = (int) $request->input('motive_id');
             }
 
             $scheduling->update($data);
@@ -651,7 +672,8 @@ class SchedulingController extends Controller
                                     $roleLabel,
                                     $oldUserId,
                                     $newUserId,
-                                    $request->add_notes ?? null
+                                    $request->add_notes ?? null,
+                                    $motiveId
                                 );
                             }
                         }
@@ -663,7 +685,7 @@ class SchedulingController extends Controller
             // 🔹 Registrar historial
             // =============================
             $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'type'];
-            $this->registrarCambios($scheduling, $originalData, $notesForAudit, $exceptFields);
+            $this->registrarCambios($scheduling, $originalData, $notesForAudit, $exceptFields, $motiveId);
 
             return $isTurbo
                 ? response()->json(['success' => true, 'message' => 'Programación actualizada exitosamente.'], 200)
@@ -1531,7 +1553,7 @@ class SchedulingController extends Controller
     /**
      * Registrar cambio de personal en historial
      */
-    private function registrarCambioDetalle(Scheduling $scheduling, string $rol, $oldUserId, $newUserId, ?string $nota = null): void
+    private function registrarCambioDetalle(Scheduling $scheduling, string $rol, $oldUserId, $newUserId, ?string $nota = null, ?int $motiveId = null): void
     {
         $auditTypeName = $this->getAuditTypeName($scheduling);
         $userName = auth()->check() ? auth()->user()->username : 'Sistema/Invitado';
@@ -1543,6 +1565,7 @@ class SchedulingController extends Controller
             'valor_anterior' => $this->nombreUsuario($oldUserId),
             'valor_nuevo' => $this->nombreUsuario($newUserId),
             'user_name' => $userName,
+            'motive_id' => $motiveId,
             'nota_adicional' => $nota,
         ]);
     }
@@ -1798,7 +1821,11 @@ class SchedulingController extends Controller
 
         $schedules = Schedule::orderBy('name')->get();
         $groups = EmployeeGroup::orderBy('name')->get();
-        $users = User::orderBy('firstname')->get();
+        $users = User::whereHas('contracts', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->orderBy('firstname')
+            ->get();
         $vehicles = Vehicle::orderBy('name')->get();
         $zones = Zone::orderBy('name')->get();
 
@@ -1953,6 +1980,8 @@ class SchedulingController extends Controller
 
             foreach ($request->updates as $item) {
 
+                $motiveId = $item['motive_id'] ?? null;
+
                 $scheduling = Scheduling::find($item['id']);
                 $original = $scheduling->getOriginal();
 
@@ -2001,13 +2030,14 @@ class SchedulingController extends Controller
                             if (!empty($item['changes']) && is_array($item['changes'])) {
                                 $notaCambio = $item['changes'][0]['notas'] ?? null;
                             }
-                            $this->registrarCambioDetalle(
-                                $scheduling,
-                                $roleLabel,
-                                $oldUserId,
-                                $row['user_id'],
-                                $notaCambio
-                            );
+                                $this->registrarCambioDetalle(
+                                    $scheduling,
+                                    $roleLabel,
+                                    $oldUserId,
+                                    $row['user_id'],
+                                    $notaCambio,
+                                    $motiveId
+                                );
                         }
                     }
                 }
@@ -2020,7 +2050,8 @@ class SchedulingController extends Controller
                         $scheduling,
                         $original,
                         [],
-                        ['id', 'created_at', 'updated_at', 'deleted_at']
+                        ['id', 'created_at', 'updated_at', 'deleted_at'],
+                        $motiveId
                     );
                 }
             }

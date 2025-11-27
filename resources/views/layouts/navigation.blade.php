@@ -6,7 +6,7 @@
     $activeVehicles = request()->routeIs('vehiclecolors.*') || request()->routeIs('brands.*') || request()->routeIs('brand-models.*') || request()->routeIs('vehicletypes.*') || request()->routeIs('vehicles.*') || request()->routeIs('maintenances.*') || request()->routeIs('maintenance-schedules.*') || request()->routeIs('maintenance-records.*');
     $activeStaff = request()->routeIs('usertypes.*') || request()->routeIs('personal.*') || request()->routeIs('contracts.*') || request()->routeIs('attendances.*') || request()->routeIs('vacations.*');
     $activeScheduling = request()->routeIs('schedules.*') || request()->routeIs('zones.*') || request()->routeIs('groups.*') || request()->routeIs('schedulings.*');
-    $activeChanges = request()->routeIs('history.*');
+    $activeChanges = request()->routeIs('history.*') || request()->routeIs('motives.*');
 
     $linkBase = 'group flex items-center gap-3 px-3 py-2.5 rounded-2xl border border-white/5 text-slate-200 hover:text-white hover:border-emerald-300/40 hover:bg-white/5 transition';
     $linkActive = 'bg-gradient-to-r from-emerald-500/90 to-emerald-600 text-white shadow-[0_10px_40px_rgba(16,185,129,0.35)] border-emerald-300/70';
@@ -124,7 +124,7 @@
                 <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
             </summary>
             <div class="pl-14 mt-2 space-y-1">
-                <a href="#" class="{{ $subLinkBase }}"><i class="fas fa-clipboard-list mr-2"></i>Motivos</a>
+                <a href="{{ route('motives.index') }}" class="{{ $subLinkBase }} {{ request()->routeIs('motives.*') ? $subLinkActive : '' }}"><i class="fas fa-clipboard-list mr-2"></i>Motivos</a>
                 <a href="{{ route('history.index') }}" class="{{ $subLinkBase }} {{ request()->routeIs('history.*') ? $subLinkActive : '' }}"><i class="fas fa-retweet mr-2"></i>Cambios</a>
             </div>
         </details>

@@ -49,7 +49,7 @@ class ContractsSeeder extends Seeder
 
                 case 'permanente':
                     // Contrato a largo plazo
-                    $dateEnd = $dateStart->copy()->addYears(2);
+                    $dateEnd = null;
                     $vacationDays = 30;
                     $probationMonths = 3;
                     break;
