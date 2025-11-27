@@ -39,7 +39,7 @@
                                     Fecha Inicial
                                 </label>
                                 <input type="date" name="start_date" id="start_date"
-                                    value="{{ request('start_date') }}"
+                                    value="{{ request('start_date') }}" max="{{ $today->format('Y-m-d') }}"
                                     class="w-full px-4 py-2.5 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
                             </div>
 
@@ -48,7 +48,7 @@
                                     <i class="fa-solid fa-calendar-check mr-1 text-emerald-600"></i>
                                     Fecha Final <span class="text-slate-400 text-xs">(Opcional)</span>
                                 </label>
-                                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}"
+                                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" max="{{ $today->format('Y-m-d') }}"
                                     class="w-full px-4 py-2.5 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
                             </div>
                         </div>

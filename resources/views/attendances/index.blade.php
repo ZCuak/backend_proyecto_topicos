@@ -310,8 +310,14 @@
             {{ $attendances->links() }}
         </div>
     </div>
+@endsection
+
+@section('pruebaMdl')
     @include('attendances._filter')
-    <script>
+@endsection
+
+@section('pruebaJS')
+<script>
         function openFiltersModal() {
             document.getElementById('filtersModal').classList.remove('hidden');
             document.body.style.overflow = 'hidden';

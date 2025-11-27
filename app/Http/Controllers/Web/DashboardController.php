@@ -19,13 +19,13 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        // Fecha: por defecto HOY, no permite fechas anteriores
+        // Fecha: por defecto HOY
         $selectedDate = $request->input('date', now()->format('Y-m-d'));
 
         // Validar que no sea fecha pasada
-        if (Carbon::parse($selectedDate)->isBefore(now()->startOfDay())) {
-            $selectedDate = now()->format('Y-m-d');
-        }
+        // if (Carbon::parse($selectedDate)->isBefore(now()->startOfDay())) {
+        //     $selectedDate = now()->format('Y-m-d');
+        // }
 
         // Turno: por defecto TODOS
         $selectedScheduleId = $request->input('schedule_id');

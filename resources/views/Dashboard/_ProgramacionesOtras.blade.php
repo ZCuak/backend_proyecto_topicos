@@ -27,7 +27,7 @@
                 <div class="mb-4">
                     <p class="text-xs font-semibold text-purple-600 mb-2 flex items-center gap-1">
                         <i class="fa-solid fa-spinner"></i>
-                        En Proceso ({{ $inProcessZones->count() }})
+                        En Recorrido ({{ $inProcessZones->count() }})
                     </p>
                     <div class="space-y-2">
                         @foreach ($inProcessZones as $zoneData)
@@ -42,7 +42,7 @@
                                 <div class="mb-2 p-2 bg-purple-50 rounded text-center">
                                     <p class="text-xs text-purple-700 font-medium">
                                         <i class="fa-solid fa-clock mr-1"></i>
-                                        En proceso desde
+                                        En Recorrido desde
                                         {{ $zoneData['scheduling']->updated_at->format('H:i') }}
                                     </p>
                                 </div>

@@ -2,10 +2,10 @@
 @section('title', 'Marcar Asistencia - RSU Reciclaje')
 
 @section('content')
-    <div
-        class="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 dark:from-gray-900 dark:to-gray-800 px-4">
-        <div
-            class="w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-8 border-2 border-green-300 dark:border-gray-700">
+    <div class="relative flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 px-4 py-10 overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.14),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.12),transparent_32%)] pointer-events-none"></div>
+
+        <div class="relative w-full max-w-lg bg-white/95 dark:bg-gray-900/90 shadow-2xl rounded-2xl p-8 border border-emerald-200/70 dark:border-gray-700 backdrop-blur">
 
             {{-- ENCABEZADO  --}}
             <div class="text-center mb-6">
@@ -13,10 +13,12 @@
                     class="bg-green-100 dark:bg-green-900 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fa-solid fa-clock text-green-600 dark:text-green-400 text-4xl"></i>
                 </div>
-                <h1 class="text-3xl font-bold text-green-700 dark:text-green-400">Marcar Asistencia</h1>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    Sistema de control de asistencia - RSU Reciclaje 🌱
+                <h1 class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">Marcar Asistencia</h1>
+                <h1 class="text-3xl font-bold text-green-700 dark:text-green-400"></h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Sistema de gestión de rutas y personal - USAT 🌱
                 </p>
+                
                 <div class="mt-3 text-xs text-gray-500 dark:text-gray-500">
                     <i class="fa-solid fa-calendar-day mr-1"></i>
                     <span id="currentDate"></span>

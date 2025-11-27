@@ -27,7 +27,7 @@
                         <i class="fa-solid fa-calendar-day text-emerald-600 mr-1"></i>
                         Seleccione una fecha:
                     </label>
-                    <input type="date" name="date" value="{{ $selectedDate }}" min="{{ now()->format('Y-m-d') }}"
+                    <input type="date" name="date" value="{{ $selectedDate }}"
                         class="w-full px-4 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
                 </div>
 
@@ -98,9 +98,9 @@
                 class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-5 border-2 border-orange-200 hover:border-orange-400 hover:scale-105 transition-all duration-200 cursor-pointer text-left">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm text-orange-600 font-medium">Faltan</p>
+                        <p class="text-sm text-orange-600 font-medium">Empleados Faltantes</p>
                         <p class="text-3xl font-bold text-orange-700 mt-1" data-stat="absent_personnel">
-                            {{ $stats['absent_personnel'] }}
+                            {{ $stats['absent_personnel'] }} 
                         </p>
                     </div>
                     <div class="bg-orange-200 w-14 h-14 rounded-full flex items-center justify-center">
@@ -112,7 +112,7 @@
             <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-5 border border-purple-200">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm text-purple-600 font-medium">En Proceso</p>
+                        <p class="text-sm text-purple-600 font-medium">En Recorrido</p>
                         <p class="text-3xl font-bold text-purple-700 mt-1" data-stat="in_process">
                             {{ $stats['in_process'] }}
                         </p>
@@ -173,7 +173,7 @@
                     <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
                         <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                             <i class="fa-solid fa-clock text-blue-600"></i>
-                            Programaciones Pendientes
+                            Programaciones
                         </h2>
                     </div>
 
@@ -189,7 +189,7 @@
                     <div class="bg-slate-50 px-4 py-3 border-b border-slate-200">
                         <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
                             <i class="fa-solid fa-chart-line text-purple-600"></i>
-                            En Curso y Completadas
+                            En Recorrido y Finalizadas
                         </h2>
                     </div>
 
