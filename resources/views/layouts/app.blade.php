@@ -102,6 +102,8 @@
         </footer>
     </div>
 
+    @yield('pruebaMdl')
+
     <script>
         document.addEventListener("turbo:visit", () => {
             document.getElementById("page-loader")?.classList.remove("hidden");
@@ -128,6 +130,8 @@
     <!-- === CSS interno o en tu archivo app.css === -->
    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    @yield('pruebaJS')
 </body>
 
 </html>

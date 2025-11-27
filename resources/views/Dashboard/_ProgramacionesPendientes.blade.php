@@ -1,7 +1,7 @@
 @if ($pendingZones->isEmpty())
     <div class="text-center py-12 text-slate-400">
         <i class="fa-solid fa-calendar-xmark text-5xl mb-3 text-slate-300"></i>
-        <p class="text-lg font-medium">No hay programaciones pendientes</p>
+        <p class="text-lg font-medium">No hay programaciones en la fecha indicada</p>
     </div>
 @else
     {{-- 2 COLUMNAS × N FILAS --}}
