@@ -27,7 +27,7 @@
                         <i class="fa-solid fa-calendar-day text-emerald-600 mr-1"></i>
                         Seleccione una fecha:
                     </label>
-                    <input type="date" name="date" value="{{ $selectedDate }}" min="{{ now()->format('Y-m-d') }}"
+                    <input type="date" name="date" value="{{ $selectedDate }}"
                         class="w-full px-4 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
                 </div>
 
