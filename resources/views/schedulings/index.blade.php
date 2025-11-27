@@ -55,15 +55,21 @@
     {{-- FILTROS --}}
 <form method="GET" class="flex items-center gap-3 bg-white p-4 rounded-xl shadow border border-slate-100">
 
-    <input type="text" name="search" placeholder="Buscar por grupo, horario, vehículo, zona, notas..."
+    <input type="text" name="search" placeholder="Buscar por grupo, horario, vehiculo, zona, notas..."
         value="{{ $search }}"
         class="flex-1 border-none focus:ring-0 text-slate-700 placeholder-slate-400">
 
-    <input type="date" name="date_filter" 
-        value="{{ $dateFilter }}"
-        class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+    <div class="flex items-center gap-2">
+        <input type="date" name="date_from" 
+            value="{{ $dateFrom }}"
+            class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+        <span class="text-slate-400 text-sm">a</span>
+        <input type="date" name="date_to" 
+            value="{{ $dateTo }}"
+            class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+    </div>
 
-    <!-- 🔥 SELECT FILTRO ZONA -->
+    <!-- SELECT FILTRO ZONA -->
     <select name="zone_filter"
         class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
         <option value="">Todas las zonas</option>
@@ -80,7 +86,7 @@
         <i class="fa-solid fa-search"></i>
     </button>
 
-    @if($search || $dateFilter || $zoneFilter)
+    @if($search || $zoneFilter || $hasCustomDateFilters)
         <a href="{{ route('schedulings.index') }}"
             class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
             <i class="fa-solid fa-times"></i>
@@ -262,3 +268,5 @@
     </div>
 </div>
 @endsection
+
+

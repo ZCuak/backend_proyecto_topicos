@@ -154,9 +154,8 @@
                     <tbody>
                         @foreach($details as $index => $detail)
                             @php
-                                $attendance = $attendancesByUser[$detail->user_id] ?? null;
                                 //dd($attendancesByUser);
-                                $statusKey = $attendance ? strtoupper($attendance->status) : strtolower($detail->attendance_status ?? '');
+                                $statusKey = strtolower($detail->attendance_status ?? '');
                                 $statusColors = [
                                     'PRESENTE' => 'bg-green-100 text-green-800',
                                     'AUSENTE' => 'bg-red-100 text-red-800',
@@ -167,9 +166,7 @@
                                     'justificado' => 'bg-blue-100 text-blue-800',
                                 ];
                                 $color = $statusColors[$statusKey] ?? 'bg-slate-100 text-slate-700';
-                                $statusLabel = $attendance
-                                    ? ucfirst(strtolower($attendance->status))
-                                    : ($detail->attendance_status_name ?? 'Pendiente');
+                                
                             @endphp
                             <tr class="{{ $loop->even ? 'bg-slate-50' : '' }}">
                                 <td class="px-4 py-2 border">{{ $index + 1 }}</td>
@@ -178,7 +175,7 @@
                                 <td class="px-4 py-2 border">{{ $detail->role_name }}</td>
                                 <td class="px-4 py-2 border">
                                     <span class="px-3 py-1 rounded-full text-xs font-medium {{ $color }}">
-                                        {{ $statusLabel }}
+                                        {{ $detail->attendance_status_name }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-2 border">{{ $detail->notes ?? '—' }}</td>
