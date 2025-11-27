@@ -581,6 +581,44 @@ class SchedulingController extends Controller
             // 🔹 GUARDAR CAMBIOS PRINCIPALES
             // =============================
             $originalData = $scheduling->getOriginal();
+
+            // Mapear notas enviadas (add_notes o notes) hacia campos concretos para la auditoría
+            $notesForAudit = [];
+            $rawNotes = $request->input('add_notes', $request->input('notes'));
+
+            if ($rawNotes) {
+                $parsedNotes = is_string($rawNotes) ? json_decode($rawNotes, true) : $rawNotes;
+
+                if (is_array($parsedNotes)) {
+                    foreach ($parsedNotes as $noteRow) {
+                        $tipo = strtolower($noteRow['tipo'] ?? '');
+                        $nota = $noteRow['notas'] ?? null;
+                        if (!$nota) {
+                            continue;
+                        }
+
+                        switch ($tipo) {
+                            case 'turno':
+                                $notesForAudit['schedule_id'] = $nota;
+                                break;
+                            case 'vehículo':
+                            case 'vehiculo':
+                                $notesForAudit['vehicle_id'] = $nota;
+                                break;
+                            case 'reemplazo personal':
+                                $notesForAudit['group_id'] = $nota;
+                                break;
+                            default:
+                                $notesForAudit['notes'] = $nota;
+                                break;
+                        }
+                    }
+                } elseif (is_string($rawNotes)) {
+                    // Si llega texto plano, asociarlo al campo notes genérico
+                    $notesForAudit['notes'] = $rawNotes;
+                }
+            }
+
             $scheduling->update($data);
 
             // =============================
@@ -625,7 +663,7 @@ class SchedulingController extends Controller
             // 🔹 Registrar historial
             // =============================
             $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'type'];
-            $this->registrarCambios($scheduling, $originalData, $request->add_notes, $exceptFields);
+            $this->registrarCambios($scheduling, $originalData, $notesForAudit, $exceptFields);
 
             return $isTurbo
                 ? response()->json(['success' => true, 'message' => 'Programación actualizada exitosamente.'], 200)
@@ -2070,4 +2108,3 @@ class SchedulingController extends Controller
         return implode(' ', $errorMessages);
     }
 }
-

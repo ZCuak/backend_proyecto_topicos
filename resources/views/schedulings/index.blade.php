@@ -41,16 +41,6 @@
         </div>
     </div>
 
-    {{-- ALERTAS --}}
-    @if(session('success'))
-        <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg">
-            {{ session('success') }}
-        </div>
-    @elseif(session('error'))
-        <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-            {{ session('error') }}
-        </div>
-    @endif
 
     {{-- FILTROS --}}
 <form method="GET" class="flex items-center gap-3 bg-white p-4 rounded-xl shadow border border-slate-100">
@@ -230,8 +220,10 @@
                             @if((int) $scheduling->status === 1)
                                 <form method="POST"
                                       action="{{ route('schedulings.finalize', $scheduling->id) }}"
-                                      class="inline"
-                                      onsubmit="return confirm('�Finalizar esta programaci�n?');">
+                                      class="inline finalize-form"
+                                      data-scheduling="{{ $scheduling->id }}"
+                                      data-date="{{ is_string($scheduling->date) ? \Carbon\Carbon::parse($scheduling->date)->format('d/m/Y') : $scheduling->date->format('d/m/Y') }}"
+                                      data-group="{{ $scheduling->group->name ?? 'Sin grupo' }}">
                                     @csrf
                                     <button type="submit"
                                         class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200"
@@ -267,6 +259,57 @@
         {{ $schedulings->links() }}
     </div>
 </div>
+@endsection
+
+@section('pruebaJS')
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const finalizeForms = document.querySelectorAll('.finalize-form');
+
+        finalizeForms.forEach((form) => {
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const target = event.currentTarget;
+                const schedId = target.dataset.scheduling || '';
+                const dateLabel = target.dataset.date || '';
+                const groupLabel = target.dataset.group || '';
+
+                Swal.fire({
+                    title: 'Finalizar programacion',
+                    html: `
+                        <div class="text-slate-600">¿Marcar como completada?</div>
+                        <div class="text-xs text-slate-500 mt-2 font-medium">
+                            #${schedId} • ${groupLabel} • ${dateLabel}
+                        </div>
+                    `,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Si, finalizar',
+                    cancelButtonText: 'No, cancelar',
+                    buttonsStyling: false,
+                    customClass: {
+                        popup: 'rounded-3xl shadow-2xl border border-emerald-100',
+                        confirmButton: 'px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-md mx-1',
+                        cancelButton: 'px-4 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition mx-1'
+                    },
+                    background: '#f8fafc'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Finalizando',
+                            text: 'Guardando cambios...',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            showConfirmButton: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+                        target.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
 @endsection
 
 

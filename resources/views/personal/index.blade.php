@@ -46,6 +46,7 @@
             <thead class="bg-emerald-50">
                 <tr>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">#</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Foto</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">DNI</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Nombre Completo</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Usuario</th>
@@ -63,6 +64,17 @@
                 @forelse($personales as $p)
                     <tr class="hover:bg-emerald-50/40 transition">
                         <td class="px-4 py-3 text-slate-600">{{ $p->id }}</td>
+                        <td class="px-4 py-3">
+                            @if($p->profile_photo_path)
+                                <img src="{{ asset('storage/'.$p->profile_photo_path) }}"
+                                     alt="Foto de {{ $p->firstname }}"
+                                     class="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-sm">
+                            @else
+                                <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border border-slate-200">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 font-mono text-slate-700">{{ $p->dni }}</td>
                         <td class="px-4 py-3 text-slate-700 font-medium">{{ $p->firstname }} {{ $p->lastname }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $p->username }}</td>
@@ -107,7 +119,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center py-4 text-slate-400">No se encontraron registros.</td>
+                        <td colspan="12" class="text-center py-4 text-slate-400">No se encontraron registros.</td>
                     </tr>
                 @endforelse
             </tbody>
