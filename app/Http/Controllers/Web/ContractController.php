@@ -185,6 +185,28 @@ class ContractController extends Controller
                     return back()->with('error', $resp['message'])->withInput();
                 }
 
+                // Validar que la duración no exceda 3 meses
+                $dateStart = Carbon::parse($request->date_start);
+                $dateEnd = Carbon::parse($request->date_end);
+                $durationMonths = $dateStart->diffInMonths($dateEnd);
+
+                if ($durationMonths > 3) {
+                    $resp = [
+                        'success' => false,
+                        'message' => 'Los contratos eventuales no pueden tener una duración mayor a 3 meses.',
+                        'duration_months' => $durationMonths
+                    ];
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $resp['message'],
+                            'errors' => ['general' => [$resp['message']]],
+                            'duration_months' => $durationMonths,
+                        ], 422);
+                    }
+                    return back()->with('error', $resp['message'])->withInput();
+                }
+
                 if ($request->vacation_days_per_year) {
                     $resp = [
                         'success' => false,
@@ -378,6 +400,28 @@ class ContractController extends Controller
                             'success' => false,
                             'message' => $resp['message'],
                             'errors' => ['general' => [$resp['message']]],
+                        ], 422);
+                    }
+                    return back()->with('error', $resp['message'])->withInput();
+                }
+
+                // Validar que la duración no exceda 3 meses
+                $dateStart = Carbon::parse($request->date_start);
+                $dateEnd = Carbon::parse($request->date_end);
+                $durationMonths = $dateStart->diffInMonths($dateEnd);
+
+                if ($durationMonths > 3) {
+                    $resp = [
+                        'success' => false,
+                        'message' => 'Los contratos eventuales no pueden tener una duración mayor a 3 meses.',
+                        'duration_months' => $durationMonths
+                    ];
+                    if ($isTurbo) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $resp['message'],
+                            'errors' => ['general' => [$resp['message']]],
+                            'duration_months' => $durationMonths,
                         ], 422);
                     }
                     return back()->with('error', $resp['message'])->withInput();
