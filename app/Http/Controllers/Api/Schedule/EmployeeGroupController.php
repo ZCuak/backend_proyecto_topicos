@@ -85,6 +85,42 @@ class EmployeeGroupController extends Controller
     }
 
     /**
+     * Mostrar un grupo (JSON para autocompletar formularios)
+     */
+    public function show(Request $request, $id)
+    {
+        $group = EmployeeGroup::with(['zone', 'schedule', 'vehicle', 'configgroups.user'])->find($id);
+
+        if (!$group) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Grupo no encontrado.',
+            ], 404);
+        }
+
+        $days = is_array($group->days) ? $group->days : json_decode($group->days, true);
+        $configGroups = $group->configgroups->sortBy('id')->values();
+        $driverId = $configGroups[0]->user_id ?? null;
+        $helper1Id = $configGroups[1]->user_id ?? null;
+        $helper2Id = $configGroups[2]->user_id ?? null;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $group->id,
+                'name' => $group->name,
+                'schedule_id' => $group->schedule_id,
+                'vehicle_id' => $group->vehicle_id,
+                'zone_id' => $group->zone_id,
+                'driver_id' => $driverId,
+                'helper1_id' => $helper1Id,
+                'helper2_id' => $helper2Id,
+                'days' => $days ?? [],
+            ],
+        ]);
+    }
+
+    /**
      * Guardar nuevo registro
      */
     public function store(Request $request)

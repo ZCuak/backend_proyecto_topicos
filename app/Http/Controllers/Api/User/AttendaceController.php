@@ -92,6 +92,10 @@ class AttendaceController extends Controller
      */
     public function create()
     {
+        $selectedDate = request('date', Carbon::today()->format('Y-m-d'));
+        $presentUserIds = Attendace::whereDate('date', $selectedDate)
+            ->where('status', Attendace::STATUS_PRESENTE)
+            ->pluck('user_id');
 
         $usuarios = User::where('status', 'ACTIVO')
             ->whereHas('contracts', function ($query) {
@@ -102,16 +106,14 @@ class AttendaceController extends Controller
                             ->orWhereDate('date_end', '>=', now());
                     });
             })
+            ->whereNotIn('id', $presentUserIds)
             ->orderBy('firstname')
             ->get();
 
-        // dd($usuarios);
-
-
-        $attendance = new Attendace();
+        $attendance = new Attendace(['date' => $selectedDate]);
 
         return response()
-            ->view('attendances._modal_create', compact('attendance', 'usuarios'))
+            ->view('attendances._modal_create', compact('attendance', 'usuarios', 'selectedDate'))
             ->header('Turbo-Frame', 'modal-frame');
     }
 

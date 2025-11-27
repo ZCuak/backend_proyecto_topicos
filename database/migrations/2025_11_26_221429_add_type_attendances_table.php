@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('schedulings', function (Blueprint $table) {
-          //  $table->string('days', 255)->nullable()->after('notes');
+        Schema::table('attendances', function (Blueprint $table) {
+            $table->enum('type', ['ENTRADA', 'SALIDA'])->default('ENTRADA')->comment('Tipo de asistencia');
         });
     }
 
@@ -21,8 +21,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('schedulings', function (Blueprint $table) {
-         //   $table->dropColumn('days');
-        });
+        //
     }
 };

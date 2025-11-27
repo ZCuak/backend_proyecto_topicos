@@ -70,6 +70,10 @@
                     class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/50 bg-white/70 text-emerald-700 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:text-emerald-800 transition">
                     <i class="fas fa-calendar-check"></i>
                 </a>
+                <a href="{{ route('attendances.index') }}" title="Gestion de Asistencias"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/50 bg-white/70 text-emerald-700 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:text-emerald-800 transition">
+                    <i class="fas fa-user-clock"></i>
+                </a>
                 <a href="{{ route('history.index') }}" title="Gestion de cambios"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/50 bg-white/70 text-emerald-700 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:text-emerald-800 transition">
                     <i class="fas fa-retweet"></i>

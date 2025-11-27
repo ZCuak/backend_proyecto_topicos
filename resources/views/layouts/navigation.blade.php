@@ -16,23 +16,7 @@
     $subLinkActive = 'bg-white/10 text-white border border-emerald-300/50';
 @endphp
 
-<nav class="fixed md:hidden inset-x-0 top-0 h-16 z-40 bg-white/85 backdrop-blur-xl border-b border-white/60 flex items-center px-4 shadow-lg shadow-emerald-100/40">
-    <button id="menuToggle" class="mr-3 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 shadow">
-        <i class="fa-solid fa-bars"></i>
-    </button>
-    <div class="flex items-center gap-3">
-        <img src="{{ asset('img/logo_rsu.png') }}" alt="RSU" class="h-9 w-auto">
-        <div class="leading-tight">
-            <p class="text-xs text-slate-500">RSU Reciclaje</p>
-            <p class="text-sm font-semibold text-slate-800">Panel avanzado</p>
-        </div>
-    </div>
-    @if($user)
-        <span class="ml-auto text-[11px] uppercase tracking-wide font-semibold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">
-            {{ $user->usertype->name ?? 'Usuario' }}
-        </span>
-    @endif
-</nav>
+
 
 <aside id="sidebarMenu"
     class="fixed md:static top-16 md:top-0 left-0 h-[calc(100vh-4rem)] md:h-screen w-80 -translate-x-full md:translate-x-0
@@ -40,20 +24,22 @@
 
    
 
-    <div class="px-5 py-5 border-b border-white/10 flex items-center gap-3">
-        @if($user && $user->profile_photo_path)
-            <img src="{{ asset('storage/'.$user->profile_photo_path) }}" class="w-12 h-12 rounded-2xl border border-white/10 object-cover shadow-lg shadow-emerald-500/20">
-        @else
-            <div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-emerald-200 border border-white/10">
-                <i class="fa-solid fa-user"></i>
+    <div class="px-5 py-5 border-b border-white/10 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            @if($user && $user->profile_photo_path)
+                <img src="{{ asset('storage/'.$user->profile_photo_path) }}" class="w-12 h-12 rounded-2xl border border-white/10 object-cover shadow-lg shadow-emerald-500/20">
+            @else
+                <div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-emerald-200 border border-white/10">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+            @endif
+            <div class="leading-tight min-w-0">
+                <p class="text-sm font-semibold text-white truncate">{{ $user->firstname ?? 'Usuario' }} {{ $user->lastname ?? '' }}</p>
+                <p class="text-xs text-slate-300 truncate">{{ $user->email ?? '' }}</p>
             </div>
-        @endif
-        <div class="leading-tight">
-            <p class="text-sm font-semibold text-white">{{ $user->firstname ?? 'Usuario' }} {{ $user->lastname ?? '' }}</p>
-            <p class="text-xs text-slate-300">{{ $user->email ?? '' }}</p>
         </div>
-         @if($user)
-            <span class="text-[11px] font-semibold bg-white/10 border border-emerald-300/40 text-emerald-100 px-3 py-1 rounded-full uppercase tracking-wide">
+        @if($user)
+            <span class="shrink-0 text-[11px] font-semibold bg-white/10 border border-emerald-300/40 text-emerald-100 px-3 py-1 rounded-full uppercase tracking-wide">
                 {{ $user->usertype->name ?? 'Usuario' }}
             </span>
         @endif

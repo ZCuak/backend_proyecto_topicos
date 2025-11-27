@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard/programaciones-otras', [DashboardController::class, 'getPrgOtras'])->name('dashboard.activeCompletedZones');
     Route::get('/dashboard/stats', [DashboardController::class, 'getStats'])->name('dashboard.stats');
     Route::get('/dashboard/schedulings/{scheduling}/edit-with-replacements', [DashboardController::class, 'editWithReplacements'])->name('dashboard.schedulings.editWithReplacements');
+    Route::post('schedulings/{scheduling}/finalize', [SchedulingController::class, 'finalize'])->name('schedulings.finalize');
 
 
     Route::resource('maintenances', MaintenanceController::class);

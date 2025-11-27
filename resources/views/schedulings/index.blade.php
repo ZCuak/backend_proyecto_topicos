@@ -16,6 +16,11 @@
                class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
                <i class="fa-solid fa-calendar"></i> Vista Calendario
             </a>
+
+            <a href="{{ route('attendances.index') }}"
+               class="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition">
+               <i class="fa-solid fa-clipboard-check"></i> Asistencias
+            </a>
             
             <a href="{{ route('schedulings.create') }}"
                data-turbo-frame="modal-frame"
@@ -48,27 +53,41 @@
     @endif
 
     {{-- FILTROS --}}
-    <form method="GET" class="flex items-center gap-3 bg-white p-4 rounded-xl shadow border border-slate-100">
-        <input type="text" name="search" placeholder="Buscar por grupo, horario, vehiculo, zona, notas..."
-               value="{{ $search }}"
-               class="flex-1 border-none focus:ring-0 text-slate-700 placeholder-slate-400">
-        
-        <input type="date" name="date_filter" 
-               value="{{ $dateFilter }}"
-               class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
-        
-        <button type="submit"
-                class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
-            <i class="fa-solid fa-search"></i>
-        </button>
-        
-        @if($search || $dateFilter)
-            <a href="{{ route('schedulings.index') }}"
-               class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
-                <i class="fa-solid fa-times"></i>
-            </a>
-        @endif
-    </form>
+<form method="GET" class="flex items-center gap-3 bg-white p-4 rounded-xl shadow border border-slate-100">
+
+    <input type="text" name="search" placeholder="Buscar por grupo, horario, vehículo, zona, notas..."
+        value="{{ $search }}"
+        class="flex-1 border-none focus:ring-0 text-slate-700 placeholder-slate-400">
+
+    <input type="date" name="date_filter" 
+        value="{{ $dateFilter }}"
+        class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+
+    <!-- 🔥 SELECT FILTRO ZONA -->
+    <select name="zone_filter"
+        class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+        <option value="">Todas las zonas</option>
+
+        @foreach($zones as $zone)
+            <option value="{{ $zone->id }}" {{ $zoneFilter == $zone->id ? 'selected' : '' }}>
+                {{ $zone->name }}
+            </option>
+        @endforeach
+    </select>
+
+    <button type="submit"
+        class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+        <i class="fa-solid fa-search"></i>
+    </button>
+
+    @if($search || $dateFilter || $zoneFilter)
+        <a href="{{ route('schedulings.index') }}"
+            class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
+            <i class="fa-solid fa-times"></i>
+        </a>
+    @endif
+</form>
+
 
     {{-- TABLA DE PROGRAMACIONES --}}
     <div class="bg-white rounded-xl shadow-md border border-slate-100 overflow-x-auto">
@@ -76,6 +95,7 @@
             <thead class="bg-emerald-50">
                 <tr>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">#</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Día</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Fecha</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Grupo</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-600 uppercase">Horario</th>
@@ -91,7 +111,21 @@
                 @forelse($schedulings as $scheduling)
                     <tr class="hover:bg-emerald-50/40 transition">
                         <td class="px-4 py-3 text-slate-600">{{ $scheduling->id }}</td>
-                        
+                        <td class="px-4 py-3">
+    @php
+        $dayName = \Carbon\Carbon::parse($scheduling->date)->locale('es')->dayName;
+        // convertir primera letra a mayúscula (lunes → Lunes)
+        $dayName = ucfirst($dayName);
+    @endphp
+
+    <div class="flex items-center gap-2">
+        <i class="fa-solid fa-calendar-day text-indigo-600"></i>
+        <span class="text-slate-700 font-medium">
+            {{ $dayName }}
+        </span>
+    </div>
+</td>
+
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
                                 <i class="fa-solid fa-calendar text-emerald-600"></i>
@@ -160,7 +194,7 @@
                         <td class="px-4 py-3">
                             @php
                                 $statusConfig = [
-                                    0 => ['text' => 'Pendiente', 'class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'fa-clock'],
+                                    0 => ['text' => 'Programado', 'class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'fa-clock'],
                                     1 => ['text' => 'En Proceso', 'class' => 'bg-blue-100 text-blue-800', 'icon' => 'fa-play'],
                                     2 => ['text' => 'Completado', 'class' => 'bg-green-100 text-green-800', 'icon' => 'fa-check'],
                                     3 => ['text' => 'Cancelado', 'class' => 'bg-red-100 text-red-800', 'icon' => 'fa-times']
@@ -186,6 +220,20 @@
                                title="Editar">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
+
+                            @if((int) $scheduling->status === 1)
+                                <form method="POST"
+                                      action="{{ route('schedulings.finalize', $scheduling->id) }}"
+                                      class="inline"
+                                      onsubmit="return confirm('�Finalizar esta programaci�n?');">
+                                    @csrf
+                                    <button type="submit"
+                                        class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200"
+                                        title="Finalizar">
+                                        <i class="fa-solid fa-flag-checkered"></i>
+                                    </button>
+                                </form>
+                            @endif
 
                             <button type="button"
                                     class="btn-delete px-2 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200"

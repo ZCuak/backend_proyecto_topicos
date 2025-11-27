@@ -7,7 +7,7 @@
     <title>@yield('title', 'RSU Reciclaje | USAT')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @livewireStyles
+   
 </head>
 
 <body class="font-sans antialiased h-full flex flex-col items-center justify-center text-gray-800 dark:text-gray-100">
@@ -15,6 +15,5 @@
         @yield('content')
     </main>
 
-    @livewireScripts
 </body>
 </html>
