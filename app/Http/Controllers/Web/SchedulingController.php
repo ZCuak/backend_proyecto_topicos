@@ -36,6 +36,7 @@ class SchedulingController extends Controller
     $dateFrom = $request->input('date_from');
     $dateTo = $request->input('date_to');
     $zoneFilter = $request->input('zone_filter'); // FILTRO POR ZONA REAL
+    $statusFilter = $request->input('status_filter');
     $hasCustomDateFilters = $request->filled('date_from') || $request->filled('date_to');
 
     // Por defecto mostrar solo las programaciones de hoy
@@ -80,10 +81,16 @@ class SchedulingController extends Controller
         $query->where('zone_id', $zoneFilter);
     }
 
+    // FILTRO POR ESTADO
+    if ($statusFilter !== null && $statusFilter !== '') {
+        $query->where('status', (int) $statusFilter);
+    }
+
     $appends = [
         'search' => $search,
         'perPage' => $perPage,
         'zone_filter' => $zoneFilter, // FILTRO POR ZONA REAL
+        'status_filter' => $statusFilter,
     ];
 
     if ($hasCustomDateFilters) {
@@ -98,7 +105,7 @@ class SchedulingController extends Controller
     // Enviar zonas a la vista
     $zones = \App\Models\Zone::orderBy('name')->get();
 
-    return view('schedulings.index', compact('schedulings', 'search', 'dateFrom', 'dateTo', 'zoneFilter', 'zones', 'hasCustomDateFilters'));
+    return view('schedulings.index', compact('schedulings', 'search', 'dateFrom', 'dateTo', 'zoneFilter', 'zones', 'hasCustomDateFilters', 'statusFilter'));
 }
 
     /**
@@ -1821,6 +1828,7 @@ class SchedulingController extends Controller
             ->get();
         $vehicles = Vehicle::orderBy('name')->get();
         $zones = Zone::orderBy('name')->get();
+        $motives = Motive::orderBy('name')->get();
 
         $programaciones = collect();
 
@@ -1845,6 +1853,7 @@ class SchedulingController extends Controller
             'users',
             'vehicles',
             'zones',
+            'motives',
             'programaciones'
         ));
     }
@@ -1965,6 +1974,7 @@ class SchedulingController extends Controller
             'updates.*.vehicle_id' => 'nullable|exists:vehicles,id',
             'updates.*.notes' => 'nullable|string|max:500',
             'updates.*.assigned_json' => 'nullable|array',
+            'updates.*.motive_id' => 'nullable|exists:motives,id',
         ]);
 
         DB::beginTransaction();

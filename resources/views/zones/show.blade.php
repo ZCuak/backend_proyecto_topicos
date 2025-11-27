@@ -12,11 +12,6 @@
         </div>
 
         <div class="flex gap-2">
-            <a href="{{ route('zones.edit', $zone->id) }}"
-               data-turbo-frame="modal-frame"
-               class="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
-               <i class="fa-solid fa-pen"></i> Editar
-            </a>
             <a href="{{ route('zones.index') }}"
                class="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
                <i class="fa-solid fa-arrow-left"></i> Volver
@@ -131,46 +126,79 @@
 </div>
 
 {{-- Scripts del mapa --}}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let map;
-    let polygon;
+(function() {
+    'use strict';
+    
+    function initZoneMap() {
+        try {
+            const mapContainer = document.getElementById('map');
+            if (!mapContainer) return;
 
-    // Coordenadas de la zona
-    const zoneCoords = @json($zone->coordinates->map(function($coord) {
-        return [$coord->latitude, $coord->longitude];
-    }));
+            // 🧹 Si ya hay un mapa Leaflet activo, destruirlo completamente
+            if (mapContainer._leaflet_map_instance) {
+                mapContainer._leaflet_map_instance.remove();
+                mapContainer._leaflet_map_instance = null;
+            }
 
-    // Inicializar mapa
-    function initMap() {
-        map = L.map('map').setView([-6.7639, -79.8367], 13);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+            // Coordenadas de la zona
+            const zoneCoords = @json($zone->coordinates->map(function($coord) {
+                return [$coord->latitude, $coord->longitude];
+            }));
 
-        // Dibujar polígono si hay coordenadas
-        if (zoneCoords.length > 0) {
-            polygon = L.polygon(zoneCoords, {
-                color: '#10b981',
-                fillColor: '#10b981',
-                fillOpacity: 0.3,
-                weight: 2
+            // 🗺️ Crear nuevo mapa limpio
+            const map = L.map('map', { zoomControl: true, scrollWheelZoom: true, dragging: true })
+                .setView([-6.7639, -79.8367], 13);
+
+            // Guardar referencia del mapa en el DOM (para futuras limpiezas)
+            mapContainer._leaflet_map_instance = map;
+
+            // Cargar capa base
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
-            // Centrar mapa en el polígono
-            map.fitBounds(polygon.getBounds());
+            // Dibujar polígono si hay coordenadas
+            if (zoneCoords.length > 0) {
+                const polygon = L.polygon(zoneCoords, {
+                    color: '#10b981',
+                    fillColor: '#10b981',
+                    fillOpacity: 0.3,
+                    weight: 2
+                }).addTo(map);
+
+                // Centrar mapa en el polígono
+                map.fitBounds(polygon.getBounds());
+            }
+
+            // 🧭 Asegurar controles activos
+            map.scrollWheelZoom.enable();
+            map.dragging.enable();
+
+            // Centrar en un punto específico
+            window.centerOnPoint = function(lat, lng) {
+                if (map) {
+                    map.setView([lat, lng], 16);
+                }
+            };
+
+        } catch (e) {
+            console.error('Error inicializando mapa de zona:', e);
         }
     }
 
-    // Centrar en un punto específico
-    window.centerOnPoint = function(lat, lng) {
-        map.setView([lat, lng], 16);
-    };
-
-    // Inicializar
-    initMap();
-});
+    // Ejecutar tanto en DOMContentLoaded como en turbo:load
+    document.addEventListener('DOMContentLoaded', initZoneMap);
+    document.addEventListener('turbo:load', initZoneMap);
+    
+    // Ejecutar inmediatamente si el DOM ya está listo
+    if (document.readyState === 'loading') {
+        // DOM aún no está listo, esperar eventos
+    } else {
+        // DOM ya está listo, ejecutar inmediatamente
+        initZoneMap();
+    }
+})();
 </script>
 @endsection
