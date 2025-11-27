@@ -19,7 +19,7 @@ return new class extends Migration {
             $table->timestamps();
             $table->softDeletes();
 
-            // $table->unique(['user_id', 'date'], 'unique_attendance_per_day');
+            $table->unique(['user_id', 'date'], 'unique_attendance_per_day');
         });
     }
 
