@@ -15,7 +15,7 @@ use App\Http\Controllers\Api\ZoneCoordController;
 use App\Http\Controllers\Web\SchedulingController; //programaciones
 use App\Http\Controllers\Api\Schedule\ScheduleController; //turnos o shifts
 use App\Http\Controllers\Api\User\UserTypeController;
-use App\Http\Controllers\Api\Vehicle\VehicleController;
+use App\Http\Controllers\Web\VehicleController;
 use App\Http\Controllers\Api\Schedule\EmployeeGroupController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Web\ContractController;
