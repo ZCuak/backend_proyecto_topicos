@@ -1828,6 +1828,7 @@ class SchedulingController extends Controller
             ->get();
         $vehicles = Vehicle::orderBy('name')->get();
         $zones = Zone::orderBy('name')->get();
+        $motives = Motive::orderBy('name')->get();
 
         $programaciones = collect();
 
@@ -1852,6 +1853,7 @@ class SchedulingController extends Controller
             'users',
             'vehicles',
             'zones',
+            'motives',
             'programaciones'
         ));
     }
@@ -1972,6 +1974,7 @@ class SchedulingController extends Controller
             'updates.*.vehicle_id' => 'nullable|exists:vehicles,id',
             'updates.*.notes' => 'nullable|string|max:500',
             'updates.*.assigned_json' => 'nullable|array',
+            'updates.*.motive_id' => 'nullable|exists:motives,id',
         ]);
 
         DB::beginTransaction();

@@ -71,11 +71,26 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">Motivo del cambio masivo *</label>
-                    <textarea id="f_reason" name="reason" rows="3"
-                              class="w-full border rounded-lg p-3"
-                              placeholder="Describe el motivo del cambio">{{ request('reason') }}</textarea>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Motivo</label>
+                        <select id="f_motive" name="motive_id"
+                                class="w-full border rounded-lg p-2">
+                            <option value="">Selecciona motivo (opcional)</option>
+                            @foreach($motives as $motive)
+                                <option value="{{ $motive->id }}" {{ request('motive_id') == $motive->id ? 'selected' : '' }}>
+                                    {{ $motive->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Nota del cambio masivo *</label>
+                        <textarea id="f_reason" name="reason" rows="3"
+                                  class="w-full border rounded-lg p-3"
+                                  placeholder="Describe el motivo del cambio">{{ request('reason') }}</textarea>
+                    </div>
+                    
                 </div>
             </form>
 
@@ -133,6 +148,7 @@ function initMassiveEditor() {
     const labelTo = document.querySelector("#label_to");
     const saveBtn = document.querySelector("#btnSaveMassive");
     const pageLoader = document.getElementById("page-loader");
+    const motiveSelect = document.querySelector("#f_motive");
 
     let lastFetchData = null;
 
@@ -404,6 +420,7 @@ function initMassiveEditor() {
         const fromValue = document.querySelector("#f_from")?.value || "";
         const toValue = document.querySelector("#f_to")?.value || "";
         const reason = (document.querySelector("#f_reason")?.value || "").trim();
+        const motiveId = motiveSelect?.value || "";
 
         if (!reason) {
             Swal.fire("Atencion", "Indica el motivo del cambio masivo.", "warning");
@@ -425,7 +442,7 @@ function initMassiveEditor() {
             return;
         }
 
-        const meta = { changeType, fromValue, toValue, reason };
+        const meta = { changeType, fromValue, toValue, reason, motiveId };
         let updates = [];
 
         lastFetchData.groups.forEach(group => {
@@ -530,7 +547,8 @@ function initMassiveEditor() {
             vehicle_id: item.vehicle_id,
             notes: item.notes || null,
             changes,
-            assigned_json: assigned
+            assigned_json: assigned,
+            motive_id: meta.motiveId || null
         };
     }
 
