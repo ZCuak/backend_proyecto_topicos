@@ -31,8 +31,8 @@
             <i class="fa-solid fa-calendar text-emerald-600"></i> Rango de Fechas
         </legend>
 
-        {{-- Fechas de inicio y fin --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+        {{-- Fechas de inicio y fin con botón de validación --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3 items-end">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Inicio <span class="text-red-500">*</span></label>
                 <div class="relative">
@@ -49,27 +49,24 @@
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Fin <span class="text-red-500">*</span></label>
-                <div class="flex items-center gap-3">
-                    <div class="relative flex-1">
-                        <i class="fa-solid fa-calendar-check absolute left-3 top-2.5 text-slate-400"></i>
-                        <input type="date" name="end_date"
-                            value="{{ old('end_date', date('Y-m-d', strtotime('+7 days'))) }}"
-                            class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('end_date') border-red-500 @enderror"
-                            min="{{ date('Y-m-d') }}">
-                    </div>
-
-                    <div class="shrink-0">
-                        <button type="button" id="validate_availability"
-                                class="px-4 py-2 rounded-lg border border-emerald-300 text-emerald-700 bg-white hover:bg-emerald-50 transition flex items-center gap-2">
-                            <i class="fa-solid fa-calendar-check text-emerald-600"></i>
-                            Validar Disponibilidad
-                        </button>
-                    </div>
+                <div class="relative">
+                    <i class="fa-solid fa-calendar-check absolute left-3 top-2.5 text-slate-400"></i>
+                    <input type="date" name="end_date"
+                        value="{{ old('end_date', date('Y-m-d', strtotime('+7 days'))) }}"
+                        class="w-full pl-10 pr-3 py-2 rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('end_date') border-red-500 @enderror"
+                        min="{{ date('Y-m-d') }}">
                 </div>
-
                 @error('end_date')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
+            </div>
+
+            <div>
+                <button type="button" id="validate_availability"
+                        class="w-full px-4 py-2 rounded-lg border border-emerald-300 text-emerald-700 bg-white hover:bg-emerald-50 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-calendar-check text-emerald-600"></i>
+                    Validar Disponibilidad
+                </button>
             </div>
         </div>
 
@@ -94,10 +91,10 @@
                             $vehicleId = optional($group->vehicle)->id ?? '';
                             $daysJson = json_encode($group->days_array ?: []);
                         @endphp
-                        <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm" data-schedule-id="{{ optional($group->schedule)->id }}" data-group-id="{{ $group->id }}" data-driver-id="{{ $driverId }}" data-helper1-id="{{ $helper1Id }}" data-helper2-id="{{ $helper2Id }}" data-vehicle-id="{{ $vehicleId }}" data-days='@json($group->days_array ?? [])'>
+                        <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm group-card" data-schedule-id="{{ optional($group->schedule)->id }}" data-group-id="{{ $group->id }}" data-driver-id="{{ $driverId }}" data-helper1-id="{{ $helper1Id }}" data-helper2-id="{{ $helper2Id }}" data-vehicle-id="{{ $vehicleId }}" data-days='@json($group->days_array ?? [])'>
                             <div class="flex items-start justify-between">
                                 <h4 class="text-sm font-semibold uppercase text-slate-700">{{ $group->name }}</h4>
-                                <button type="button" class="text-red-600 bg-red-50 rounded px-2 py-1 text-xs">Eliminar</button>
+                                <button type="button" class="remove-group-btn text-red-600 bg-red-50 hover:bg-red-100 rounded px-2 py-1 text-xs transition" data-group-id="{{ $group->id }}">Eliminar</button>
                             </div>
 
                             <div class="mt-3 text-xs text-slate-600 space-y-1">
@@ -125,16 +122,21 @@
 
                                 <div class="mt-3">
                                 <div class="flex items-center justify-between">
-                                    <div class="group-status text-sm text-slate-600 ml-3"></div>
+                                    <div class="group-status text-sm"></div>
                                     <button type="button" class="edit-group-btn text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded" data-group-id="{{ $group->id }}">Editar</button>
+                                </div>
+                                {{-- Contenedor para mostrar inconsistencias específicas del grupo --}}
+                                <div class="group-inconsistencies mt-2 hidden">
+                                    <div class="bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700">
+                                        <div class="font-semibold mb-1">⚠️ Problemas encontrados:</div>
+                                        <ul class="list-disc list-inside space-y-0.5 inconsistencies-list"></ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     @endforeach
                 </div>
             @endif
-            {{-- Contenedor para mostrar resultados de validación masiva --}}
-            <div id="massive_validation_results" class="mt-4"></div>
         </div>
     </fieldset>
 
@@ -148,8 +150,8 @@
         class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
         <i class="fa-solid fa-xmark mr-1"></i> Cancelar
     </button>
-    <button type="submit"
-        class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-2">
+    <button type="submit" id="submit_scheduling_btn" disabled
+        class="px-4 py-2 rounded-lg bg-slate-300 text-slate-600 cursor-not-allowed transition flex items-center gap-2 pointer-events-none">
         <i class="fa-solid fa-calendar-plus"></i> {{ $buttonText }}
     </button>
 </div>
@@ -294,6 +296,12 @@
         }
         
         cards.forEach(card => {
+            // No mostrar grupos marcados como eliminados
+            if (card.classList.contains('removed-from-list')) {
+                card.style.display = 'none';
+                return;
+            }
+            
             const cardSchedule = card.getAttribute('data-schedule-id') || '';
             // Si hay un horario seleccionado, mostrar solo los grupos de ese horario
             // Si no hay horario seleccionado, mostrar todos
@@ -327,42 +335,75 @@
     }
 
     function renderValidationResults(groups) {
-        // Clear previous statuses
-        document.querySelectorAll('.group-status').forEach(el => { el.textContent = ''; el.className = 'group-status text-sm text-slate-600 ml-3'; });
-        const container = document.getElementById('massive_validation_results');
-        if (!container) return;
-        container.innerHTML = '';
-        const list = document.createElement('div'); list.className = 'space-y-3';
+        // Limpiar estados previos de todos los grupos
+        document.querySelectorAll('.group-status').forEach(el => {
+            el.textContent = '';
+            el.className = 'group-status text-sm';
+        });
+        document.querySelectorAll('.group-inconsistencies').forEach(el => {
+            el.classList.add('hidden');
+        });
+
+        let allGroupsOk = true;
+        let hasVisibleGroups = false;
 
         groups.forEach(g => {
             const card = document.querySelector(`[data-group-id="${g.group_id}"]`);
-            const statusEl = card ? card.querySelector('.group-status') : null;
-            const cardStatus = document.createElement('span');
-            if (g.ok) { cardStatus.textContent = 'OK'; cardStatus.className = 'text-green-600'; }
-            else { cardStatus.textContent = 'Problemas'; cardStatus.className = 'text-red-600'; }
-            if (statusEl) { statusEl.innerHTML = ''; statusEl.appendChild(cardStatus); }
+            if (!card) return;
 
-            const entry = document.createElement('div'); entry.className = 'p-3 border border-slate-200 rounded-lg bg-white';
-            const title = document.createElement('div'); title.className = 'flex items-center justify-between';
-            title.innerHTML = `<strong class="text-sm">${g.group_name}</strong>`;
-            const state = document.createElement('div'); state.className = g.ok ? 'text-sm text-green-600' : 'text-sm text-red-600'; state.textContent = g.ok ? 'OK' : 'Problemas';
-            if (!g.ok) {
-                const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.className = 'edit-group-btn text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded'; editBtn.setAttribute('data-group-id', g.group_id); editBtn.textContent = 'Editar'; title.appendChild(editBtn);
+            hasVisibleGroups = true;
+
+            const statusEl = card.querySelector('.group-status');
+            const inconsistenciesContainer = card.querySelector('.group-inconsistencies');
+            const inconsistenciesList = card.querySelector('.inconsistencies-list');
+
+            if (g.ok) {
+                // Grupo sin problemas
+                if (statusEl) {
+                    statusEl.innerHTML = '<span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium"><i class="fa-solid fa-circle-check"></i> Disponible</span>';
+                }
+                if (inconsistenciesContainer) {
+                    inconsistenciesContainer.classList.add('hidden');
+                }
+            } else {
+                // Grupo con problemas
+                allGroupsOk = false;
+                if (statusEl) {
+                    statusEl.innerHTML = '<span class="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium"><i class="fa-solid fa-circle-xmark"></i> No disponible</span>';
+                }
+                
+                // Mostrar inconsistencias específicas del grupo
+                if (inconsistenciesContainer && inconsistenciesList && g.inconsistencies && g.inconsistencies.length) {
+                    inconsistenciesList.innerHTML = '';
+                    g.inconsistencies.forEach(msg => {
+                        const li = document.createElement('li');
+                        li.textContent = msg;
+                        inconsistenciesList.appendChild(li);
+                    });
+                    inconsistenciesContainer.classList.remove('hidden');
+                }
             }
-            title.appendChild(state);
-            entry.appendChild(title);
-
-            if (!g.ok && g.inconsistencies && g.inconsistencies.length) {
-                const ul = document.createElement('ul'); ul.className = 'mt-2 list-disc list-inside text-sm text-red-600 space-y-1';
-                g.inconsistencies.forEach(msg => { const li = document.createElement('li'); li.textContent = msg; ul.appendChild(li); });
-                entry.appendChild(ul);
-            } else { const p = document.createElement('div'); p.className = 'mt-2 text-sm text-slate-600'; p.textContent = g.ok ? 'No se encontraron inconsistencias.' : ''; entry.appendChild(p); }
-
-            list.appendChild(entry);
         });
 
-        container.appendChild(list);
-        container.scrollIntoView({ behavior: 'smooth' });
+        // Habilitar o deshabilitar el botón de submit según los resultados
+        const submitBtn = document.getElementById('submit_scheduling_btn');
+        if (submitBtn) {
+            if (hasVisibleGroups && allGroupsOk) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('bg-slate-300', 'text-slate-600', 'cursor-not-allowed', 'pointer-events-none');
+                submitBtn.classList.add('bg-emerald-600', 'text-white', 'hover:bg-emerald-700', 'pointer-events-auto');
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.remove('bg-emerald-600', 'text-white', 'hover:bg-emerald-700', 'pointer-events-auto');
+                submitBtn.classList.add('bg-slate-300', 'text-slate-600', 'cursor-not-allowed', 'pointer-events-none');
+            }
+        }
+
+        // Scroll al primer grupo con problemas si existe
+        const firstProblem = document.querySelector('.group-inconsistencies:not(.hidden)');
+        if (firstProblem) {
+            firstProblem.closest('[data-group-id]').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 
     // Validate availability button
@@ -376,13 +417,26 @@
             const end_date = (document.querySelector('[name="end_date"]') || {}).value || '';
             const scheduleInput = document.querySelector('[name="schedule_id"]');
             const schedule_id = scheduleInput ? scheduleInput.value : null;
-            const vehicleInput = document.querySelector('[name="vehicle_id"]');
-            const vehicle_id = vehicleInput ? vehicleInput.value : null;
 
-            const payload = { start_date, end_date, schedule_id };
-            const filterVal = (filterSelect && filterSelect.value) ? filterSelect.value : '';
-            if (filterVal && filterVal !== '') payload.filter_schedule = filterVal; else payload.all_groups = 1;
-            if (vehicle_id) payload.vehicle_id = vehicle_id;
+            // Obtener solo los IDs de las tarjetas principales de grupos visibles (no eliminados)
+            // Usar .group-card para asegurar que solo seleccionamos las tarjetas principales
+            const visibleCards = document.querySelectorAll('.group-card:not(.removed-from-list)');
+            const visibleGroupIds = Array.from(visibleCards)
+                .filter(card => card.style.display !== 'none')
+                .map(card => card.getAttribute('data-group-id'))
+                .filter((id, index, self) => id && self.indexOf(id) === index); // Eliminar duplicados y nulls
+
+            console.log('IDs de grupos a validar:', visibleGroupIds);
+
+            // Solo enviar group_ids, sin filter_schedule ni all_groups
+            const payload = { 
+                start_date, 
+                end_date, 
+                schedule_id, 
+                group_ids: visibleGroupIds 
+            };
+
+            console.log('Payload a enviar:', payload);
 
             const token = getCsrfToken();
 
@@ -394,6 +448,7 @@
                 return parseResponseJson(resp);
             }).then(data => {
                 if (!data || !data.groups) { alert('Respuesta inválida del servidor.'); return; }
+                console.log('Respuesta del servidor:', data);
                 renderValidationResults(data.groups);
             }).catch(err => { console.error(err); alert('Error al validar disponibilidad: ' + (err.message || err)); })
             .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
@@ -471,6 +526,36 @@
                 catch(e){ throw new Error('Respuesta inválida (no JSON): ' + (text ? text.substring(0,200) : '<vacío>')); }
             });
         }
+
+    // --- Funcionalidad de eliminar grupos de la lista ---
+    document.addEventListener('click', function(e){
+        if (e.target && e.target.matches('.remove-group-btn')){
+            e.preventDefault();
+            const groupId = e.target.getAttribute('data-group-id');
+            const card = document.querySelector(`[data-group-id="${groupId}"]`);
+            
+            if (card) {
+                // Marcar como eliminado y ocultar
+                card.classList.add('removed-from-list');
+                card.style.display = 'none';
+                
+                // Deshabilitar botón de submit al eliminar un grupo
+                const submitBtn = document.getElementById('submit_scheduling_btn');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.remove('bg-emerald-600', 'text-white', 'hover:bg-emerald-700', 'pointer-events-auto');
+                    submitBtn.classList.add('bg-slate-300', 'text-slate-600', 'cursor-not-allowed', 'pointer-events-none');
+                }
+                
+                // Re-aplicar filtro para actualizar contador de grupos visibles
+                const filterSelect = document.getElementById('filter_schedule_select_top');
+                if (filterSelect) {
+                    const event = new Event('change');
+                    filterSelect.dispatchEvent(event);
+                }
+            }
+        }
+    });
 
     function buildSelectOptions(selectEl, items, selectedId, labelField = 'firstname'){
         selectEl.innerHTML = '';

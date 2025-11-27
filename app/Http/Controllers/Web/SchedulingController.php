@@ -425,13 +425,13 @@ class SchedulingController extends Controller
         // Cargamos relaciones principales
         $scheduling->load(['group', 'schedule', 'vehicle', 'zone']);
 
-        // ? Cargamos los detalles de los empleados asignados a esta programaci�n
+        // ? Cargamos los detalles de los empleados asignados a esta programaci�n
         $details = \App\Models\SchedulingDetail::with(['user', 'userType'])
             ->where('scheduling_id', $scheduling->id)
             ->orderBy('position_order')
             ->get();
 
-        // Asistencias registradas para la fecha de la programaci�n
+        // Asistencias registradas para la fecha de la programaci�n
         $dateString = is_string($scheduling->date) ? $scheduling->date : $scheduling->date->format('Y-m-d');
         $attendancesByUser = Attendace::whereDate('date', $dateString)->get()->keyBy('user_id');
 
@@ -922,6 +922,8 @@ class SchedulingController extends Controller
 
         $validator = Validator::make($request->all(), [
             'group_id' => 'nullable|exists:employeegroups,id',
+            'group_ids' => 'nullable|array',
+            'group_ids.*' => 'exists:employeegroups,id',
             'all_groups' => 'nullable|boolean',
             'filter_schedule' => 'nullable|exists:schedules,id',
             'schedule_id' => 'nullable|exists:schedules,id',
@@ -942,6 +944,14 @@ class SchedulingController extends Controller
         }
 
         $data = $validator->validated();
+        
+        // Debug: Log para ver qué parámetros llegan
+        \Log::info('=== VALIDATE MASSIVE - REQUEST DATA ===');
+        \Log::info('group_ids recibido:', ['group_ids' => $data['group_ids'] ?? 'NO ENVIADO']);
+        \Log::info('filter_schedule:', ['filter_schedule' => $data['filter_schedule'] ?? 'NO ENVIADO']);
+        \Log::info('all_groups:', ['all_groups' => $data['all_groups'] ?? 'NO ENVIADO']);
+        \Log::info('group_id:', ['group_id' => $data['group_id'] ?? 'NO ENVIADO']);
+        
         $startDate = \Carbon\Carbon::parse($data['start_date']);
         $endDate = \Carbon\Carbon::parse($data['end_date']);
         $excludeWeekends = $data['exclude_weekends'] ?? false;
@@ -949,12 +959,19 @@ class SchedulingController extends Controller
             ? array_map('trim', explode(',', $data['exclude_specific_dates']))
             : [];
 
-        // Allow filtering groups by schedule (filter_schedule) or by group_id / all_groups
-        if (isset($data['filter_schedule']) && $data['filter_schedule'] !== '') {
+        // Allow filtering groups by specific IDs (group_ids), schedule (filter_schedule), group_id, or all_groups
+        if (!empty($data['group_ids']) && is_array($data['group_ids'])) {
+            // Si se envían IDs específicos, solo validar esos grupos
+            \Log::info('Usando group_ids, cantidad:', ['count' => count($data['group_ids']), 'ids' => $data['group_ids']]);
+            $groups = EmployeeGroup::whereIn('id', $data['group_ids'])->orderBy('name')->get();
+        } elseif (isset($data['filter_schedule']) && $data['filter_schedule'] !== '') {
+            \Log::info('Usando filter_schedule');
             $groups = EmployeeGroup::where('schedule_id', $data['filter_schedule'])->orderBy('name')->get();
         } elseif (!empty($data['all_groups']) && $data['all_groups']) {
+            \Log::info('Usando all_groups');
             $groups = EmployeeGroup::orderBy('name')->get();
         } elseif (!empty($data['group_id'])) {
+            \Log::info('Usando group_id único');
             $groups = EmployeeGroup::where('id', $data['group_id'])->get();
         } else {
             $errorMessage = 'Debe especificar un grupo o marcar programación para todos los grupos.';
@@ -963,6 +980,8 @@ class SchedulingController extends Controller
             }
             return back()->withErrors(['group_id' => $errorMessage])->withInput();
         }
+        
+        \Log::info('Grupos obtenidos:', ['count' => $groups->count(), 'ids' => $groups->pluck('id')->toArray()]);
 
         $results = [];
 
@@ -970,6 +989,87 @@ class SchedulingController extends Controller
 
         foreach ($groups as $group) {
             $groupResult = ['group_id' => $group->id, 'group_name' => $group->name, 'inconsistencies' => [], 'created' => 0];
+
+            // Validación 0: Verificar que el grupo esté activo
+            if (isset($group->status) && strtoupper($group->status) !== 'ACTIVO') {
+                $groupResult['inconsistencies'][] = 'El grupo no está activo (estado: ' . $group->status . ').';
+                $groupResult['ok'] = false;
+                $results[] = $groupResult;
+                continue;
+            }
+
+            // Validación 1: Verificar que el grupo tenga usuarios asignados
+            $groupUsers = ConfigGroup::where('group_id', $group->id)->with('user')->get();
+            if ($groupUsers->isEmpty()) {
+                $groupResult['inconsistencies'][] = 'El grupo no tiene usuarios asignados.';
+                $groupResult['ok'] = false;
+                $results[] = $groupResult;
+                continue;
+            }
+
+            // Validación 2: Verificar que el grupo tenga un conductor (primer usuario) y que esté activo
+            $driver = $groupUsers->first();
+            if (!$driver || !$driver->user) {
+                $groupResult['inconsistencies'][] = 'El grupo no tiene un conductor asignado.';
+                $groupResult['ok'] = false;
+                $results[] = $groupResult;
+                continue;
+            }
+
+            // Verificar que todos los usuarios del grupo estén activos
+            foreach ($groupUsers as $configGroup) {
+                $user = $configGroup->user;
+                if (isset($user->status) && strtoupper($user->status) !== 'ACTIVO') {
+                    $groupResult['inconsistencies'][] = "El usuario '{$user->firstname} {$user->lastname}' no está activo (estado: {$user->status}).";
+                }
+            }
+
+            if (!empty($groupResult['inconsistencies'])) {
+                $groupResult['ok'] = false;
+                $results[] = $groupResult;
+                continue;
+            }
+
+            // Validación 3: Verificar que el vehículo del grupo esté operativo (si tiene asignado)
+            if (!empty($group->vehicle_id)) {
+                $vehicle = Vehicle::find($group->vehicle_id);
+                if ($vehicle && isset($vehicle->status) && strtoupper($vehicle->status) !== 'DISPONIBLE') {
+                    $groupResult['inconsistencies'][] = "El vehículo '{$vehicle->name}' del grupo no está disponible (estado: {$vehicle->status}).";
+                    $groupResult['ok'] = false;
+                    $results[] = $groupResult;
+                    continue;
+                }
+            }
+
+            // Validación 4: Verificar que la zona del grupo esté activa (si tiene asignada)
+            if (!empty($group->zone_id)) {
+                $zone = Zone::find($group->zone_id);
+                if ($zone && isset($zone->status) && strtoupper($zone->status) !== 'ACTIVO') {
+                    $groupResult['inconsistencies'][] = "La zona '{$zone->name}' del grupo no está activa (estado: {$zone->status}).";
+                    $groupResult['ok'] = false;
+                    $results[] = $groupResult;
+                    continue;
+                }
+            }
+
+            // Validación 5: Verificar que el horario del grupo coincida con el de la programación
+            if ($group->schedule_id && $data['schedule_id'] && $group->schedule_id != $data['schedule_id']) {
+                $groupSchedule = Schedule::find($group->schedule_id);
+                $programmingSchedule = Schedule::find($data['schedule_id']);
+                $groupResult['inconsistencies'][] = "El grupo está configurado para el horario '{$groupSchedule->name}' pero se intenta programar para '{$programmingSchedule->name}'.";
+                $groupResult['ok'] = false;
+                $results[] = $groupResult;
+                continue;
+            }
+
+            // Validación 6: Verificar que el grupo tenga días configurados
+            $groupDays = is_array($group->days) ? $group->days : (empty($group->days) ? [] : json_decode($group->days, true));
+            if (empty($groupDays)) {
+                $groupResult['inconsistencies'][] = 'El grupo no tiene días de trabajo configurados.';
+                $groupResult['ok'] = false;
+                $results[] = $groupResult;
+                continue;
+            }
 
             $contractValidation = $this->validateGroupContractsForProgramming($group->id, $programmingDates, true);
             if ($contractValidation) {
@@ -1027,9 +1127,44 @@ class SchedulingController extends Controller
                         ->where('schedule_id', $data['schedule_id'])
                         ->first();
                     if ($vehicleConflict) {
-                        $groupResult['inconsistencies'][] = "El vehículo está ocupado el {$dateString} (turno id {$data['schedule_id']}).";
+                        $vehicle = Vehicle::find($data['vehicle_id']);
+                        $conflictGroup = $vehicleConflict->group;
+                        $groupResult['inconsistencies'][] = "El vehículo '{$vehicle->name}' está ocupado el {$dateString} por el grupo '{$conflictGroup->name}'.";
                         $currentDate->addDay();
                         continue;
+                    }
+                }
+
+                // Validar que el vehículo del grupo esté disponible (si tiene asignado)
+                if (empty($data['vehicle_id']) && !empty($group->vehicle_id)) {
+                    $vehicleConflict = Scheduling::where('date', $dateString)
+                        ->where('vehicle_id', $group->vehicle_id)
+                        ->where('schedule_id', $data['schedule_id'])
+                        ->first();
+                    if ($vehicleConflict) {
+                        $vehicle = $group->vehicle;
+                        $conflictGroup = $vehicleConflict->group;
+                        $groupResult['inconsistencies'][] = "El vehículo '{$vehicle->name}' del grupo está ocupado el {$dateString} por el grupo '{$conflictGroup->name}'.";
+                        $currentDate->addDay();
+                        continue;
+                    }
+                }
+
+                // Validar que los usuarios del grupo no estén programados en otro grupo al mismo tiempo
+                foreach ($groupUsers as $configGroup) {
+                    $userId = $configGroup->user_id;
+                    $userConflict = SchedulingDetail::whereHas('scheduling', function($q) use ($dateString, $data) {
+                        $q->where('date', $dateString)
+                          ->where('schedule_id', $data['schedule_id']);
+                    })->where('user_id', $userId)->first();
+
+                    if ($userConflict) {
+                        $conflictScheduling = $userConflict->scheduling;
+                        $conflictGroup = $conflictScheduling->group;
+                        $userName = $configGroup->user->firstname . ' ' . $configGroup->user->lastname;
+                        $groupResult['inconsistencies'][] = "El usuario '{$userName}' ya está programado el {$dateString} en el grupo '{$conflictGroup->name}'.";
+                        $currentDate->addDay();
+                        continue 2; // Saltar al siguiente día
                     }
                 }
 
