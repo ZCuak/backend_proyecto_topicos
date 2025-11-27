@@ -624,6 +624,11 @@ class SchedulingController extends Controller
                 }
             }
 
+            // Fallback si viene motive_id plano
+            if (!$motiveId && $request->filled('motive_id')) {
+                $motiveId = (int) $request->input('motive_id');
+            }
+
             $scheduling->update($data);
 
             // =============================
@@ -656,7 +661,8 @@ class SchedulingController extends Controller
                                     $roleLabel,
                                     $oldUserId,
                                     $newUserId,
-                                    $request->add_notes ?? null
+                                    $request->add_notes ?? null,
+                                    $motiveId
                                 );
                             }
                         }
