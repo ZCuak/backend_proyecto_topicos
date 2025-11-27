@@ -50,7 +50,7 @@
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Tipo de Cambio *</label>
                         <select id="f_change_type" name="change_type" class="border rounded-lg p-2 w-full">
                             <option value="driver" {{ $changeType === 'driver' ? 'selected' : '' }}>Cambio de Conductor</option>
-                            <option value="occupant" {{ $changeType === 'occupant' ? 'selected' : '' }}>Cambio de Ocupante</option>
+                            <option value="occupant" {{ $changeType === 'occupant' ? 'selected' : '' }}>Cambio de Ayudante</option>
                             <option value="turn" {{ $changeType === 'turn' ? 'selected' : '' }}>Cambio de Turno</option>
                             <option value="vehicle" {{ $changeType === 'vehicle' ? 'selected' : '' }}>Cambio de Vehiculo</option>
                         </select>
@@ -228,8 +228,8 @@ function initMassiveEditor() {
         const availableFrom = collectAvailableFrom(type, data);
 
         return {
-            fromLabel: isDriver ? "Conductor a reemplazar" : "Ocupante a reemplazar",
-            toLabel: isDriver ? "Nuevo conductor" : "Nuevo ocupante",
+            fromLabel: isDriver ? "Conductor a reemplazar" : "Ayudante a reemplazar",
+            toLabel: isDriver ? "Nuevo conductor" : "Nuevo ayudante",
             fromOptions: buildUserOptions(selectedFrom, isDriver, availableFrom),
             toOptions: buildUserOptions(selectedTo, isDriver, [], selectedFrom)
         };

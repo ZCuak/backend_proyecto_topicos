@@ -484,7 +484,11 @@ class SchedulingController extends Controller
             ->get();
 
         // 🔹 Todos los empleados que existen
-        $allEmployees = \App\Models\User::orderBy('firstname')->get();
+        $allEmployees = \App\Models\User::whereHas('contracts', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->orderBy('firstname')
+            ->get();
 
         return view('schedulings._modal_edit', compact(
             'scheduling',
@@ -1810,7 +1814,11 @@ class SchedulingController extends Controller
 
         $schedules = Schedule::orderBy('name')->get();
         $groups = EmployeeGroup::orderBy('name')->get();
-        $users = User::orderBy('firstname')->get();
+        $users = User::whereHas('contracts', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->orderBy('firstname')
+            ->get();
         $vehicles = Vehicle::orderBy('name')->get();
         $zones = Zone::orderBy('name')->get();
 
