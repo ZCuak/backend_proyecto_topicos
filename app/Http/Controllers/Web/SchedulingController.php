@@ -32,12 +32,21 @@ class SchedulingController extends Controller
 {
     $search = $request->input('search');
     $perPage = $request->input('perPage', 10);
-    $dateFilter = $request->input('date_filter');
-    $zoneFilter = $request->input('zone_filter'); // ← NUEVO
+    $dateFrom = $request->input('date_from');
+    $dateTo = $request->input('date_to');
+    $zoneFilter = $request->input('zone_filter'); // FILTRO POR ZONA REAL
+    $hasCustomDateFilters = $request->filled('date_from') || $request->filled('date_to');
+
+    // Por defecto mostrar solo las programaciones de hoy
+    if (!$hasCustomDateFilters) {
+        $today = Carbon::today()->toDateString();
+        $dateFrom = $today;
+        $dateTo = $today;
+    }
 
     $query = Scheduling::with(['group', 'schedule', 'vehicle', 'zone', 'details.user']);
 
-    // Búsqueda general
+    // Busqueda general
     if ($search) {
         $query->where(function ($q) use ($search) {
             $q->where('notes', 'ILIKE', "%{$search}%")
@@ -49,31 +58,47 @@ class SchedulingController extends Controller
         });
     }
 
-    // Filtro por fecha exacta
-    if ($dateFilter) {
-        $query->whereDate('date', $dateFilter);
+    // Filtro por rango de fechas
+    if ($dateFrom && $dateTo) {
+        $startDate = Carbon::parse($dateFrom)->startOfDay();
+        $endDate = Carbon::parse($dateTo)->endOfDay();
+
+        if ($startDate->gt($endDate)) {
+            [$startDate, $endDate] = [$endDate, $startDate];
+        }
+
+        $query->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()]);
+    } elseif ($dateFrom) {
+        $query->whereDate('date', '>=', $dateFrom);
+    } elseif ($dateTo) {
+        $query->whereDate('date', '<=', $dateTo);
     }
 
-    // 🔥 FILTRO POR ZONA REAL
+    // FILTRO POR ZONA REAL
     if ($zoneFilter) {
         $query->where('zone_id', $zoneFilter);
     }
 
-    $schedulings = $query->orderBy('date', 'desc')->orderBy('id', 'desc')
+    $appends = [
+        'search' => $search,
+        'perPage' => $perPage,
+        'zone_filter' => $zoneFilter, // FILTRO POR ZONA REAL
+    ];
+
+    if ($hasCustomDateFilters) {
+        $appends['date_from'] = $dateFrom;
+        $appends['date_to'] = $dateTo;
+    }
+
+    $schedulings = $query->orderBy('date', 'asc')->orderBy('id', 'desc')
         ->paginate($perPage)
-        ->appends([
-            'search' => $search,
-            'perPage' => $perPage,
-            'date_filter' => $dateFilter,
-            'zone_filter' => $zoneFilter, // ← NUEVO
-        ]);
+        ->appends($appends);
 
     // Enviar zonas a la vista
     $zones = \App\Models\Zone::orderBy('name')->get();
 
-    return view('schedulings.index', compact('schedulings', 'search', 'dateFilter', 'zoneFilter', 'zones'));
+    return view('schedulings.index', compact('schedulings', 'search', 'dateFrom', 'dateTo', 'zoneFilter', 'zones', 'hasCustomDateFilters'));
 }
-
 
     /**
      * Mostrar calendario de programaciones (Web)

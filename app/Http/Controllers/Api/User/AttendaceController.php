@@ -7,6 +7,8 @@ use App\Http\Controllers\HistoryController;
 use App\Models\Attendace;
 use App\Models\Contract;
 use App\Models\User;
+use App\Models\Scheduling;
+use App\Models\SchedulingDetail;
 use App\Traits\HistoryChanges;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -120,131 +122,137 @@ class AttendaceController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
+public function store(Request $request)
+{
+    $isTurbo = $request->header('Turbo-Frame') || $request->expectsJson();
 
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
-            'date' => 'required|date_format:Y-m-d',
-            'check_in' => 'required|date_format:H:i',
-            'check_out' => 'nullable|date_format:H:i|after:check_in',
-            'status' => 'required|in:PRESENTE,AUSENTE,TARDANZA',
-            'notes' => 'nullable|string|max:255',
-        ], [
-            'user_id.required' => 'El usuario es obligatorio',
-            'user_id.exists' => 'El usuario no existe',
-            'date.required' => 'La fecha es obligatoria',
-            'check_in.required' => 'La Hora de entrada es obligatoria',
-            'check_out.after'   => 'La hora de salida debe ser posterior a la hora de entrada',
-            'status.required' => 'El estado es obligatorio',
-            'status.in' => 'El estado debe ser PRESENTE, AUSENTE o TARDANZA',
-        ]);
+    $validator = Validator::make($request->all(), [
+        'user_id' => 'required|exists:users,id',
+        'date' => 'required|date_format:Y-m-d',
+        'check_in' => 'required|date_format:H:i',
+        'check_out' => 'nullable|date_format:H:i|after:check_in',
+        'status' => 'required|in:PRESENTE,AUSENTE,TARDANZA',
+        'notes' => 'nullable|string|max:255',
+    ]);
 
-        if ($validator->fails()) {
+    if ($validator->fails()) {
+        if ($isTurbo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errores de validación.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+        return back()->withErrors($validator)->withInput();
+    }
+
+    // Definir tipo (entrada/salida)
+    $request->merge([
+        'type' => !$request->filled('check_out')
+            ? Attendace::TYPE_ENTRADA
+            : Attendace::TYPE_SALIDA
+    ]);
+
+    DB::beginTransaction();
+    try {
+
+        // VALIDAR USUARIO + CONTRATO ACTIVO
+        $user = User::find($request->user_id);
+
+        $activeContract = Contract::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->whereDate('date_start', '<=', now())
+            ->where(function ($q) {
+                $q->whereNull('date_end')
+                    ->orWhereDate('date_end', '>=', now());
+            })
+            ->first();
+
+        if (!$user || !$activeContract) {
+            DB::rollBack();
+            $mensaje = 'Solo el personal EXISTENTE con contrato ACTIVO puede marcar asistencia.';
+
             if ($isTurbo) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errores de validación.',
-                    'errors' => $validator->errors(),
+                    'message' => $mensaje,
+                    'errors' => ['user_id' => [$mensaje]]
                 ], 422);
             }
-            return back()->withErrors($validator)->withInput();
+            return back()->withErrors(['user_id' => $mensaje])->withInput();
         }
-        $request->merge([
-            'type' => !$request->filled('check_out')
-                ? Attendace::TYPE_ENTRADA
-                : Attendace::TYPE_SALIDA
-        ]);
 
-        DB::beginTransaction();
+        // ✔️ Detectar si hay asistencia eliminada y restaurarla
+        $attendanceEliminada = Attendace::onlyTrashed()
+            ->where('user_id', $request->user_id)
+            ->whereDate('date', $request->date)
+            ->first();
 
-        try {
-            $user = User::find($request->user_id);
+        if ($attendanceEliminada) {
 
-            $activeContract = Contract::where('user_id', $user->id)
-                ->where('is_active', true)
-                ->whereDate('date_start', '<=', now())
-                ->where(function ($q) {
-                    $q->whereNull('date_end')
-                        ->orWhereDate('date_end', '>=', now());
-                })
-                ->first();
+            $checkInExistente = Carbon::parse($attendanceEliminada->check_in);
 
-            if (!$user || !$activeContract) {
-                DB::rollBack();
+            if ($checkInExistente->format('H:i') === $request->check_in && !$attendanceEliminada->check_out) {
 
-                $mensaje = 'Solo el personal EXISITENTE con contrato ACTIVO puede marcar asistencia.';
+                $attendanceEliminada->restore();
+                $attendanceEliminada->update($request->all());
+
+                // 🔥 Sincronizar asistencia con scheduling
+                $this->syncSchedulingAttendance($request->user_id, $request->date, $request->status);
+
+                DB::commit();
+
+                $mensaje = 'Asistencia restaurada y actualizada exitosamente.';
 
                 if ($isTurbo) {
                     return response()->json([
-                        'success' => false,
+                        'success' => true,
                         'message' => $mensaje,
-                        'errors' => ['user_id' => [$mensaje]]
-                    ], 422);
+                    ]);
                 }
-                return back()->withErrors(['user_id' => $mensaje])->withInput();
+
+                return redirect()->route('attendances.index')->with('success', $mensaje);
             }
-
-            $attendanceEliminada = Attendace::onlyTrashed()
-                ->where('user_id', $request->user_id)
-                ->whereDate('date', $request->date)
-                ->first();
-
-            if ($attendanceEliminada) {
-                $checkInExistente = Carbon::parse($attendanceEliminada->check_in);
-                if ($checkInExistente->format('H:i') === $request->check_in && !$attendanceEliminada->check_out) {
-
-                    $attendanceEliminada->restore();
-                    $attendanceEliminada->update($request->all());
-
-                    DB::commit();
-
-                    $mensaje = 'Asistencia restaurada y actualizada exitosamente.';
-
-                    if ($isTurbo) {
-                        return response()->json([
-                            'success' => true,
-                            'message' => $mensaje,
-                        ], 200);
-                    }
-
-                    return redirect()->route('attendances.index')->with('success', $mensaje);
-                }
-            }
-
-            // Crear nueva asistencia
-            $attendance = Attendace::create($request->all());
-
-            DB::commit();
-
-            $mensaje = 'Asistencia registrada exitosamente como ' . $request->type . '.';
-
-            if ($attendance->date->lt(Carbon::today()) && $attendance->check_out === null) {
-                $formattedDate = $attendance->date->format('d/m/Y');
-                $mensaje = "¡Asistencia registrada! PERO la marcación del {$formattedDate} no tiene salida registrada.";
-            }
-
-            if ($isTurbo) {
-                return response()->json([
-                    'success' => true,
-                    'data' => $attendance->load(['user:firstname,lastname']), //, //->load('user:id,name,dni'),
-                    'message' => $mensaje,
-                ], 201);
-            }
-            return redirect()->route('attendances.index')->with("success", $mensaje);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            if ($isTurbo) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error al registrar asistencia: ' . $e->getMessage(),
-                ], 500);
-            }
-
-            return back()->with('error', 'Error al registrar asistencia: ' . $e->getMessage());
         }
+
+        // ✔️ Crear nueva asistencia
+        $attendance = Attendace::create($request->all());
+
+        // 🔥 Sincronización con scheduling_details
+        $this->syncSchedulingAttendance($request->user_id, $request->date, $request->status);
+
+        DB::commit();
+
+        // Mensaje final
+        $mensaje = "Asistencia registrada exitosamente como {$request->type}.";
+
+        if ($attendance->date->lt(Carbon::today()) && $attendance->check_out === null) {
+            $formattedDate = $attendance->date->format('d/m/Y');
+            $mensaje = "¡Asistencia registrada! PERO la marcación del {$formattedDate} no tiene salida.";
+        }
+
+        if ($isTurbo) {
+            return response()->json([
+                'success' => true,
+                'data' => $attendance->load(['user:firstname,lastname']),
+                'message' => $mensaje,
+            ], 201);
+        }
+
+        return redirect()->route('attendances.index')->with('success', $mensaje);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        if ($isTurbo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al registrar asistencia: ' . $e->getMessage(),
+            ], 500);
+        }
+        return back()->with('error', 'Error al registrar asistencia: ' . $e->getMessage());
     }
+}
 
     /**
      * Display the specified resource.
@@ -345,6 +353,9 @@ class AttendaceController extends Controller
 
             $this->registrarCambios($attendance,  $originalData, $request->input('notes'), $exceptFields);
 
+            // Sincronizar con programaci�n si pasa a PRESENTE
+            $this->syncSchedulingAttendance($attendance->user_id, $attendance->date->format('Y-m-d'), $attendance->status);
+
             $mensaje = 'Asistencia actualizada exitosamente como ' . $attendance->type . '.';
 
             if ($isTurbo) {
@@ -396,6 +407,55 @@ class AttendaceController extends Controller
                 'message' => 'Error al eliminar la asistencia',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Sincroniza asistencia con programaci�n:
+     * - Marca detalle como presente
+     * - Si todos los detalles de la fecha est�n presentes, cambia estado a En Proceso
+     */
+    private function syncSchedulingAttendance(int $userId, string $date, string $status): void
+    {
+        // Solo aplica cuando se marca PRESENCIA
+        if (strtoupper($status) !== Attendace::STATUS_PRESENTE) {
+            return;
+        }
+
+        $dateValue = Carbon::parse($date)->format('Y-m-d');
+
+        // Detalles del usuario en esa fecha
+        $details = SchedulingDetail::where('user_id', $userId)
+            ->whereDate('date', $dateValue)
+            ->get();
+
+        if ($details->isEmpty()) {
+            return;
+        }
+
+        $schedulingIds = [];
+
+        foreach ($details as $detail) {
+            // Marcar presente en detalle
+            $detail->update(['attendance_status' => 'presente']);
+            $schedulingIds[] = $detail->scheduling_id;
+        }
+
+        $schedulingIds = array_unique($schedulingIds);
+
+        foreach ($schedulingIds as $sid) {
+            $total = SchedulingDetail::where('scheduling_id', $sid)
+                ->whereDate('date', $dateValue)
+                ->count();
+
+            $presentes = SchedulingDetail::where('scheduling_id', $sid)
+                ->whereDate('date', $dateValue)
+                ->where('attendance_status', 'presente')
+                ->count();
+
+            if ($total > 0 && $presentes === $total) {
+                Scheduling::where('id', $sid)->update(['status' => 1]); // En Proceso
+            }
         }
     }
 
