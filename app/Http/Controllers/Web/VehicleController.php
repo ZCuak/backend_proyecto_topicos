@@ -75,13 +75,43 @@ class VehicleController extends Controller
             'code' => 'required|string|max:50|unique:vehicles,code',
             'plate' => [
                 'required', 
-                'string', 
-                'min:3',
-                'max:10', 
-                'regex:/^[A-Z0-9\-]{3,10}$/',
-                'unique:vehicles,plate'
+                'string',
+                'unique:vehicles,plate',
+                function ($attribute, $value, $fail) {
+                    // Normalizar: convertir a mayúsculas y quitar espacios
+                    $normalized = strtoupper(trim($value));
+                    
+                    // Validar formatos: XXXXXX, XX-XXXX, XXX-XXX
+                    $formats = [
+                        '/^[A-Z0-9]{6}$/',           // XXXXXX (6 caracteres sin guión)
+                        '/^[A-Z0-9]{2}-[A-Z0-9]{4}$/', // XX-XXXX (2 caracteres, guión, 4 caracteres)
+                        '/^[A-Z0-9]{3}-[A-Z0-9]{3}$/', // XXX-XXX (3 caracteres, guión, 3 caracteres)
+                    ];
+                    
+                    $isValid = false;
+                    foreach ($formats as $format) {
+                        if (preg_match($format, $normalized)) {
+                            $isValid = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!$isValid) {
+                        $fail('La placa debe tener uno de los siguientes formatos: XXXXXX, XX-XXXX o XXX-XXX (ejemplo: ABC123, AB-1234, ABC-123)');
+                    }
+                }
             ],
-            'year' => 'required|integer|min:1990|max:' . date('Y'),
+            'year' => [
+                'required',
+                'integer',
+                'min:1900',
+                'max:' . date('Y'),
+                function ($attribute, $value, $fail) {
+                    if (!is_numeric($value) || $value < 1900 || $value > date('Y')) {
+                        $fail('El año debe ser un año válido entre 1900 y ' . date('Y'));
+                    }
+                }
+            ],
             'occupant_capacity' => 'nullable|integer|min:0',
             'load_capacity' => 'nullable|integer|min:0',
             'compaction_capacity' => 'nullable|integer|min:0',
@@ -93,10 +123,12 @@ class VehicleController extends Controller
             'type_id' => 'required|exists:vehicletypes,id',
             'color_id' => 'required|exists:vehiclecolors,id'
         ], [
-            'plate.regex' => 'La placa debe contener solo letras, números y guiones (3-10 caracteres)',
+            'plate.required' => 'La placa es obligatoria',
             'plate.unique' => 'Esta placa ya está registrada en otro vehículo',
             'code.unique' => 'Este código ya está registrado en otro vehículo',
-            'year.min' => 'El año debe ser mayor o igual a 1990',
+            'year.required' => 'El año es obligatorio',
+            'year.integer' => 'El año debe ser un número entero',
+            'year.min' => 'El año debe ser mayor o igual a 1900',
             'year.max' => 'El año no puede ser mayor al año actual',
             'brand_id.required' => 'La marca es obligatoria',
             'brand_id.exists' => 'La marca seleccionada no es válida',
@@ -122,6 +154,11 @@ class VehicleController extends Controller
         DB::beginTransaction();
         try {
             $data = $validator->validated();
+            
+            // Normalizar placa: convertir a mayúsculas y quitar espacios
+            if (isset($data['plate'])) {
+                $data['plate'] = strtoupper(trim($data['plate']));
+            }
             
             // Asegurar que los campos de capacidad tengan valores por defecto si están vacíos
             $data['occupant_capacity'] = $data['occupant_capacity'] ?? 0;
@@ -221,13 +258,43 @@ class VehicleController extends Controller
             'code' => 'required|string|max:50|unique:vehicles,code,' . $vehicle->id,
             'plate' => [
                 'required', 
-                'string', 
-                'min:3',
-                'max:10', 
-                'regex:/^[A-Z0-9\-]{3,10}$/',
-                'unique:vehicles,plate,' . $vehicle->id
+                'string',
+                'unique:vehicles,plate,' . $vehicle->id,
+                function ($attribute, $value, $fail) {
+                    // Normalizar: convertir a mayúsculas y quitar espacios
+                    $normalized = strtoupper(trim($value));
+                    
+                    // Validar formatos: XXXXXX, XX-XXXX, XXX-XXX
+                    $formats = [
+                        '/^[A-Z0-9]{6}$/',           // XXXXXX (6 caracteres sin guión)
+                        '/^[A-Z0-9]{2}-[A-Z0-9]{4}$/', // XX-XXXX (2 caracteres, guión, 4 caracteres)
+                        '/^[A-Z0-9]{3}-[A-Z0-9]{3}$/', // XXX-XXX (3 caracteres, guión, 3 caracteres)
+                    ];
+                    
+                    $isValid = false;
+                    foreach ($formats as $format) {
+                        if (preg_match($format, $normalized)) {
+                            $isValid = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!$isValid) {
+                        $fail('La placa debe tener uno de los siguientes formatos: XXXXXX, XX-XXXX o XXX-XXX (ejemplo: ABC123, AB-1234, ABC-123)');
+                    }
+                }
             ],
-            'year' => 'required|integer|min:1990|max:' . date('Y'),
+            'year' => [
+                'required',
+                'integer',
+                'min:1900',
+                'max:' . date('Y'),
+                function ($attribute, $value, $fail) {
+                    if (!is_numeric($value) || $value < 1900 || $value > date('Y')) {
+                        $fail('El año debe ser un año válido entre 1900 y ' . date('Y'));
+                    }
+                }
+            ],
             'occupant_capacity' => 'nullable|integer|min:0',
             'load_capacity' => 'nullable|integer|min:0',
             'compaction_capacity' => 'nullable|integer|min:0',
@@ -239,10 +306,12 @@ class VehicleController extends Controller
             'type_id' => 'exists:vehicletypes,id',
             'color_id' => 'exists:vehiclecolors,id'
         ], [
-            'plate.regex' => 'La placa debe contener solo letras, números y guiones (3-10 caracteres)',
+            'plate.required' => 'La placa es obligatoria',
             'plate.unique' => 'Esta placa ya está registrada en otro vehículo',
             'code.unique' => 'Este código ya está registrado en otro vehículo',
-            'year.min' => 'El año debe ser mayor o igual a 1990',
+            'year.required' => 'El año es obligatorio',
+            'year.integer' => 'El año debe ser un número entero',
+            'year.min' => 'El año debe ser mayor o igual a 1900',
             'year.max' => 'El año no puede ser mayor al año actual',
             'brand_id.required' => 'La marca es obligatoria',
             'brand_id.exists' => 'La marca seleccionada no es válida',
@@ -267,6 +336,11 @@ class VehicleController extends Controller
 
         try {
             $data = $validator->validated();
+            
+            // Normalizar placa: convertir a mayúsculas y quitar espacios
+            if (isset($data['plate'])) {
+                $data['plate'] = strtoupper(trim($data['plate']));
+            }
             
             // Asegurar que los campos de capacidad tengan valores por defecto si están vacíos
             $data['occupant_capacity'] = $data['occupant_capacity'] ?? 0;
