@@ -10,6 +10,7 @@ use App\Models\Schedule;
 use App\Models\Vehicle;
 use App\Models\Zone;
 use App\Models\SchedulingDetail;
+use App\Models\Motive;
 use App\Models\Audit;
 use App\Models\Attendace;
 use Illuminate\Http\Request;
@@ -474,6 +475,7 @@ class SchedulingController extends Controller
         $schedules = Schedule::orderBy('name')->get();
         $vehicles = Vehicle::orderBy('name')->get();
         $zones = Zone::orderBy('name')->get();
+        $motives = Motive::orderBy('name')->get();
 
         // 🔹 Empleados asignados
         $assigned = \App\Models\SchedulingDetail::with('user')
@@ -491,7 +493,8 @@ class SchedulingController extends Controller
             'vehicles',
             'zones',
             'assigned',
-            'allEmployees'
+            'allEmployees',
+            'motives'
         ));
     }
 
@@ -585,6 +588,7 @@ class SchedulingController extends Controller
             // Mapear notas enviadas (add_notes o notes) hacia campos concretos para la auditoría
             $notesForAudit = [];
             $rawNotes = $request->input('add_notes', $request->input('notes'));
+            $motiveId = null;
 
             if ($rawNotes) {
                 $parsedNotes = is_string($rawNotes) ? json_decode($rawNotes, true) : $rawNotes;
@@ -593,6 +597,7 @@ class SchedulingController extends Controller
                     foreach ($parsedNotes as $noteRow) {
                         $tipo = strtolower($noteRow['tipo'] ?? '');
                         $nota = $noteRow['notas'] ?? null;
+                        $motiveId = $noteRow['motive_id'] ?? $motiveId;
                         if (!$nota) {
                             continue;
                         }
@@ -663,7 +668,7 @@ class SchedulingController extends Controller
             // 🔹 Registrar historial
             // =============================
             $exceptFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'type'];
-            $this->registrarCambios($scheduling, $originalData, $notesForAudit, $exceptFields);
+            $this->registrarCambios($scheduling, $originalData, $notesForAudit, $exceptFields, $motiveId);
 
             return $isTurbo
                 ? response()->json(['success' => true, 'message' => 'Programación actualizada exitosamente.'], 200)
@@ -1531,7 +1536,7 @@ class SchedulingController extends Controller
     /**
      * Registrar cambio de personal en historial
      */
-    private function registrarCambioDetalle(Scheduling $scheduling, string $rol, $oldUserId, $newUserId, ?string $nota = null): void
+    private function registrarCambioDetalle(Scheduling $scheduling, string $rol, $oldUserId, $newUserId, ?string $nota = null, ?int $motiveId = null): void
     {
         $auditTypeName = $this->getAuditTypeName($scheduling);
         $userName = auth()->check() ? auth()->user()->username : 'Sistema/Invitado';
@@ -1543,6 +1548,7 @@ class SchedulingController extends Controller
             'valor_anterior' => $this->nombreUsuario($oldUserId),
             'valor_nuevo' => $this->nombreUsuario($newUserId),
             'user_name' => $userName,
+            'motive_id' => $motiveId,
             'nota_adicional' => $nota,
         ]);
     }
@@ -1953,6 +1959,8 @@ class SchedulingController extends Controller
 
             foreach ($request->updates as $item) {
 
+                $motiveId = $item['motive_id'] ?? null;
+
                 $scheduling = Scheduling::find($item['id']);
                 $original = $scheduling->getOriginal();
 
@@ -2001,13 +2009,14 @@ class SchedulingController extends Controller
                             if (!empty($item['changes']) && is_array($item['changes'])) {
                                 $notaCambio = $item['changes'][0]['notas'] ?? null;
                             }
-                            $this->registrarCambioDetalle(
-                                $scheduling,
-                                $roleLabel,
-                                $oldUserId,
-                                $row['user_id'],
-                                $notaCambio
-                            );
+                                $this->registrarCambioDetalle(
+                                    $scheduling,
+                                    $roleLabel,
+                                    $oldUserId,
+                                    $row['user_id'],
+                                    $notaCambio,
+                                    $motiveId
+                                );
                         }
                     }
                 }
@@ -2020,7 +2029,8 @@ class SchedulingController extends Controller
                         $scheduling,
                         $original,
                         [],
-                        ['id', 'created_at', 'updated_at', 'deleted_at']
+                        ['id', 'created_at', 'updated_at', 'deleted_at'],
+                        $motiveId
                     );
                 }
             }
