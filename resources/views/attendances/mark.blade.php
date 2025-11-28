@@ -143,7 +143,10 @@
         function updateDateTime() {
             const now = new Date();
 
-            // Fecha
+            // const myTimeZone = 'America/Lima';        // 🇵🇪 Perú (UTC-5) [ACTIVA]
+            // const myTimeZone = 'Etc/GMT+12';       // 🏝️ UTC-12 (Técnico: recuerda que el signo va al revés)
+            // const myTimeZone = 'Australia/Brisbane'; // 🇦🇺 UTC+10 (Brisbane)
+            // Fecha - 
             const dateOptions = {
                 weekday: 'long',
                 year: 'numeric',

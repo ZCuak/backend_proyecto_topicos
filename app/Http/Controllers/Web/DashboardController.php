@@ -42,7 +42,7 @@ class DashboardController extends Controller
         // dd($debugData);
 
         //Estadísticas
-        $stats = $this->calculateStats($pendingZones, $groupedBySchedule);
+        $stats = $this->calculateStats($pendingZones, $groupedBySchedule, $selectedDate);
 
         // Obtener turnos para el filtro
         $schedules = Schedule::all();
@@ -348,14 +348,29 @@ class DashboardController extends Controller
         return $query->get();
     }
 
-    private function calculateStats($pendingZones, $groupedBySchedule)
+    private function calculateStats($pendingZones, $groupedBySchedule, $selectedDate)
     {
+        $personalConAsistencia = Attendace::whereDate('date', $selectedDate)
+        ->whereNotNull('check_in')
+        ->whereNull('check_out')
+        ->whereHas('user', function($q) {
+            $q->where('status', 'ACTIVO');
+        })
+        ->pluck('user_id')
+        ->unique();
+
+        // Personal asignado a CUALQUIER programación HOY (sin importar turno)
+        $personalEnProgramacion = SchedulingDetail::whereDate('date', $selectedDate)
+            ->pluck('user_id')
+            ->unique();
+        $apoyosDisponibles = $personalConAsistencia->diff($personalEnProgramacion)->count();
         return [
             'total_zones' => $pendingZones->count() + $groupedBySchedule->flatten(1)->count(),
             'ready_zones' => $pendingZones->where('status', 'ready')->count(),
             'not_ready_zones' => $pendingZones->where('status', 'not_ready')->count(),
             'absent_personnel' => $pendingZones->sum('absent_count'),
             'in_process' => $groupedBySchedule->flatten(1)->filter(fn($z) => $z['scheduling']->status == 1)->count(),
+            'apoyos_disponibles' => $apoyosDisponibles,
         ];
     }
 

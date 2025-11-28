@@ -128,7 +128,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-purple-600 font-medium">Apoyos disponibles</p>
-                        <p class="text-3xl font-bold text-purple-700 mt-1">0</p>
+                        <p class="text-3xl font-bold text-purple-700 mt-1">{{ $stats['apoyos_disponibles'] }}</p>
                     </div>
                     <div class="bg-purple-200 w-14 h-14 rounded-full flex items-center justify-center">
                         <i class="fa-solid fa-user text-2xl text-purple-700"></i>
@@ -241,19 +241,19 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {{-- <div class="grid grid-cols-1 lg:grid-cols-3 gap-6"> --}}
             {{-- GRAFICO DE RECOLECCIÓN --}}
 
-            <div class="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-100 p-6">
+            {{-- <div class="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-100 p-6">
                 <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-chart-line text-emerald-500"></i>
                     Progreso de recolección mensual
                 </h2>
                 <canvas id="recoleccionChart" height="120"></canvas>
-            </div>
+            </div> --}}
 
             {{-- ACTIVIDAD RECIENTE --}}
-            <div class="bg-white rounded-xl shadow-md border border-slate-100 p-6">
+            {{-- <div class="bg-white rounded-xl shadow-md border border-slate-100 p-6">
                 <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-bell text-amber-500"></i>
                     Últimas alertas
@@ -276,8 +276,8 @@
                         <span class="text-xs text-slate-400">Hace 4 horas</span>
                     </li>
                 </ul>
-            </div>
-        </div>
+            </div> --}}
+        {{-- </div> --}}
 
     </div>
 
