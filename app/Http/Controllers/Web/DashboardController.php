@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendace;
+use App\Models\Motive;
 use App\Models\Schedule;
 use App\Models\Scheduling;
 use App\Models\SchedulingDetail;
@@ -363,13 +364,19 @@ class DashboardController extends Controller
         $personalEnProgramacion = SchedulingDetail::whereDate('date', $selectedDate)
             ->pluck('user_id')
             ->unique();
+
+        // dd($personalConAsistencia);
+        // Apoyos = Personal con asistencia - Personal en programación
         $apoyosDisponibles = $personalConAsistencia->diff($personalEnProgramacion)->count();
+
+
         return [
             'total_zones' => $pendingZones->count() + $groupedBySchedule->flatten(1)->count(),
             'ready_zones' => $pendingZones->where('status', 'ready')->count(),
             'not_ready_zones' => $pendingZones->where('status', 'not_ready')->count(),
             'absent_personnel' => $pendingZones->sum('absent_count'),
             'in_process' => $groupedBySchedule->flatten(1)->filter(fn($z) => $z['scheduling']->status == 1)->count(),
+
             'apoyos_disponibles' => $apoyosDisponibles,
         ];
     }
@@ -427,7 +434,8 @@ class DashboardController extends Controller
     public function editWithReplacements(Request $request, Scheduling $scheduling)
     {
         $selectedDate = $request->input('date', now()->format('Y-m-d'));
-
+        $motives = Motive::orderBy('name')->get();
+        
         $schedules = Schedule::orderBy('name')
             ->where('id', '!=', $scheduling->schedule_id)
             ->get();
@@ -454,7 +462,8 @@ class DashboardController extends Controller
             'schedules',
             'vehicles',
             'allEmployees',
-            'assigned'
+            'assigned',
+            'motives'
         ));
     }
 
@@ -473,12 +482,12 @@ class DashboardController extends Controller
         $shiftStartTime = Carbon::parse($schedule->time_start)->format('H:i');
         $shiftEndTime = Carbon::parse($schedule->time_end)->format('H:i');
 
-        // 🎯 Obtener todas las asistencias del día que cumplan los criterios
+        // Obtener todas las asistencias del día que cumplan los criterios
         $validAttendances = Attendace::with('user')
             ->whereDate('date', $date)
             ->whereNotNull('check_in')
-            ->whereNull('check_out') // ✅ NO tienen salida (aún están trabajando)
-            ->whereNotIn('user_id', $excludeUserIds) // ✅ NO están ya asignados
+            ->whereNull('check_out') // NO tienen salida (aún están trabajando)
+            ->whereNotIn('user_id', $excludeUserIds) // NO están ya asignados
             ->get()
             ->filter(function ($attendance) use ($shiftStartTime, $shiftEndTime) {
                 $checkInTime = Carbon::parse($attendance->check_in)->format('H:i');
