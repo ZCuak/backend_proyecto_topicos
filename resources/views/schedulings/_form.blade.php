@@ -88,7 +88,7 @@
             <label class="text-sm font-medium text-slate-700">Horario <span class="text-red-500">*</span></label>
             <div class="relative">
                 <i class="fa-solid fa-clock absolute left-3 top-2.5 text-slate-400"></i>
-                <select name="schedule_id" disabled
+                <select name="schedule_id" 
                     class="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 bg-slate-100 cursor-not-allowed">
                     <option value="">Seleccionar horario...</option>
                     @foreach($schedules as $schedule)
@@ -112,7 +112,7 @@
             <label class="text-sm font-medium text-slate-700">Vehículo</label>
             <div class="relative">
                 <i class="fa-solid fa-truck absolute left-3 top-2.5 text-slate-400"></i>
-                <select name="vehicle_id" disabled
+                <select name="vehicle_id" 
                     class="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 bg-slate-100 cursor-not-allowed">
                     <option value="">Seleccionar vehículo...</option>
                     @foreach($vehicles as $vehicle)
@@ -129,7 +129,7 @@
             <label class="text-sm font-medium text-slate-700">Zona</label>
             <div class="relative">
                 <i class="fa-solid fa-map-marker-alt absolute left-3 top-2.5 text-slate-400"></i>
-                <select name="zone_id" disabled
+                <select name="zone_id" 
                     class="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 bg-slate-100 cursor-not-allowed">
                     <option value="">Seleccionar zona...</option>
                     @foreach($zones as $zone)

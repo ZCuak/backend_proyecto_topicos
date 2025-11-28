@@ -128,7 +128,9 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-purple-600 font-medium">Apoyos disponibles</p>
-                        <p class="text-3xl font-bold text-purple-700 mt-1">{{ $stats['apoyos_disponibles'] }}</p>
+                        <p class="text-3xl font-bold text-purple-700 mt-1" >
+                            {{ $stats['apoyos_disponibles'] }}
+                        </p>
                     </div>
                     <div class="bg-purple-200 w-14 h-14 rounded-full flex items-center justify-center">
                         <i class="fa-solid fa-user text-2xl text-purple-700"></i>
